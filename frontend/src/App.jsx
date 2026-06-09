@@ -660,8 +660,7 @@ Best eligible risk-adjusted score among all tested combinations.
                   {String(result.cmc_signal.altcoin_season?.label || "UNKNOWN").toUpperCase()}
                 </p>
               </div>
-            </details>
-          )}
+                   )}
 
 
     <h2>COINMARKETCAP SKILL HUB COMPARISON</h2>

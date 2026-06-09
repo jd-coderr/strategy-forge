@@ -636,33 +636,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
               {cmcSkillHub && (
   <>
-
-  <summary>MARKET INTELLIGENCE</summary>
-
-              <div className="metrics">
-                <p>SOURCE.............. CoinMarketCap.com API</p>
-                <p>STATUS.............. {result.cmc_signal.status}</p>
-                <p>SYMBOL.............. {result.cmc_signal.symbol}</p>
-                <p>PRICE USD........... {formatPrice(result.cmc_signal.price_usd)}</p>
-                <p>CHANGE 1H........... {formatPercent(result.cmc_signal.percent_change_1h)}</p>
-                <p>CHANGE 24H.......... {formatPercent(result.cmc_signal.percent_change_24h)}</p>
-                <p>CHANGE 7D........... {formatPercent(result.cmc_signal.percent_change_7d)}</p>
-                <p>VOLUME 24H.......... {formatMoney(result.cmc_signal.volume_24h)}</p>
-                <p>VOLUME CHANGE 24H... {formatPercent(result.cmc_signal.volume_change_24h)}</p>
-                <p>MARKET CAP.......... {formatMoney(result.cmc_signal.market_cap)}</p>
-                <p>MARKET BIAS......... {String(result.cmc_signal.market_bias).toUpperCase()}</p>
-                <p>
-                  FEAR & GREED........ {result.cmc_signal.fear_greed?.value ?? "N/A"} / 100{" "}
-                  {String(result.cmc_signal.fear_greed?.label || "UNKNOWN").toUpperCase()}
-                </p>
-                <p>
-                  ALTCOIN SEASON...... {result.cmc_signal.altcoin_season?.value ?? "N/A"} / 100{" "}
-                  {String(result.cmc_signal.altcoin_season?.label || "UNKNOWN").toUpperCase()}
-                </p>
-              </div>
-                   )}
-
-
     <h2>COINMARKETCAP SKILL HUB COMPARISON</h2>
 
     <div className="metrics">
@@ -679,7 +652,33 @@ Best eligible risk-adjusted score among all tested combinations.
 
 <h2>DETAILS</h2>
 
-         {result.cmc_signal && (
+{result.cmc_signal && (
+  <details>
+    <summary>MARKET INTELLIGENCE</summary>
+
+    <div className="metrics">
+      <p>SOURCE.............. CoinMarketCap.com API</p>
+      <p>STATUS.............. {result.cmc_signal.status}</p>
+      <p>SYMBOL.............. {result.cmc_signal.symbol}</p>
+      <p>PRICE USD........... {formatPrice(result.cmc_signal.price_usd)}</p>
+      <p>CHANGE 1H........... {formatPercent(result.cmc_signal.percent_change_1h)}</p>
+      <p>CHANGE 24H.......... {formatPercent(result.cmc_signal.percent_change_24h)}</p>
+      <p>CHANGE 7D........... {formatPercent(result.cmc_signal.percent_change_7d)}</p>
+      <p>VOLUME 24H.......... {formatMoney(result.cmc_signal.volume_24h)}</p>
+      <p>VOLUME CHANGE 24H... {formatPercent(result.cmc_signal.volume_change_24h)}</p>
+      <p>MARKET CAP.......... {formatMoney(result.cmc_signal.market_cap)}</p>
+      <p>MARKET BIAS......... {String(result.cmc_signal.market_bias).toUpperCase()}</p>
+      <p>
+        FEAR & GREED........ {result.cmc_signal.fear_greed?.value ?? "N/A"} / 100{" "}
+        {String(result.cmc_signal.fear_greed?.label || "UNKNOWN").toUpperCase()}
+      </p>
+      <p>
+        ALTCOIN SEASON...... {result.cmc_signal.altcoin_season?.value ?? "N/A"} / 100{" "}
+        {String(result.cmc_signal.altcoin_season?.label || "UNKNOWN").toUpperCase()}
+      </p>
+    </div>
+  </details>
+)}
 
             <details>
             <summary>PERFORMANCE SUMMARY</summary>

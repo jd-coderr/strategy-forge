@@ -1,7 +1,15 @@
 from cmc_skill_hub import find_cmc_skill
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.cors import CORSMiddleware
+
+from pathlib import Path
+from pydantic import BaseModel
+from backtest import run_backtest
+from cmc_data import get_cmc_signal
+from twak_config import get_twak_status
+import json
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,14 +23,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-from pathlib import Path
-from pydantic import BaseModel
-from backtest import run_backtest
-from cmc_data import get_cmc_signal
-from twak_config import get_twak_status
-import json
-
-app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,

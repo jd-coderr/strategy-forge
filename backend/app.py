@@ -25,8 +25,7 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BASE_DIR.parent
-STRATEGIES_DIR = PROJECT_DIR / "strategies"
+STRATEGIES_DIR = BASE_DIR / "strategies"
 
 STRATEGY_FILES = [
     "vwap_reversion.json",

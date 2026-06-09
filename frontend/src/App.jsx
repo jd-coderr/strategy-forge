@@ -157,7 +157,7 @@ function App() {
 
   async function checkRegistration() {
     try {
-      const response = await fetch("http://127.0.0.1:8000/register-agent", {
+      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/register-agent", {
         method: "POST"
       });
 
@@ -177,7 +177,7 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/generate-strategy", {
+      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/generate-strategy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -206,7 +206,7 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/optimize-strategy", {
+      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/optimize-strategy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

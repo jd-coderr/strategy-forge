@@ -686,6 +686,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
   <p>FINAL USE........... SUPPORTS STRATEGY CONTEXT, DOES NOT OVERRIDE BACKTEST</p>
 </div>
+</>
 
 <h2>DETAILS</h2>
 

@@ -253,3 +253,12 @@ def register_agent():
 @app.get("/cmc-skill-hub/find")
 async def cmc_skill_hub_find(query: str = "btc price"):
     return await find_cmc_skill(query)
+
+@app.get("/debug-strategies")
+def debug_strategies():
+    return {
+        "base_dir": str(BASE_DIR),
+        "strategies_dir": str(STRATEGIES_DIR),
+        "exists": STRATEGIES_DIR.exists(),
+        "files": [f.name for f in STRATEGIES_DIR.glob("*")] if STRATEGIES_DIR.exists() else []
+    }

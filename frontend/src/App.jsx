@@ -636,25 +636,8 @@ Best eligible risk-adjusted score among all tested combinations.
 
               {cmcSkillHub && (
   <>
-    <h2>COINMARKETCAP SKILL HUB COMPARISON</h2>
 
-    <div className="metrics">
-      <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
-      <p>SELECTED ASSET...... {result.coin}</p>
-      <p>QUERY............... {cmcSkillHub?.query || `${result.coin} strategy`}</p>
-      <p>CURRENT STRATEGY.... {result.selected_strategy}</p>
-      <p>SOURCE.............. CMC Skill Hub MCP</p>
-      <p>TOP SKILL........... {getCmcTopSkill()}</p>
-      <p>USE................. RESEARCH COMPARISON ONLY</p>
-    </div>
-  </>
-)}
-
-<h2>DETAILS</h2>
-
-         {result.cmc_signal && (
-  <details>
-    <summary>MARKET INTELLIGENCE</summary>
+  <summary>MARKET INTELLIGENCE</summary>
 
               <div className="metrics">
                 <p>SOURCE.............. CoinMarketCap.com API</p>
@@ -680,7 +663,26 @@ Best eligible risk-adjusted score among all tested combinations.
             </details>
           )}
 
-          <details>
+
+    <h2>COINMARKETCAP SKILL HUB COMPARISON</h2>
+
+    <div className="metrics">
+      <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
+      <p>SELECTED ASSET...... {result.coin}</p>
+      <p>QUERY............... {cmcSkillHub?.query || `${result.coin} strategy`}</p>
+      <p>CURRENT STRATEGY.... {result.selected_strategy}</p>
+      <p>SOURCE.............. CMC Skill Hub MCP</p>
+      <p>TOP SKILL........... {getCmcTopSkill()}</p>
+      <p>USE................. RESEARCH COMPARISON ONLY</p>
+    </div>
+  </>
+)}
+
+<h2>DETAILS</h2>
+
+         {result.cmc_signal && (
+
+            <details>
             <summary>PERFORMANCE SUMMARY</summary>
 
             <div className="metrics">

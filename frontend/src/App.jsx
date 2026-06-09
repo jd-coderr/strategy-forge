@@ -471,6 +471,8 @@ Best eligible risk-adjusted score among all tested combinations.
           </div>
 <div>
   <label>INITIAL CAPITAL</label>
+  <div className="capital-input">
+  <span>$</span>
   <input
     type="number"
     min="100"
@@ -587,10 +589,35 @@ Best eligible risk-adjusted score among all tested combinations.
 
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={getEquityCurveData()}>
-                    <XAxis dataKey="trade" />
+<LineChart
+  data={getEquityCurveData()}
+  margin={{
+    top: 10,
+    right: 20,
+    left: 10,
+    bottom: 50
+  }}
+>
+  <XAxis
+    dataKey="trade"
+    label={{
+      value: "TRADES",
+      position: "insideBottom",
+      offset: -15
+    }}
+  />
                     <YAxis domain={["auto", "auto"]} />
-                    <Tooltip />
+<Tooltip
+  labelFormatter={(label) => `Trade ${label}`}
+  formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
+  contentStyle={{
+    backgroundColor: "#001a08",
+    border: "1px solid #00ff41",
+    color: "#00ff41"
+  }}
+  labelStyle={{ color: "#00ff41" }}
+  itemStyle={{ color: "#00ff41" }}
+/>
                     <Line
                       type="monotone"
                       dataKey="equity"

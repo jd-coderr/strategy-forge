@@ -201,7 +201,18 @@ def optimize_strategy(request: OptimizeRequest):
     ]
 
     ranking_pool = eligible_results if eligible_results else results
-    best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
+    if not ranking_pool:
+    ranking_pool = all_results
+
+if not ranking_pool:
+    return {
+        "mode": "auto_optimization",
+        "tested_combinations": 0,
+        "eligible_combinations": 0,
+        "error": "No optimizer results were generated."
+    }
+
+best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
 
     return {
         "coin": request.coin,

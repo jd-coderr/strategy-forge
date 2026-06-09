@@ -150,5 +150,5 @@ Backend:
 
 ## Disclaimer
 
->>>>>>> 857bd62afeaad5ff1ff5a4cd55a48216d70f7ff2
+>>>>>>> 
 This software is provided for educational and research purposes only. Past performance does not guarantee future results.

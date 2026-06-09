@@ -113,6 +113,9 @@ def pick_best_strategy(
 
     ranking_pool = eligible_results if eligible_results else results
 
+    if not ranking_pool:
+        return None, None, results
+
     best = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
     return best["strategy"], best["backtest"], results
 
@@ -127,6 +130,15 @@ def generate_strategy(request: StrategyRequest):
         risk=request.risk,
         initial_capital=request.initial_capital
     )
+
+    if strategy is None or backtest is None:
+        return {
+            "error": "No strategy results were generated.",
+            "coin": request.coin,
+            "timeframe": request.timeframe,
+            "risk": request.risk,
+            "cmc_signal": cmc_signal
+        }
 
     return {
         "coin": request.coin,
@@ -182,7 +194,7 @@ def optimize_strategy(request: OptimizeRequest):
                     "risk_governor": strategy["risk_governor"]
                 })
 
-        eligible_results = [
+    eligible_results = [
         item for item in results
         if is_backtest_eligible(item["backtest"])
     ]
@@ -191,10 +203,13 @@ def optimize_strategy(request: OptimizeRequest):
 
     if not ranking_pool:
         return {
+            "coin": request.coin,
             "mode": "auto_optimization",
+            "cmc_signal": cmc_signal,
             "tested_combinations": 0,
             "eligible_combinations": 0,
-            "error": "No optimizer results were generated."
+            "error": "No optimizer results were generated.",
+            "all_results": []
         }
 
     best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
@@ -233,6 +248,7 @@ def register_agent():
         "chain": status["chain"],
         "message": "TWAK agent address is configured. On-chain registration must be completed with TWAK CLI or MCP."
     }
+
 
 @app.get("/cmc-skill-hub/find")
 async def cmc_skill_hub_find(query: str = "btc price"):

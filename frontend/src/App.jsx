@@ -605,7 +605,7 @@ try {
           )}
 
           <div className="always-open-detail">
-  <summary>CMC SKILL HUB</summary>
+     <h2>COINMARKETCAP SKILL HUB</h2>
 
   <div className="metrics">
     <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
@@ -624,7 +624,7 @@ try {
             <details>
 
               <h2>DETAILS</h2>
-              
+              <p>    
               <summary>MARKET INTELLIGENCE</summary>
 
               <div className="metrics">

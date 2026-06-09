@@ -609,16 +609,17 @@ try {
   <summary>CMC SKILL HUB</summary>
 
   <div className="metrics">
-    <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
-    <p>QUERY............... btc price</p>
-    <p>SOURCE.............. CMC Skill Hub MCP</p>
-    <p>
-      TOP SKILL...........{" "}
-      {cmcSkillHub?.result?.content?.[0]?.text
-        ? JSON.parse(cmcSkillHub.result.content[0].text).candidates?.[0]?.uniqueName
-        : "N/A"}
-    </p>
-  </div>
+  <h3>CMC SKILL HUB</h3>
+  <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
+  <p>QUERY............... btc price</p>
+  <p>SOURCE.............. CMC Skill Hub MCP</p>
+  <p>
+    TOP SKILL...........{" "}
+    {cmcSkillHub?.result?.content?.[0]?.text
+      ? JSON.parse(cmcSkillHub.result.content[0].text).candidates?.[0]?.uniqueName
+      : "N/A"}
+  </p>
+</div>
 </details>
 
           {result.cmc_signal && (

@@ -9,13 +9,20 @@ import {
 } from "recharts";
 import "./App.css";
 
+const API_BASE = import.meta.env.VITE_API_URL || "https://strategy-forge-production-a3f6.up.railway.app";
+
 function App() {
+  const [cmcSkillHub, setCmcSkillHub] = useState(null);
   const [coin, setCoin] = useState("BNB");
   const [timeframe, setTimeframe] = useState("4H");
   const [risk, setRisk] = useState("medium");
   const [initialCapital, setInitialCapital] = useState(10000);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showTrades, setShowTrades] = useState(false);
+  const [showRankings, setShowRankings] = useState(false);
+  const [showStrategySpec, setShowStrategySpec] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   const [loadingMode, setLoadingMode] = useState("");
   const [walletAddress, setWalletAddress] = useState(null);
   const [walletChainId, setWalletChainId] = useState(null);
@@ -63,6 +70,88 @@ function App() {
       trade: index,
       equity: value
     }));
+  }
+
+
+  function getOverallRating() {
+    const score = Number(result?.backtest?.risk_adjusted_score ?? 0);
+
+    if (score >= 10) return "A";
+    if (score >= 7) return "B+";
+    if (score >= 5) return "B";
+    if (score >= 3) return "C";
+
+    return "D";
+  }
+
+  function isApproved() {
+    return (
+      result?.backtest?.drawdown_gate === "PASS" &&
+      result?.backtest?.min_trade_gate === "PASS"
+    );
+  }
+
+  function parsePercent(value) {
+    return parseFloat(String(value).replace("%", ""));
+  }
+
+  function copyStrategySummary() {
+    const text = `
+STRATEGY: ${result.selected_strategy}
+
+ENTRY RULE:
+${result.entry?.condition}
+
+CONFIRMATION:
+${result.confirmation?.condition}
+
+TAKE PROFIT:
+${result.take_profit?.condition}
+
+STOP LOSS:
+${result.stop_loss?.condition}
+
+RISK GOVERNOR:
+MAX OPEN TRADES: ${result.risk_governor?.max_open_trades}
+RISK PER TRADE: ${result.risk_governor?.risk_per_trade}
+STOP AFTER LOSSES: ${result.risk_governor?.stop_after_consecutive_losses}
+
+PERFORMANCE SUMMARY:
+COIN: ${result.coin}
+TIMEFRAME: ${result.timeframe}
+RISK: ${String(result.risk).toUpperCase()}
+TRADES: ${result.backtest.trades}
+WIN RATE: ${result.backtest.win_rate}
+NET RETURN: ${result.backtest.net_return}
+MAX DRAWDOWN: ${result.backtest.max_drawdown}
+PROFIT FACTOR: ${result.backtest.profit_factor}
+
+OPTIMIZER SELECTION:
+RISK-ADJUSTED SCORE: ${result.backtest.risk_adjusted_score}
+SHARPE RATIO: ${result.backtest.sharpe_ratio}
+SORTINO RATIO: ${result.backtest.sortino_ratio}
+CALMAR RATIO: ${result.backtest.calmar_ratio}
+RECOVERY FACTOR: ${result.backtest.recovery_factor}
+EXPECTANCY: ${result.backtest.expectancy}
+
+SELECTION REASON:
+Best eligible risk-adjusted score among all tested combinations.
+`;
+
+    navigator.clipboard.writeText(text);
+    alert("STRATEGY SUMMARY COPIED");
+  }
+
+  function getCmcTopSkill() {
+    try {
+      const rawText = cmcSkillHub?.result?.content?.[0]?.text;
+      if (!rawText) return "N/A";
+
+      const parsed = JSON.parse(rawText);
+      return parsed?.candidates?.[0]?.uniqueName || "N/A";
+    } catch (error) {
+      return "N/A";
+    }
   }
 
   async function updateWalletData(address) {
@@ -157,7 +246,7 @@ function App() {
 
   async function checkRegistration() {
     try {
-      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/register-agent", {
+      const response = await fetch(`${API_BASE}/register-agent`, {
         method: "POST"
       });
 
@@ -177,7 +266,7 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/generate-strategy", {
+      const response = await fetch(`${API_BASE}/generate-strategy`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -206,7 +295,7 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch("https://strategy-forge-production-a3f6.up.railway.app/optimize-strategy", {
+      const response = await fetch(`${API_BASE}/optimize-strategy`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -218,7 +307,31 @@ function App() {
       });
 
       const data = await response.json();
+
+      if (!response.ok || data.error || !data.best_setup) {
+        throw new Error(data.error || "Optimizer returned no best setup.");
+      }
+
       const best = data.best_setup;
+
+      try {
+        const skillQuery = `${best.coin || coin} strategy`;
+        const skillResponse = await fetch(
+          `${API_BASE}/cmc-skill-hub/find?query=${encodeURIComponent(skillQuery)}`
+        );
+        const skillData = await skillResponse.json();
+
+        setCmcSkillHub({
+          ...skillData,
+          query: skillQuery
+        });
+      } catch (skillError) {
+        setCmcSkillHub({
+          ok: false,
+          query: `${best.coin || coin} strategy`,
+          error: "CMC Skill Hub unavailable"
+        });
+      }
 
       setTimeframe(best.timeframe);
       setRisk(best.risk);
@@ -411,7 +524,7 @@ function App() {
               <span className="loading-text">
                 {loadingMode === "optimize"
                   ? "RANKING STRATEGY / TIMEFRAME / RISK COMBINATIONS"
-                  : "GENERATING BACKTESTABLE STRATEGY SPEC"}
+                  : "GENERATING TRADING STRATEGY"}
               </span>
               <span className="loading-dots"></span>
             </div>
@@ -427,9 +540,91 @@ function App() {
         <div className="panel">
           <div className="panel-title">RESULTS</div>
 
-          {result.cmc_signal && (
+          <h2>EXECUTIVE SUMMARY</h2>
+
+          <div className="metrics">
+            <p>STRATEGY........... {result.selected_strategy}</p>
+            <p>RETURN............. {result.backtest.net_return}</p>
+            <p>MAX DRAWDOWN....... {result.backtest.max_drawdown}</p>
+            <p>PROFIT FACTOR...... {result.backtest.profit_factor}</p>
+            <p>WIN RATE........... {result.backtest.win_rate}</p>
+            <p>RATING............. {getOverallRating()}</p>
+          </div>
+
+          <h2>CURRENT MARKET SIGNAL</h2>
+
+          <div className="metrics">
+            <p>STATUS............. {result.backtest.current_signal?.status}</p>
+            <p>ACTION............. {result.backtest.current_signal?.action}</p>
+            <p>LATEST CLOSE....... {result.backtest.current_signal?.latest_close}</p>
+            <p>RSI................ {result.backtest.current_signal?.latest_rsi}</p>
+            <p>DEVIATION.......... {result.backtest.current_signal?.latest_deviation}%</p>
+            <p>MESSAGE............ {result.backtest.current_signal?.message}</p>
+          </div>
+
+          <h2>FINAL VERDICT</h2>
+
+          <div className="metrics">
+            <p>STATUS............. {isApproved() ? "APPROVED" : "REJECTED"}</p>
+            <p>EDGE............... {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
+            <p>EXPECTANCY......... {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
+            <p>
+              PROFIT FACTOR......
+              {Number(result.backtest.profit_factor) >= 2
+                ? " STRONG"
+                : Number(result.backtest.profit_factor) >= 1
+                ? " ACCEPTABLE"
+                : " WEAK"}
+            </p>
+            <p>DRAWDOWN........... {parsePercent(result.backtest.max_drawdown) < 10 ? "CONTROLLED" : "ELEVATED"}</p>
+            <p>BUY & HOLD......... {parsePercent(result.backtest.strategy_vs_buy_hold) > 0 ? "OUTPERFORMED" : "UNDERPERFORMED"}</p>
+            <p>OVERALL RATING..... {getOverallRating()}</p>
+          </div>
+
+          {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
             <>
-              <h2>COINMARKETCAP MARKET INTELLIGENCE</h2>
+              <h2>EQUITY CURVE</h2>
+
+              <div className="chart-box">
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={getEquityCurveData()}>
+                    <XAxis dataKey="trade" />
+                    <YAxis domain={["auto", "auto"]} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="equity"
+                      dot={false}
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
+
+          <h2>DETAILS</h2>
+
+          {cmcSkillHub && (
+            <details open>
+              <summary>COINMARKETCAP SKILL HUB COMPARISON</summary>
+
+              <div className="metrics">
+                <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
+                <p>SELECTED ASSET...... {result.coin}</p>
+                <p>QUERY............... {cmcSkillHub?.query || `${result.coin} strategy`}</p>
+                <p>CURRENT STRATEGY.... {result.selected_strategy}</p>
+                <p>SOURCE.............. CMC Skill Hub MCP</p>
+                <p>TOP SKILL........... {getCmcTopSkill()}</p>
+                <p>USE................. RESEARCH COMPARISON ONLY</p>
+              </div>
+            </details>
+          )}
+
+          {result.cmc_signal && (
+            <details>
+              <summary>MARKET INTELLIGENCE</summary>
 
               <div className="metrics">
                 <p>SOURCE.............. CoinMarketCap.com API</p>
@@ -443,11 +638,6 @@ function App() {
                 <p>VOLUME CHANGE 24H... {formatPercent(result.cmc_signal.volume_change_24h)}</p>
                 <p>MARKET CAP.......... {formatMoney(result.cmc_signal.market_cap)}</p>
                 <p>MARKET BIAS......... {String(result.cmc_signal.market_bias).toUpperCase()}</p>
-              </div>
-
-              <h2>MARKET SENTIMENT</h2>
-
-              <div className="metrics">
                 <p>
                   FEAR & GREED........ {result.cmc_signal.fear_greed?.value ?? "N/A"} / 100{" "}
                   {String(result.cmc_signal.fear_greed?.label || "UNKNOWN").toUpperCase()}
@@ -457,290 +647,207 @@ function App() {
                   {String(result.cmc_signal.altcoin_season?.label || "UNKNOWN").toUpperCase()}
                 </p>
               </div>
-            </>
+            </details>
           )}
 
-          <h2>BACKTEST SUMMARY</h2>
+          <details>
+            <summary>PERFORMANCE SUMMARY</summary>
 
-          <div className="metrics">
-            <p>COIN................ {result.coin}</p>
-            <p>TIMEFRAME........... {result.timeframe}</p>
-            <p>TEST PERIOD......... {result.backtest.backtest_period}</p>
-            <p>CANDLES TESTED...... {result.backtest.candles_tested}</p>
-            <p>TX COST / TRADE..... {result.backtest.transaction_cost_per_trade}</p>
-            <p>SLIPPAGE............ {result.backtest.slippage_per_trade}</p>
-            <p>TOTAL COST.......... {result.backtest.total_cost_per_trade}</p>
-            <p>RISK MODEL.......... {result.risk}</p>
-            <p>TRADES.............. {result.backtest.trades}</p>
-            <p>WINS................ {result.backtest.wins}</p>
-            <p>LOSSES.............. {result.backtest.losses}</p>
-            <p>WIN RATE............ {result.backtest.win_rate}</p>
-<p>INITIAL CAPITAL.... {result.backtest.initial_capital}</p>
-<p>FINAL EQUITY....... {result.backtest.final_equity}</p>
-            <p>NET RETURN.......... {result.backtest.net_return}</p>
-            <p>BUY & HOLD RETURN... {result.backtest.buy_hold_return}</p>
-            <p>VS BUY & HOLD....... {result.backtest.strategy_vs_buy_hold}</p>
-            <p>AVG PNL............. {result.backtest.avg_pnl}</p>
-            <p>LARGEST PROFIT...... {result.backtest.largest_profit}</p>
-            <p>LARGEST LOSS........ {result.backtest.largest_loss}</p>
-            <p>AVG BARS IN TRADE... {result.backtest.avg_bars_in_trade}</p>
-            <p>AVG DD DURATION..... {result.backtest.avg_drawdown_duration}</p>
-            <p>DD / INIT CAPITAL... {result.backtest.max_drawdown_initial_capital}</p>
-            <p>PROFIT FACTOR....... {result.backtest.profit_factor}</p>
-            <p>MAX DRAWDOWN........ {result.backtest.max_drawdown}</p>
-            <p>RISK-ADJUSTED SCORE. {result.backtest.risk_adjusted_score}</p>
-          </div>
+            <div className="metrics">
+              <p>COIN................ {result.coin}</p>
+              <p>TIMEFRAME........... {result.timeframe}</p>
+              <p>TEST PERIOD......... {result.backtest.backtest_period}</p>
+              <p>CANDLES TESTED...... {result.backtest.candles_tested}</p>
+              <p>TX COST / TRADE..... {result.backtest.transaction_cost_per_trade}</p>
+              <p>SLIPPAGE............ {result.backtest.slippage_per_trade}</p>
+              <p>TOTAL COST.......... {result.backtest.total_cost_per_trade}</p>
+              <p>RISK MODEL.......... {result.risk}</p>
+              <p>TRADES.............. {result.backtest.trades}</p>
+              <p>WINS................ {result.backtest.wins}</p>
+              <p>LOSSES.............. {result.backtest.losses}</p>
+              <p>WIN RATE............ {result.backtest.win_rate}</p>
+              <p>INITIAL CAPITAL..... {result.backtest.initial_capital}</p>
+              <p>FINAL EQUITY........ {result.backtest.final_equity}</p>
+              <p>NET RETURN.......... {result.backtest.net_return}</p>
+              <p>BUY & HOLD RETURN... {result.backtest.buy_hold_return}</p>
+              <p>VS BUY & HOLD....... {result.backtest.strategy_vs_buy_hold}</p>
+              <p>AVG PNL............. {result.backtest.avg_pnl}</p>
+              <p>LARGEST PROFIT...... {result.backtest.largest_profit}</p>
+              <p>LARGEST LOSS........ {result.backtest.largest_loss}</p>
+              <p>AVG BARS IN TRADE... {result.backtest.avg_bars_in_trade}</p>
+              <p>AVG DD DURATION..... {result.backtest.avg_drawdown_duration}</p>
+              <p>DD / INIT CAPITAL... {result.backtest.max_drawdown_initial_capital}</p>
+              <p>PROFIT FACTOR....... {result.backtest.profit_factor}</p>
+              <p>MAX DRAWDOWN........ {result.backtest.max_drawdown}</p>
+              <p>RECOVERY FACTOR..... {result.backtest.recovery_factor}</p>
+              <p>RISK-ADJUSTED SCORE. {result.backtest.risk_adjusted_score}</p>
+            </div>
+          </details>
 
-<h2>RISK ANALYTICS</h2>
+          <details>
+            <summary>RISK ANALYTICS</summary>
 
-<div className="metrics">
-  <p>
-    SHARPE RATIO........ {result.backtest.sharpe_ratio}
-    {" "}
-    (
-    {Number(result.backtest.sharpe_ratio) < 0.5
-      ? "POOR"
-      : Number(result.backtest.sharpe_ratio) < 1
-      ? "FAIR"
-      : Number(result.backtest.sharpe_ratio) < 2
-      ? "GOOD"
-      : "EXCELLENT"}
-    )
-  </p>
+            <div className="metrics">
+              <p>
+                SHARPE RATIO........ {result.backtest.sharpe_ratio}{" "}
+                (
+                {Number(result.backtest.sharpe_ratio) < 0.5
+                  ? "POOR"
+                  : Number(result.backtest.sharpe_ratio) < 1
+                  ? "FAIR"
+                  : Number(result.backtest.sharpe_ratio) < 2
+                  ? "GOOD"
+                  : "EXCELLENT"}
+                )
+              </p>
+              <p>Return earned per unit of volatility.</p>
+              <br />
 
-  <p>Return earned per unit of volatility.</p>
+              <p>
+                SORTINO RATIO....... {result.backtest.sortino_ratio}{" "}
+                (
+                {Number(result.backtest.sortino_ratio) < 0.5
+                  ? "POOR"
+                  : Number(result.backtest.sortino_ratio) < 1
+                  ? "FAIR"
+                  : Number(result.backtest.sortino_ratio) < 2
+                  ? "GOOD"
+                  : "EXCELLENT"}
+                )
+              </p>
+              <p>Return earned per unit of downside risk.</p>
+              <br />
 
-  <br />
+              <p>
+                CALMAR RATIO........ {result.backtest.calmar_ratio}{" "}
+                (
+                {Number(result.backtest.calmar_ratio) < 1
+                  ? "POOR"
+                  : Number(result.backtest.calmar_ratio) < 2
+                  ? "FAIR"
+                  : Number(result.backtest.calmar_ratio) < 3
+                  ? "GOOD"
+                  : "EXCELLENT"}
+                )
+              </p>
+              <p>Return achieved relative to maximum drawdown.</p>
+              <br />
 
-  <p>
-    SORTINO RATIO....... {result.backtest.sortino_ratio}
-    {" "}
-    (
-    {Number(result.backtest.sortino_ratio) < 0.5
-      ? "POOR"
-      : Number(result.backtest.sortino_ratio) < 1
-      ? "FAIR"
-      : Number(result.backtest.sortino_ratio) < 2
-      ? "GOOD"
-      : "EXCELLENT"}
-    )
-  </p>
+              <p>
+                EXPECTANCY.......... {result.backtest.expectancy}{" "}
+                (
+                {parsePercent(result.backtest.expectancy) > 0
+                  ? "POSITIVE EDGE"
+                  : "NEGATIVE EDGE"}
+                )
+              </p>
+              <p>Average expected profit or loss per trade.</p>
+              <p>LONGEST WIN STREAK. {result.backtest.max_win_streak}</p>
+              <p>LONGEST LOSS STREAK {result.backtest.max_loss_streak}</p>
+              <p>AVERAGE WIN........ {result.backtest.avg_win}</p>
+              <p>AVERAGE LOSS....... {result.backtest.avg_loss}</p>
+              <p>PAYOFF RATIO....... {result.backtest.payoff_ratio}</p>
+            </div>
+          </details>
 
-  <p>Return earned per unit of downside risk.</p>
+          <details>
+            <summary>VALIDATION CHECKS</summary>
 
-  <br />
+            <div className="metrics">
+              <p>MIN TRADES REQUIRED. {result.backtest.min_trades_required}</p>
+              <p>MIN TRADE GATE...... {result.backtest.min_trade_gate}</p>
+              <p>DRAWDOWN LIMIT...... {result.backtest.drawdown_limit}</p>
+              <p>DRAWDOWN GATE....... {result.backtest.drawdown_gate}</p>
+              <p>
+                {result.backtest.min_trade_gate === "PASS"
+                  ? "✓ MINIMUM TRADES PASSED"
+                  : "✗ MINIMUM TRADES FAILED"}
+              </p>
+              <p>
+                {result.backtest.drawdown_gate === "PASS"
+                  ? "✓ DRAWDOWN LIMIT PASSED"
+                  : "✗ DRAWDOWN LIMIT FAILED"}
+              </p>
+              <p>
+                {parsePercent(result.backtest.expectancy) > 0
+                  ? "✓ POSITIVE EXPECTANCY"
+                  : "✗ NEGATIVE EXPECTANCY"}
+              </p>
+              <p>
+                {Number(result.backtest.profit_factor) > 1
+                  ? "✓ PROFIT FACTOR ABOVE 1"
+                  : "✗ PROFIT FACTOR BELOW 1"}
+              </p>
+              <p>
+                {parsePercent(result.backtest.net_return) > 0
+                  ? "✓ POSITIVE NET RETURN"
+                  : "✗ NEGATIVE NET RETURN"}
+              </p>
+              <p>
+                {parsePercent(result.backtest.strategy_vs_buy_hold) > 0
+                  ? "✓ OUTPERFORMED BUY & HOLD"
+                  : "✗ UNDERPERFORMED BUY & HOLD"}
+              </p>
+            </div>
+          </details>
 
-  <p>
-    CALMAR RATIO........ {result.backtest.calmar_ratio}
-    {" "}
-    (
-    {Number(result.backtest.calmar_ratio) < 1
-      ? "POOR"
-      : Number(result.backtest.calmar_ratio) < 2
-      ? "FAIR"
-      : Number(result.backtest.calmar_ratio) < 3
-      ? "GOOD"
-      : "EXCELLENT"}
-    )
-  </p>
+          <details>
+            <summary>MARKET CONDITIONS</summary>
 
-  <p>Return achieved relative to maximum drawdown.</p>
-
-  <br />
-
-  <p>
-    EXPECTANCY.......... {result.backtest.expectancy}
-    {" "}
-    (
-    {Number(String(result.backtest.expectancy).replace("%", "")) > 0
-      ? "POSITIVE EDGE"
-      : "NEGATIVE EDGE"}
-    )
-  </p>
-
-  <p>Average expected profit or loss per trade.</p>
-</div>
-
-          <h2>COMPETITION COMPLIANCE</h2>
-
-          <div className="metrics">
-            <p>MIN TRADES REQUIRED. {result.backtest.min_trades_required}</p>
-            <p>MIN TRADE GATE...... {result.backtest.min_trade_gate}</p>
-            <p>DRAWDOWN LIMIT...... {result.backtest.drawdown_limit}</p>
-            <p>DRAWDOWN GATE....... {result.backtest.drawdown_gate}</p>
-          </div>
-
-<h2>COMPETITION SCORECARD</h2>
-
-<div className="metrics">
-  <p>
-    {result.backtest.min_trade_gate === "PASS"
-      ? "✓ MINIMUM TRADES PASSED"
-      : "✗ MINIMUM TRADES FAILED"}
-  </p>
-
-  <p>
-    {result.backtest.drawdown_gate === "PASS"
-      ? "✓ DRAWDOWN LIMIT PASSED"
-      : "✗ DRAWDOWN LIMIT FAILED"}
-  </p>
-
-  <p>
-    {Number(String(result.backtest.expectancy).replace("%", "")) > 0
-      ? "✓ POSITIVE EXPECTANCY"
-      : "✗ NEGATIVE EXPECTANCY"}
-  </p>
-
-  <p>
-    {Number(result.backtest.profit_factor) > 1
-      ? "✓ PROFIT FACTOR ABOVE 1"
-      : "✗ PROFIT FACTOR BELOW 1"}
-  </p>
-
-  <p>
-    {Number(String(result.backtest.net_return).replace("%", "")) > 0
-      ? "✓ POSITIVE NET RETURN"
-      : "✗ NEGATIVE NET RETURN"}
-  </p>
-
-  <p>
-    {Number(String(result.backtest.strategy_vs_buy_hold).replace("%", "")) > 0
-      ? "✓ OUTPERFORMED BUY & HOLD"
-      : "✗ UNDERPERFORMED BUY & HOLD"}
-  </p>
-</div>
-
-          {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
-            <>
-              <h2>EQUITY CURVE</h2>
-
-              <div className="chart-box">
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={getEquityCurveData()}>
-                    <XAxis dataKey="trade" />
-                    <YAxis domain={["auto", "auto"]} />
-                    <Tooltip />
-                    <Line
-  type="monotone"
-  dataKey="equity"
-  dot={false}
-  stroke="#ffffff"
-  strokeWidth={2}
-/>
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
+            <div className="metrics">
+              <p>FIRST HALF MARKET.... {result.backtest.first_half_return}</p>
+              <p>SECOND HALF MARKET... {result.backtest.second_half_return}</p>
+              <p>MARKET TREND GATE.... {result.backtest.consistency_gate}</p>
+            </div>
+          </details>
 
           {result.optimization && (
-            <>
-              <h2>OPTIMIZER REPORT</h2>
+            <details>
+              <summary>OPTIMIZATION RESULTS</summary>
 
               <div className="metrics">
                 <p>MODE................ {result.optimization.mode}</p>
                 <p>COMBINATIONS TESTED. {result.optimization.tested_combinations}</p>
-<p>ELIGIBLE COMBOS..... {result.optimization.eligible_combinations}</p>
+                <p>ELIGIBLE COMBOS..... {result.optimization.eligible_combinations}</p>
                 <p>BEST TIMEFRAME...... {result.timeframe}</p>
                 <p>BEST RISK MODEL..... {result.risk}</p>
                 <p>BEST STRATEGY....... {result.selected_strategy}</p>
                 <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>
               </div>
-<h2>OPTIMIZER DECISION</h2>
 
-<div className="metrics">
-  <p>WINNER............. {result.selected_strategy}</p>
-  <p>TIMEFRAME.......... {result.timeframe}</p>
-  <p>RISK PROFILE....... {String(result.risk).toUpperCase()}</p>
-  <p>RETURN............. {result.backtest.net_return}</p>
-  <p>MAX DRAWDOWN....... {result.backtest.max_drawdown}</p>
-  <p>PROFIT FACTOR...... {result.backtest.profit_factor}</p>
-  <p>CALMAR RATIO....... {result.backtest.calmar_ratio}</p>
-  <p>SELECTION REASON... BEST ELIGIBLE RISK-ADJUSTED SCORE</p>
-</div>
-<h2>FINAL VERDICT</h2>
+              <h2>SELECTED CONFIGURATION</h2>
 
-<div className="metrics">
-  <p>
-    STATUS..............
-    {result.backtest.drawdown_gate === "PASS" &&
-     result.backtest.min_trade_gate === "PASS"
-      ? " APPROVED"
-      : " REJECTED"}
-  </p>
+              <div className="metrics">
+                <p>WINNER............. {result.selected_strategy}</p>
+                <p>TIMEFRAME.......... {result.timeframe}</p>
+                <p>RISK PROFILE....... {String(result.risk).toUpperCase()}</p>
+                <p>RETURN............. {result.backtest.net_return}</p>
+                <p>MAX DRAWDOWN....... {result.backtest.max_drawdown}</p>
+                <p>PROFIT FACTOR...... {result.backtest.profit_factor}</p>
+                <p>CALMAR RATIO....... {result.backtest.calmar_ratio}</p>
+                <p>SELECTION REASON... BEST ELIGIBLE RISK-ADJUSTED SCORE</p>
+              </div>
 
-  <p>
-    EDGE................
-    {parseFloat(String(result.backtest.expectancy).replace("%", "")) > 0
-      ? " POSITIVE"
-      : " NEGATIVE"}
-  </p>
-
-  <p>
-    EXPECTANCY..........
-    {parseFloat(String(result.backtest.expectancy).replace("%", "")) > 0
-      ? " POSITIVE"
-      : " NEGATIVE"}
-  </p>
-
-  <p>
-    PROFIT FACTOR.......
-    {Number(result.backtest.profit_factor) >= 2
-      ? " STRONG"
-      : Number(result.backtest.profit_factor) >= 1
-      ? " ACCEPTABLE"
-      : " WEAK"}
-  </p>
-
-  <p>
-    DRAWDOWN............
-    {parseFloat(String(result.backtest.max_drawdown).replace("%", "")) < 10
-      ? " CONTROLLED"
-      : " ELEVATED"}
-  </p>
-
-  <p>
-    BUY & HOLD..........
-    {parseFloat(String(result.backtest.strategy_vs_buy_hold).replace("%", "")) > 0
-      ? " OUTPERFORMED"
-      : " UNDERPERFORMED"}
-  </p>
-
-  <p>
-    OVERALL RATING......
-    {
-      Number(result.backtest.risk_adjusted_score) >= 10
-        ? " A"
-        : Number(result.backtest.risk_adjusted_score) >= 7
-        ? " B+"
-        : Number(result.backtest.risk_adjusted_score) >= 5
-        ? " B"
-        : Number(result.backtest.risk_adjusted_score) >= 3
-        ? " C"
-        : " D"
-    }
-  </p>
-</div>
-              <h2>OPTIMIZER RANKINGS</h2>
+              <h2>TOP RANKINGS</h2>
 
               <div className="optimizer-table">
                 <div className="optimizer-row optimizer-header">
-  <span>RANK</span>
-  <span>TIMEFRAME</span>
-  <span>RISK</span>
-  <span>STRATEGY</span>
-  <span>RETURN</span>
-  <span>SHARPE</span>
-  <span>CALMAR</span>
-  <span>PF</span>
-  <span>MAX DD</span>
-  <span>SCORE</span>
-</div>
+                  <span>RANK</span>
+                  <span>TIMEFRAME</span>
+                  <span>RISK</span>
+                  <span>STRATEGY</span>
+                  <span>RETURN</span>
+                  <span>SHARPE</span>
+                  <span>CALMAR</span>
+                  <span>PF</span>
+                  <span>MAX DD</span>
+                  <span>SCORE</span>
+                </div>
 
                 {result.optimization.all_results
-  ?.filter((item) => item.backtest.min_trade_gate === "PASS" && item.backtest.drawdown_gate === "PASS")
-  .sort((a, b) => b.risk_adjusted_score - a.risk_adjusted_score)
-  .slice(0, 5)
+                  ?.filter((item) => item.backtest.min_trade_gate === "PASS" && item.backtest.drawdown_gate === "PASS")
+                  .sort((a, b) => b.risk_adjusted_score - a.risk_adjusted_score)
+                  .slice(0, 5)
                   .map((item, index) => (
                     <div className="optimizer-row" key={index}>
                       <span>#{index + 1}</span>
@@ -748,140 +855,154 @@ function App() {
                       <span>{item.risk.toUpperCase()}</span>
                       <span>{item.selected_strategy}</span>
                       <span>{item.backtest.net_return}</span>
-<span>{item.backtest.sharpe_ratio}</span>
-<span>{item.backtest.calmar_ratio}</span>
-<span>{item.backtest.profit_factor}</span>
-<span>{item.backtest.max_drawdown}</span>
-<span>{item.risk_adjusted_score}</span>
+                      <span>{item.backtest.sharpe_ratio}</span>
+                      <span>{item.backtest.calmar_ratio}</span>
+                      <span>{item.backtest.profit_factor}</span>
+                      <span>{item.backtest.max_drawdown}</span>
+                      <span>{item.risk_adjusted_score}</span>
                     </div>
                   ))}
               </div>
-            </>
+            </details>
           )}
 
-          <h2>RECENT TRADES</h2>
+          <details>
+            <summary>RECENT TRADES</summary>
 
-          <div className="trade-table">
-            <div className="trade-row trade-header">
-              <span>ENTRY TIME</span>
-              <span>EXIT TIME</span>
-              <span>ENTRY</span>
-              <span>EXIT</span>
-              <span>RESULT</span>
-<span>PNL</span>
-<span>DURATION</span>
+            <div className="trade-table">
+              <div className="trade-row trade-header">
+                <span>ENTRY TIME</span>
+                <span>EXIT TIME</span>
+                <span>ENTRY</span>
+                <span>EXIT</span>
+                <span>RESULT</span>
+                <span>PNL</span>
+                <span>DURATION</span>
+              </div>
+
+              {result.backtest.recent_trades &&
+                result.backtest.recent_trades.map((trade, index) => (
+                  <div className="trade-row" key={index}>
+                    <span>{trade.entry_time}</span>
+                    <span>{trade.exit_time}</span>
+                    <span>{trade.entry_price}</span>
+                    <span>{trade.exit_price}</span>
+                    <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>
+                      {trade.result.toUpperCase()}
+                    </span>
+                    <span>{trade.pnl_pct}%</span>
+                    <span>{trade.duration}</span>
+                  </div>
+                ))}
+            </div>
+          </details>
+
+          <details>
+            <summary>TRADING STRATEGY</summary>
+
+            <div className="reason">
+              <strong>STRATEGY:</strong> {result.selected_strategy}
+              <br />
+              <br />
+              <strong>ENTRY RULE:</strong>
+              <br />
+              {result.entry?.condition}
+              <br />
+              <br />
+              <strong>CONFIRMATION:</strong>
+              <br />
+              {result.confirmation?.condition}
+              <br />
+              <br />
+              <strong>TAKE PROFIT:</strong>
+              <br />
+              {result.take_profit?.condition}
+              <br />
+              <br />
+              <strong>STOP LOSS:</strong>
+              <br />
+              {result.stop_loss?.condition}
+              <br />
+              <br />
+              <strong>RISK GOVERNOR:</strong>
+              <br />
+              MAX OPEN TRADES: {result.risk_governor?.max_open_trades}
+              <br />
+              RISK PER TRADE: {result.risk_governor?.risk_per_trade}
+              <br />
+              STOP AFTER LOSSES: {result.risk_governor?.stop_after_consecutive_losses}
             </div>
 
-            {result.backtest.recent_trades &&
-              result.backtest.recent_trades.map((trade, index) => (
-                <div className="trade-row" key={index}>
-                  <span>{trade.entry_time}</span>
-                  <span>{trade.exit_time}</span>
-                  <span>{trade.entry_price}</span>
-                  <span>{trade.exit_price}</span>
-                  <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>
-                    {trade.result.toUpperCase()}
-                  </span>
-                  <span>{trade.pnl_pct}%</span>
-<span>{trade.duration}</span>
-                </div>
-              ))}
-          </div>
+            <button className="copy-btn" onClick={copyStrategySummary}>
+              COPY STRATEGY SUMMARY
+            </button>
+          </details>
 
-          <h2>BACKTESTABLE STRATEGY SPEC</h2>
+          <details>
+            <summary>WHY THIS WAS SELECTED</summary>
+            <div className="reason">{result.reason}</div>
+          </details>
 
-          <div className="reason">
-            <strong>STRATEGY:</strong> {result.selected_strategy}
-            <br />
-            <br />
-            <strong>ENTRY RULE:</strong>
-            <br />
-            {result.entry?.condition}
-            <br />
-            <br />
-            <strong>CONFIRMATION:</strong>
-            <br />
-            {result.confirmation?.condition}
-            <br />
-            <br />
-            <strong>TAKE PROFIT:</strong>
-            <br />
-            {result.take_profit?.condition}
-            <br />
-            <br />
-            <strong>STOP LOSS:</strong>
-            <br />
-            {result.stop_loss?.condition}
-            <br />
-            <br />
-            <strong>RISK GOVERNOR:</strong>
-            <br />
-            MAX OPEN TRADES: {result.risk_governor?.max_open_trades}
-            <br />
-            RISK PER TRADE: {result.risk_governor?.risk_per_trade}
-            <br />
-            STOP AFTER LOSSES: {result.risk_governor?.stop_after_consecutive_losses}
-          </div>
+          <details>
+            <summary>SYSTEM HEALTH</summary>
 
+            <div className="reason">
+              CMC DATA..............ACTIVE
+              <br />
+              MARKET ANALYSIS........ACTIVE
+              <br />
+              STRATEGY ENGINE........ACTIVE
+              <br />
+              BACKTEST ENGINE........ACTIVE
+              <br />
+              RISK MODEL............ACTIVE
+              <br />
+              OPTIMIZER.............ACTIVE
+              <br />
+              <br />
+              SIGNAL GENERATION LOGIC
+              <br />
+              CLASSIFIED
+            </div>
+          </details>
 
-          <h2>REASON</h2>
-          <div className="reason">{result.reason}</div>
+          <details>
+            <summary>PERFORMANCE METRICS EXPLAINED</summary>
 
-          <h2>SYSTEM STATUS</h2>
+            <div className="metrics">
+              <p><strong>PF / PROFIT FACTOR</strong></p>
+              <p>Total winning trade profit divided by total losing trade loss. Above 1.0 is profitable.</p>
 
-          <div className="reason">
-            CMC DATA..............ACTIVE
-            <br />
-            MARKET ANALYSIS........ACTIVE
-            <br />
-            STRATEGY ENGINE........ACTIVE
-            <br />
-            BACKTEST ENGINE........ACTIVE
-            <br />
-            RISK MODEL............ACTIVE
-            <br />
-            OPTIMIZER.............ACTIVE
-            <br />
-            <br />
-            SIGNAL GENERATION LOGIC
-            <br />
-            CLASSIFIED
-          </div>
-<h2>METRIC LEGEND</h2>
-<div className="metrics">
-  <p><strong>PF / PROFIT FACTOR</strong></p>
-  <p>Total winning trade profit divided by total losing trade loss. Above 1.0 is profitable.</p>
+              <p><strong>SHARPE RATIO</strong></p>
+              <p>Return earned per unit of total volatility. Higher is better.</p>
 
-  <p><strong>SHARPE RATIO</strong></p>
-  <p>Return earned per unit of total volatility. Higher is better.</p>
+              <p><strong>SORTINO RATIO</strong></p>
+              <p>Return earned per unit of downside risk only. Higher is better.</p>
 
-  <p><strong>SORTINO RATIO</strong></p>
-  <p>Return earned per unit of downside risk only. Higher is better.</p>
+              <p><strong>CALMAR RATIO</strong></p>
+              <p>Net return divided by maximum drawdown. Higher is better.</p>
 
-  <p><strong>CALMAR RATIO</strong></p>
-  <p>Net return divided by maximum drawdown. Higher is better.</p>
+              <p><strong>EXPECTANCY</strong></p>
+              <p>Average expected profit or loss per trade.</p>
 
-  <p><strong>EXPECTANCY</strong></p>
-  <p>Average expected profit or loss per trade.</p>
+              <p><strong>MAX DD / MAX DRAWDOWN</strong></p>
+              <p>Largest peak-to-trough account decline during the test period.</p>
 
-  <p><strong>MAX DD / MAX DRAWDOWN</strong></p>
-  <p>Largest peak-to-trough account decline during the test period.</p>
+              <p><strong>RISK-ADJUSTED SCORE</strong></p>
+              <p>Custom optimizer score. Rewards net return and penalizes drawdown.</p>
 
-  <p><strong>RISK-ADJUSTED SCORE</strong></p>
-  <p>Custom optimizer score. Rewards net return and penalizes drawdown.</p>
+              <p><strong>BUY & HOLD RETURN</strong></p>
+              <p>Return from simply buying the asset at the start of the test and holding until the end.</p>
 
-  <p><strong>BUY & HOLD RETURN</strong></p>
-  <p>Return from simply buying the asset at the start of the test and holding until the end.</p>
+              <p><strong>VS BUY & HOLD</strong></p>
+              <p>How much the strategy outperformed or underperformed buy-and-hold.</p>
 
-  <p><strong>VS BUY & HOLD</strong></p>
-  <p>How much the strategy outperformed or underperformed buy-and-hold.</p>
-
-  <p><strong>EQUITY CURVE</strong></p>
-  <p>Account value over time, starting from the selected initial capital and updating after each closed trade.</p>
-</div>
+              <p><strong>EQUITY CURVE</strong></p>
+              <p>Account value over time, starting from the selected initial capital and updating after each closed trade.</p>
+            </div>
+          </details>
         </div>
       )}
-
       <div className="footer">
         CMC: OK &nbsp;&nbsp; DATA: OK &nbsp;&nbsp; BACKTEST: OK &nbsp;&nbsp; OPTIMIZER: OK &nbsp;&nbsp; PRIVATE ENGINE: LOCKED
       </div>

@@ -1,0 +1,27 @@
+{
+  "name": "VWAP Extreme Reversion",
+  "type": "mean_reversion",
+  "entry": {
+    "condition": "Deviation from anchored VWAP crosses above Level 5 plus buffer.",
+    "default_threshold": "4.2%"
+  },
+  "confirmation": {
+    "condition": "Smoothed deviation must be above confirmation level.",
+    "default_threshold": "3.6%"
+  },
+  "take_profit": {
+    "condition": "Deviation contracts back to target level.",
+    "default_threshold": "2.0%"
+  },
+  "stop_loss": {
+    "condition": "Deviation extends beyond entry deviation by stop buffer.",
+    "default_threshold": "2.0% beyond entry deviation"
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "force_loss_when_vwap_resets": true,
+    "avoid_vwap_reset_period": true
+  }
+}

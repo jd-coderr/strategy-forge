@@ -1,0 +1,27 @@
+{
+  "name": "Stochastic Quad Rotation",
+  "type": "momentum_rotation",
+  "entry": {
+    "condition": "Fast and medium stochastic rotations align upward while slow stochastic structure confirms directional bias.",
+    "default_threshold": "Fast/medium bullish rotation + slow confirmation"
+  },
+  "confirmation": {
+    "condition": "Volume expansion or continuation pressure confirms the rotation is not a weak bounce.",
+    "default_threshold": "Rotation alignment + volume confirmation"
+  },
+  "take_profit": {
+    "condition": "Exit when rotation reaches overextension, momentum weakens, or target multiple is reached.",
+    "default_threshold": "2R to 3R depending on risk model"
+  },
+  "stop_loss": {
+    "condition": "Stop when rotation fails, opposite stochastic alignment appears, or recent swing structure is invalidated.",
+    "default_threshold": "Recent swing invalidation"
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "avoid_choppy_low_volume_conditions": true,
+    "requires_momentum_confirmation": true
+  }
+}

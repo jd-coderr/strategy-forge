@@ -1,0 +1,27 @@
+{
+  "name": "TDI Sharkfin Reversal",
+  "type": "tdi_signal_reversal",
+  "entry": {
+    "condition": "Buy signal or sell signal fires from the TDI sharkfin logic.",
+    "default_threshold": "White label up for long, white label down for short"
+  },
+  "confirmation": {
+    "condition": "Fast TDI momentum must be outside the 32/68 band and reversing back from an extreme.",
+    "default_threshold": "Sharkfin reversal confirmation"
+  },
+  "take_profit": {
+    "condition": "Exit when price reaches the configured take-profit percentage from entry.",
+    "default_threshold": "1.0%"
+  },
+  "stop_loss": {
+    "condition": "Exit when price reaches the configured stop-loss percentage from entry.",
+    "default_threshold": "0.5%"
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "avoid_low_volume_conditions": true,
+    "requires_extreme_band_condition": true
+  }
+}

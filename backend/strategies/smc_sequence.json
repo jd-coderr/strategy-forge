@@ -1,0 +1,26 @@
+{
+  "name": "SMC Sequence Continuation",
+  "type": "trend_continuation",
+  "entry": {
+    "condition": "Bullish structure break followed by retest and displacement confirmation.",
+    "default_threshold": "BOS + volume expansion"
+  },
+  "confirmation": {
+    "condition": "Market structure remains bullish and price does not invalidate the swing low.",
+    "default_threshold": "Higher high / higher low sequence"
+  },
+  "take_profit": {
+    "condition": "Exit at liquidity target or 3R profit target.",
+    "default_threshold": "3R"
+  },
+  "stop_loss": {
+    "condition": "Stop below the last protected swing low.",
+    "default_threshold": "Last swing low"
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "avoid_low_volume_conditions": true
+  }
+}

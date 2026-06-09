@@ -606,7 +606,21 @@ try {
 
           <h2>DETAILS</h2>
 
-<h2>CMC SKILL HUB</h2>
+<div className="always-open-detail">
+  <summary>CMC SKILL HUB</summary>
+
+  <div className="metrics">
+    <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
+    <p>QUERY............... btc price</p>
+    <p>SOURCE.............. CMC Skill Hub MCP</p>
+    <p>
+      TOP SKILL...........{" "}
+      {cmcSkillHub?.result?.content?.[0]?.text
+        ? JSON.parse(cmcSkillHub.result.content[0].text).candidates?.[0]?.uniqueName
+        : "N/A"}
+    </p>
+  </div>
+</div>
 
 <div className="metrics">
   <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>

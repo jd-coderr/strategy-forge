@@ -604,9 +604,7 @@ try {
             </>
           )}
 
-          <h2>DETAILS</h2>
-
-<div className="always-open-detail">
+          <div className="always-open-detail">
   <summary>CMC SKILL HUB</summary>
 
   <div className="metrics">
@@ -624,6 +622,9 @@ try {
 
           {result.cmc_signal && (
             <details>
+
+              <h2>DETAILS</h2>
+              
               <summary>MARKET INTELLIGENCE</summary>
 
               <div className="metrics">

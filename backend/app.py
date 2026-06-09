@@ -212,6 +212,17 @@ if not ranking_pool:
         "error": "No optimizer results were generated."
     }
 
+if not ranking_pool:
+    ranking_pool = all_results
+
+if not ranking_pool:
+    return {
+        "mode": "auto_optimization",
+        "tested_combinations": 0,
+        "eligible_combinations": 0,
+        "error": "No optimizer results were generated."
+    }
+
 best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
 
     return {

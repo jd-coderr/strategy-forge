@@ -1,3 +1,4 @@
+from cmc_skill_hub import find_cmc_skill
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -222,3 +223,7 @@ def register_agent():
         "chain": status["chain"],
         "message": "TWAK agent address is configured. On-chain registration must be completed with TWAK CLI or MCP."
     }
+
+@app.get("/cmc-skill-hub/find")
+async def cmc_skill_hub_find(query: str = "btc price"):
+    return await find_cmc_skill(query)

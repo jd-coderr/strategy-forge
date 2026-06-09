@@ -24,19 +24,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://bergmanntrading.com",
-    "https://www.bergmanntrading.com"
-],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 STRATEGIES_DIR = PROJECT_DIR / "strategies"
@@ -200,30 +187,17 @@ def optimize_strategy(request: OptimizeRequest):
         if is_backtest_eligible(item["backtest"])
     ]
 
-    ranking_pool = eligible_results if eligible_results else results
+        ranking_pool = eligible_results if eligible_results else results
+
     if not ranking_pool:
-    ranking_pool = all_results
+        return {
+            "mode": "auto_optimization",
+            "tested_combinations": 0,
+            "eligible_combinations": 0,
+            "error": "No optimizer results were generated."
+        }
 
-if not ranking_pool:
-    return {
-        "mode": "auto_optimization",
-        "tested_combinations": 0,
-        "eligible_combinations": 0,
-        "error": "No optimizer results were generated."
-    }
-
-if not ranking_pool:
-    ranking_pool = all_results
-
-if not ranking_pool:
-    return {
-        "mode": "auto_optimization",
-        "tested_combinations": 0,
-        "eligible_combinations": 0,
-        "error": "No optimizer results were generated."
-    }
-
-best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
+    best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
 
     return {
         "coin": request.coin,

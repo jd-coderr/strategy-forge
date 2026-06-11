@@ -580,25 +580,27 @@ details[open] summary::before {
 }
 
 .terminal-toggle {
-  width: fit-content;
-  min-width: 340px;
-  margin: 28px auto 22px;
-  padding: 14px 28px;
+  width: 100%;
+  max-width: 420px;
+  height: 58px;
+  margin: 28px auto 42px;
+  padding: 14px;
   border: 2px solid #00ff41;
-  background: rgba(0, 255, 65, 0.025);
+  background: rgba(0, 0, 0, 0.98);
   color: #00ff41;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
   font-family: "Courier New", monospace;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
   text-shadow: 0 0 6px #00ff41;
 }
 
 .terminal-toggle:hover {
-  background: rgba(0, 255, 65, 0.12);
+  background: rgba(0, 255, 65, 0.5);
+  color: #00ff41;
 }
 
 .terminal-toggle-box {

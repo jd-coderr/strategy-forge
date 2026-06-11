@@ -583,7 +583,7 @@ details[open] summary::before {
   width: 100%;
   max-width: 420px;
   height: 58px;
-  margin: 28px auto 42px;
+  margin: 28px auto 18px;
   padding: 14px;
   border: 2px solid #00ff41;
   background: rgba(0, 0, 0, 0.98);

@@ -65,6 +65,7 @@ class AgentCycleRequest(BaseModel):
     risk: str = "low"
     initial_capital: float = 10000
     live_execution: bool = False
+    selected_strategy: str | None = None
 
 
 @app.get("/")
@@ -92,6 +93,16 @@ def load_available_strategies():
             strategies.append(load_strategy(filename))
 
     return strategies
+
+def find_strategy_by_name(strategy_name: str):
+    if not strategy_name:
+        return None
+
+    for strategy in load_available_strategies():
+        if strategy.get("name") == strategy_name:
+            return strategy
+
+    return None
 
 
 def is_backtest_eligible(backtest):
@@ -145,12 +156,32 @@ def pick_best_strategy(
 def generate_strategy(request: StrategyRequest):
     cmc_signal = get_cmc_signal(request.coin)
 
+if request.selected_strategy:
+    strategy = find_strategy_by_name(request.selected_strategy)
+
+    if strategy is not None:
+        backtest = run_backtest(
+            strategy=strategy,
+            coin=request.coin,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+        compared_results = []
+    else:
+        strategy, backtest, compared_results = pick_best_strategy(
+            coin=request.coin,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+else:
     strategy, backtest, compared_results = pick_best_strategy(
         coin=request.coin,
         timeframe=request.timeframe,
         risk=request.risk,
         initial_capital=request.initial_capital,
-    )
+    )    
 
     if strategy is None or backtest is None:
         return {

@@ -403,72 +403,63 @@ Best eligible risk-adjusted score among all tested combinations.
   }
 
   async function loadPortfolio() {
-    try {
-      const tradeResponse = await fetch(`${API_BASE}/trade-log`);
-      const tradeData = await tradeResponse.json();
+  try {
+    const tradeResponse = await fetch(`${API_BASE}/trade-log`);
+    const tradeData = await tradeResponse.json();
+    const records = tradeData.records || [];
 
-      const records = tradeData.records || [];
+    let bnbPrice =
+      Number(result?.cmc_signal?.price_usd || 0) ||
+      Number(agentResult?.cmc_signal?.price_usd || 0);
 
-      const bnbPrice =
-        result?.cmc_signal?.symbol === "BNB"
-          ? Number(result?.cmc_signal?.price_usd || 0)
-          : 0;
-
-      const bnbAmount = Number(bnbBalance || 0);
-      const bnbUsdValue = bnbPrice > 0 ? bnbAmount * bnbPrice : null;
-
-      let tradingPnlUsd = 0;
-
+    if (!bnbPrice) {
       records.forEach((record) => {
         const stdout =
           record?.result?.stdout ||
           record?.execution_result?.stdout ||
           "";
 
-        if (stdout.includes('"input"') && stdout.includes('"output"')) {
+        if (!bnbPrice && stdout.includes('"input"') && stdout.includes('"output"')) {
           try {
             const parsed = JSON.parse(stdout);
 
-            const inputValue = String(parsed.input || "");
-            const outputValue = String(parsed.output || "");
-
-            const inputParts = inputValue.split(" ");
-            const outputParts = outputValue.split(" ");
+            const inputParts = String(parsed.input || "").split(" ");
+            const outputParts = String(parsed.output || "").split(" ");
 
             const inputAmount = Number(inputParts[0] || 0);
             const inputSymbol = inputParts[1] || "";
             const outputAmount = Number(outputParts[0] || 0);
             const outputSymbol = outputParts[1] || "";
 
-            if (inputSymbol === "BNB" && outputSymbol === "USDT" && bnbPrice > 0) {
-              tradingPnlUsd += outputAmount - inputAmount * bnbPrice;
-            }
-
-            if (inputSymbol === "USDT" && outputSymbol === "BNB" && bnbPrice > 0) {
-              tradingPnlUsd += outputAmount * bnbPrice - inputAmount;
+            if (inputSymbol === "BNB" && outputSymbol === "USDT" && inputAmount > 0) {
+              bnbPrice = outputAmount / inputAmount;
             }
           } catch (error) {
-            // ignore bad stdout rows
+            // ignore bad log rows
           }
         }
       });
-
-      setPortfolio({
-        success: true,
-        assets: [
-          {
-            symbol: "BNB",
-            usdValue: bnbUsdValue,
-          },
-        ],
-        totalUsdValue: bnbUsdValue,
-        tradingPnlUsd,
-      });
-    } catch (err) {
-      console.error(err);
-      alert("PORTFOLIO LOAD FAILED");
     }
+
+    const bnbAmount = Number(bnbBalance || 0);
+    const bnbUsdValue = bnbPrice > 0 ? bnbAmount * bnbPrice : null;
+
+    setPortfolio({
+      success: true,
+      assets: [
+        {
+          symbol: "BNB",
+          usdValue: bnbUsdValue,
+        },
+      ],
+      totalUsdValue: bnbUsdValue,
+      tradingPnlUsd: 0,
+    });
+  } catch (err) {
+    console.error(err);
+    alert("PORTFOLIO LOAD FAILED");
   }
+}
 
   return (
     <div className="terminal">

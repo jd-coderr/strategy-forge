@@ -6,7 +6,7 @@ import json
 
 def get_twak_command():
     if os.name == "nt":
-        return get_twak_command(),
+        return r"C:\Users\oo\AppData\Roaming\npm\twak.cmd"
 
     return shutil.which("twak") or "twak"
 

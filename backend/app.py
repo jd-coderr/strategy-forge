@@ -1,12 +1,15 @@
+from position_sizing import calculate_trade_size
 from cmc_skill_hub import find_cmc_skill
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from twak_executor import run_twak_swap, run_twak_portfolio
 from pathlib import Path
 from pydantic import BaseModel
 from backtest import run_backtest
 from cmc_data import get_cmc_signal
 from twak_config import get_twak_status
+from trade_safety import validate_trade_request, mark_live_trade_executed
+from trade_logger import log_trade, read_trade_log
 import json
 
 app = FastAPI()
@@ -31,7 +34,7 @@ STRATEGY_FILES = [
     "vwap_reversion.json",
     "smc_sequence.json",
     "stochastic_quad.json",
-    "tdi_white_signal.json"
+    "tdi_white_signal.json",
 ]
 
 
@@ -45,6 +48,23 @@ class StrategyRequest(BaseModel):
 class OptimizeRequest(BaseModel):
     coin: str
     initial_capital: float = 10000
+
+
+class ExecuteTradeRequest(BaseModel):
+    amount: str = "1"
+    from_token: str = "USDT"
+    to_token: str = "BNB"
+    chain: str = "bsc"
+    slippage: str = "1"
+    quote_only: bool = True
+
+
+class AgentCycleRequest(BaseModel):
+    coin: str = "BNB"
+    timeframe: str = "1H"
+    risk: str = "low"
+    initial_capital: float = 10000
+    live_execution: bool = False
 
 
 @app.get("/")
@@ -85,7 +105,7 @@ def pick_best_strategy(
     coin: str,
     timeframe: str,
     risk: str,
-    initial_capital: float
+    initial_capital: float,
 ):
     strategies = load_available_strategies()
     results = []
@@ -96,14 +116,16 @@ def pick_best_strategy(
             coin=coin,
             timeframe=timeframe,
             risk=risk,
-            initial_capital=initial_capital
+            initial_capital=initial_capital,
         )
 
-        results.append({
-            "strategy": strategy,
-            "backtest": backtest,
-            "risk_adjusted_score": backtest["risk_adjusted_score"]
-        })
+        results.append(
+            {
+                "strategy": strategy,
+                "backtest": backtest,
+                "risk_adjusted_score": backtest["risk_adjusted_score"],
+            }
+        )
 
     eligible_results = [
         item for item in results
@@ -127,7 +149,7 @@ def generate_strategy(request: StrategyRequest):
         coin=request.coin,
         timeframe=request.timeframe,
         risk=request.risk,
-        initial_capital=request.initial_capital
+        initial_capital=request.initial_capital,
     )
 
     if strategy is None or backtest is None:
@@ -136,7 +158,7 @@ def generate_strategy(request: StrategyRequest):
             "coin": request.coin,
             "timeframe": request.timeframe,
             "risk": request.risk,
-            "cmc_signal": cmc_signal
+            "cmc_signal": cmc_signal,
         }
 
     return {
@@ -146,13 +168,18 @@ def generate_strategy(request: StrategyRequest):
         "cmc_signal": cmc_signal,
         "selected_strategy": strategy["name"],
         "type": strategy["type"],
-        "reason": f"CMC market bias is {cmc_signal.get('market_bias', 'unknown')}. The agent compared available private strategies and selected {strategy['name']} for {request.coin} on the {request.timeframe} timeframe using a {request.risk} risk profile.",
+        "reason": (
+            f"CMC market bias is {cmc_signal.get('market_bias', 'unknown')}. "
+            f"The agent compared available private strategies and selected "
+            f"{strategy['name']} for {request.coin} on the {request.timeframe} "
+            f"timeframe using a {request.risk} risk profile."
+        ),
         "entry": strategy["entry"],
         "confirmation": strategy["confirmation"],
         "take_profit": strategy["take_profit"],
         "stop_loss": strategy["stop_loss"],
         "risk_governor": strategy["risk_governor"],
-        "backtest": backtest
+        "backtest": backtest,
     }
 
 
@@ -174,24 +201,26 @@ def optimize_strategy(request: OptimizeRequest):
                     coin=request.coin,
                     timeframe=timeframe,
                     risk=risk,
-                    initial_capital=request.initial_capital
+                    initial_capital=request.initial_capital,
                 )
 
-                results.append({
-                    "coin": request.coin,
-                    "timeframe": timeframe,
-                    "risk": risk,
-                    "cmc_signal": cmc_signal,
-                    "selected_strategy": strategy["name"],
-                    "type": strategy["type"],
-                    "risk_adjusted_score": backtest["risk_adjusted_score"],
-                    "backtest": backtest,
-                    "entry": strategy["entry"],
-                    "confirmation": strategy["confirmation"],
-                    "take_profit": strategy["take_profit"],
-                    "stop_loss": strategy["stop_loss"],
-                    "risk_governor": strategy["risk_governor"]
-                })
+                results.append(
+                    {
+                        "coin": request.coin,
+                        "timeframe": timeframe,
+                        "risk": risk,
+                        "cmc_signal": cmc_signal,
+                        "selected_strategy": strategy["name"],
+                        "type": strategy["type"],
+                        "risk_adjusted_score": backtest["risk_adjusted_score"],
+                        "backtest": backtest,
+                        "entry": strategy["entry"],
+                        "confirmation": strategy["confirmation"],
+                        "take_profit": strategy["take_profit"],
+                        "stop_loss": strategy["stop_loss"],
+                        "risk_governor": strategy["risk_governor"],
+                    }
+                )
 
     eligible_results = [
         item for item in results
@@ -208,7 +237,7 @@ def optimize_strategy(request: OptimizeRequest):
             "tested_combinations": 0,
             "eligible_combinations": 0,
             "error": "No optimizer results were generated.",
-            "all_results": []
+            "all_results": [],
         }
 
     best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
@@ -220,7 +249,7 @@ def optimize_strategy(request: OptimizeRequest):
         "tested_combinations": len(results),
         "eligible_combinations": len(eligible_results),
         "best_setup": best_result,
-        "all_results": results
+        "all_results": results,
     }
 
 
@@ -237,7 +266,7 @@ def register_agent():
         return {
             "success": False,
             "registration": "not_ready",
-            "message": "TWAK agent address is missing."
+            "message": "TWAK agent address is missing.",
         }
 
     return {
@@ -245,7 +274,10 @@ def register_agent():
         "registration": "ready_for_onchain_registration",
         "agent_address": status["agent_address"],
         "chain": status["chain"],
-        "message": "TWAK agent address is configured. On-chain registration must be completed with TWAK CLI or MCP."
+        "message": (
+            "TWAK agent address is configured. On-chain registration must be "
+            "completed with TWAK CLI or MCP."
+        ),
     }
 
 
@@ -253,11 +285,267 @@ def register_agent():
 async def cmc_skill_hub_find(query: str = "btc price"):
     return await find_cmc_skill(query)
 
+
 @app.get("/debug-strategies")
 def debug_strategies():
     return {
         "base_dir": str(BASE_DIR),
         "strategies_dir": str(STRATEGIES_DIR),
         "exists": STRATEGIES_DIR.exists(),
-        "files": [f.name for f in STRATEGIES_DIR.glob("*")] if STRATEGIES_DIR.exists() else []
+        "files": [f.name for f in STRATEGIES_DIR.glob("*")]
+        if STRATEGIES_DIR.exists()
+        else [],
+    }
+
+
+@app.post("/agent-cycle")
+def agent_cycle(request: AgentCycleRequest):
+    cmc_signal = get_cmc_signal(request.coin)
+
+    strategy, backtest, compared_results = pick_best_strategy(
+        coin=request.coin,
+        timeframe=request.timeframe,
+        risk=request.risk,
+        initial_capital=request.initial_capital,
+    )
+
+    if strategy is None or backtest is None:
+        event = log_trade(
+            {
+                "status": "no_strategy",
+                "coin": request.coin,
+                "timeframe": request.timeframe,
+                "risk": request.risk,
+                "cmc_signal": cmc_signal,
+            }
+        )
+
+        return {
+            "success": False,
+            "decision": "HOLD",
+            "reason": "No valid strategy was generated.",
+            "event": event,
+        }
+
+    market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
+    risk_score = backtest.get("risk_adjusted_score", 0)
+    portfolio_result = run_twak_portfolio()
+    portfolio_items = portfolio_result.get("portfolio") or []
+    position_size = None
+
+    balances = {
+        item.get("symbol"): float(item.get("balance", 0))
+        for item in portfolio_items
+    }
+
+    bnb_balance = balances.get("BNB", 0)
+    usdt_balance = balances.get("USDT", 0)
+
+    decision = "HOLD"
+    trade_plan = None
+
+    if "bull" in market_bias and risk_score > 0:
+        decision = "BUY_BNB"
+        trade_plan = {
+            "amount": "1",
+            "from_token": "USDT",
+            "to_token": "BNB",
+            "quote_only": True,
+            "reason": (
+                "Bullish CMC bias and positive strategy score. "
+                "USDT → BNB remains quote-only until ERC-20 approval issue is resolved."
+            ),
+        }
+
+    elif "bear" in market_bias or "risk-off" in market_bias:
+        decision = "REDUCE_RISK"
+
+        allow_live_reduce_risk = (
+            request.live_execution
+            and risk_score > -5
+        )
+
+        trade_plan = {
+            "amount": calculate_trade_size(portfolio_items, "BNB", request.risk)["amount"],
+            "position_size": calculate_trade_size(portfolio_items, "BNB", request.risk),
+            "from_token": "BNB",
+            "to_token": "USDT",
+            "quote_only": not allow_live_reduce_risk,
+            "reason": (
+                "Bearish/risk-off CMC bias. Convert small BNB amount to USDT. "
+                f"Live execution allowed: {allow_live_reduce_risk}."
+            ),
+        }
+
+    else:
+        decision = "HOLD"
+
+        execution_result = None
+
+    if trade_plan is not None:
+        if trade_plan["from_token"] == "BNB" and bnb_balance < float(trade_plan["amount"]):
+            execution_result = {
+                "success": False,
+                "blocked": True,
+                "safety_message": "Blocked: not enough BNB balance for planned trade.",
+                "bnb_balance": bnb_balance,
+            }
+
+        elif trade_plan["from_token"] == "USDT" and usdt_balance < float(trade_plan["amount"]):
+            execution_result = {
+                "success": False,
+                "blocked": True,
+                "safety_message": "Blocked: not enough USDT balance for planned trade.",
+                "usdt_balance": usdt_balance,
+            }
+
+        else:
+            allowed, safety_message = validate_trade_request(
+                amount=trade_plan["amount"],
+                from_token=trade_plan["from_token"],
+                to_token=trade_plan["to_token"],
+                quote_only=trade_plan["quote_only"],
+            )
+
+            if allowed:
+                execution_result = run_twak_swap(
+                    amount=trade_plan["amount"],
+                    from_token=trade_plan["from_token"],
+                    to_token=trade_plan["to_token"],
+                    chain="bsc",
+                    slippage="1",
+                    quote_only=trade_plan["quote_only"],
+                )
+
+                if execution_result["success"] and not trade_plan["quote_only"]:
+                    mark_live_trade_executed()
+            else:
+                execution_result = {
+                    "success": False,
+                    "blocked": True,
+                    "safety_message": safety_message,
+                }
+
+    event = log_trade(
+        {
+            "status": "agent_cycle",
+            "decision": decision,
+            "coin": request.coin,
+            "timeframe": request.timeframe,
+            "risk": request.risk,
+            "live_execution": request.live_execution,
+            "cmc_signal": cmc_signal,
+            "selected_strategy": strategy["name"],
+            "risk_adjusted_score": risk_score,
+            "trade_plan": trade_plan,
+            "execution_result": execution_result,
+            "portfolio": portfolio_result,
+        }
+    )
+
+    return {
+        "success": True,
+        "mode": "agent_cycle",
+        "decision": decision,
+        "portfolio": portfolio_result,
+        "coin": request.coin,
+        "cmc_signal": cmc_signal,
+        "selected_strategy": strategy["name"],
+        "risk_adjusted_score": risk_score,
+        "trade_plan": trade_plan,
+        "execution_result": execution_result,
+        "event": event,
+    }
+
+
+@app.post("/execute-trade")
+def execute_trade(request: ExecuteTradeRequest):
+    allowed, safety_message = validate_trade_request(
+        amount=request.amount,
+        from_token=request.from_token,
+        to_token=request.to_token,
+        quote_only=request.quote_only,
+    )
+
+    if not allowed:
+        event = log_trade(
+            {
+                "status": "blocked",
+                "reason": safety_message,
+                "amount": request.amount,
+                "from_token": request.from_token,
+                "to_token": request.to_token,
+                "chain": request.chain,
+                "quote_only": request.quote_only,
+            }
+        )
+
+        return {
+            "success": False,
+            "mode": "blocked",
+            "safety_message": safety_message,
+            "event": event,
+        }
+
+    result = run_twak_swap(
+        amount=request.amount,
+        from_token=request.from_token,
+        to_token=request.to_token,
+        chain=request.chain,
+        slippage=request.slippage,
+        quote_only=request.quote_only,
+    )
+
+    if result["success"] and not request.quote_only:
+        mark_live_trade_executed()
+
+    event = log_trade(
+        {
+            "status": "success" if result["success"] else "failed",
+            "safety_message": safety_message,
+            "execution_layer": "TWAK CLI",
+            "amount": request.amount,
+            "from_token": request.from_token,
+            "to_token": request.to_token,
+            "chain": request.chain,
+            "quote_only": request.quote_only,
+            "result": result,
+        }
+    )
+
+    return {
+        "success": result["success"],
+        "mode": "quote_only" if request.quote_only else "live_execution",
+        "execution_layer": "TWAK CLI",
+        "chain": request.chain,
+        "from_token": request.from_token,
+        "to_token": request.to_token,
+        "amount": request.amount,
+        "safety_message": safety_message,
+        "result": result,
+        "event": event,
+    }
+
+@app.get("/portfolio")
+def portfolio():
+    result = run_twak_portfolio()
+
+    event = log_trade({
+        "status": "portfolio_check",
+        "result": result,
+    })
+
+    return {
+        "success": result["success"],
+        "execution_layer": "TWAK CLI",
+        "result": result,
+        "event": event,
+    }
+
+@app.get("/trade-log")
+def trade_log(limit: int = 50):
+    return {
+        "success": True,
+        "limit": limit,
+        "records": read_trade_log(limit),
     }

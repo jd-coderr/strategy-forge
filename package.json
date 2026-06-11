@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "postinstall": "npm install -g @trustwallet/cli"
+  },
+  "dependencies": {
+    "@trustwallet/cli": "latest"
+  }
+}

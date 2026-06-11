@@ -63,8 +63,8 @@ def run_twak_swap(
 
 def run_twak_portfolio():
     cmd = [
-    *get_twak_base_command(),
-    "wallet",
+        *get_twak_base_command(),
+        "wallet",
         "portfolio",
         "--chains",
         "bsc",
@@ -73,12 +73,23 @@ def run_twak_portfolio():
 
     print("TWAK PORTFOLIO COMMAND:", cmd)
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except FileNotFoundError as error:
+        return {
+            "success": False,
+            "portfolio": [],
+            "stdout": "",
+            "stderr": str(error),
+            "returncode": None,
+            "command": " ".join(cmd),
+            "message": "TWAK CLI is not installed on this server. Portfolio works only on local backend unless TWAK/Node is installed on Railway.",
+        }
 
     parsed = None
 

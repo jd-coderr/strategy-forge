@@ -499,6 +499,22 @@ Best eligible risk-adjusted score among all tested combinations.
 
         <div className="input-row">
           <div>
+
+{portfolio && (
+  <div className="panel">
+    <div className="panel-title">PORTFOLIO</div>
+
+    <pre
+      style={{
+        color: "#00ff41",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+      }}
+    >
+      {JSON.stringify(portfolio, null, 2)}
+    </pre>
+  </div>
+)}
             <label>ASSET</label>
             <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
               <option value="BTC">Bitcoin (BTC)</option>

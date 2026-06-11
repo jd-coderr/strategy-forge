@@ -560,3 +560,21 @@ def trade_log(limit: int = 50):
         "limit": limit,
         "records": read_trade_log(limit),
     }
+
+@app.get("/agent-status")
+def agent_status():
+    status = get_twak_status()
+
+    if status["status"] != "configured":
+        return {
+            "ready": False,
+            "status": "NOT READY",
+            "reason": "TWAK not configured"
+        }
+
+    return {
+        "ready": True,
+        "status": "READY FOR REGISTRATION",
+        "agent_address": status["agent_address"],
+        "chain": status["chain"],
+    }

@@ -518,7 +518,7 @@ Best eligible risk-adjusted score among all tested combinations.
           </button>
 
           <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
-            {"> LOAD PORTFOLIO <"}
+            {"> LOAD AGENT PORTFOLIO <"}
           </button>
 
                  {portfolio && (

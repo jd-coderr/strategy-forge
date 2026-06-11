@@ -156,20 +156,12 @@ def pick_best_strategy(
 def generate_strategy(request: StrategyRequest):
     cmc_signal = get_cmc_signal(request.coin)
 
-if request.selected_strategy:
-    strategy = find_strategy_by_name(request.selected_strategy)
-
-    if strategy is not None:
-        backtest = run_backtest(
-            strategy=strategy,
-            coin=request.coin,
-            timeframe=request.timeframe,
-            risk=request.risk,
-            initial_capital=request.initial_capital,
-        )
-        compared_results = []
-    else:
-        strategy, backtest, compared_results = pick_best_strategy(
+strategy, backtest, compared_results = pick_best_strategy(
+    coin=request.coin,
+    timeframe=request.timeframe,
+    risk=request.risk,
+    initial_capital=request.initial_capital,
+)
             coin=request.coin,
             timeframe=request.timeframe,
             risk=request.risk,
@@ -333,6 +325,26 @@ def debug_strategies():
 def agent_cycle(request: AgentCycleRequest):
     cmc_signal = get_cmc_signal(request.coin)
 
+    if request.selected_strategy:
+    strategy = find_strategy_by_name(request.selected_strategy)
+
+    if strategy is not None:
+        backtest = run_backtest(
+            strategy=strategy,
+            coin=request.coin,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+        compared_results = []
+    else:
+        strategy, backtest, compared_results = pick_best_strategy(
+            coin=request.coin,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+else:
     strategy, backtest, compared_results = pick_best_strategy(
         coin=request.coin,
         timeframe=request.timeframe,

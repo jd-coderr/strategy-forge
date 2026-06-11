@@ -20,13 +20,8 @@ function App() {
   const [result, setResult] = useState(null);
   const [agentResult, setAgentResult] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
-  const [tradeLog, setTradeLog] = useState(null);
   const [liveExecution, setLiveExecution] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showTrades, setShowTrades] = useState(false);
-  const [showRankings, setShowRankings] = useState(false);
-  const [showStrategySpec, setShowStrategySpec] = useState(false);
-  const [showLegend, setShowLegend] = useState(false);
   const [loadingMode, setLoadingMode] = useState("");
   const [walletAddress, setWalletAddress] = useState(null);
   const [walletChainId, setWalletChainId] = useState(null);
@@ -76,7 +71,6 @@ function App() {
     }));
   }
 
-
   function getOverallRating() {
     const score = Number(result?.backtest?.risk_adjusted_score ?? 0);
 
@@ -97,6 +91,32 @@ function App() {
 
   function parsePercent(value) {
     return parseFloat(String(value).replace("%", ""));
+  }
+
+  function getMarketRegime() {
+    const fearValue = Number(result?.cmc_signal?.fear_greed?.value ?? 50);
+
+    if (fearValue <= 25) return "RISK-OFF / EXTREME FEAR";
+    if (fearValue >= 75) return "RISK-ON / HIGH GREED";
+
+    return "NEUTRAL";
+  }
+
+  function getAgentDecision() {
+    return agentResult?.decision || result?.backtest?.current_signal?.status || "N/A";
+  }
+
+
+  function getCmcTopSkill() {
+    try {
+      const rawText = cmcSkillHub?.result?.content?.[0]?.text;
+      if (!rawText) return "N/A";
+
+      const parsed = JSON.parse(rawText);
+      return parsed?.candidates?.[0]?.uniqueName || "N/A";
+    } catch (error) {
+      return "N/A";
+    }
   }
 
   function copyStrategySummary() {
@@ -144,18 +164,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
     navigator.clipboard.writeText(text);
     alert("STRATEGY SUMMARY COPIED");
-  }
-
-  function getCmcTopSkill() {
-    try {
-      const rawText = cmcSkillHub?.result?.content?.[0]?.text;
-      if (!rawText) return "N/A";
-
-      const parsed = JSON.parse(rawText);
-      return parsed?.candidates?.[0]?.uniqueName || "N/A";
-    } catch (error) {
-      return "N/A";
-    }
   }
 
   async function updateWalletData(address) {
@@ -268,6 +276,7 @@ Best eligible risk-adjusted score among all tested combinations.
     setLoading(true);
     setLoadingMode("generate");
     setResult(null);
+    setAgentResult(null);
 
     try {
       const response = await fetch(`${API_BASE}/generate-strategy`, {
@@ -297,6 +306,7 @@ Best eligible risk-adjusted score among all tested combinations.
     setLoading(true);
     setLoadingMode("optimize");
     setResult(null);
+    setAgentResult(null);
 
     try {
       const response = await fetch(`${API_BASE}/optimize-strategy`, {
@@ -370,58 +380,95 @@ Best eligible risk-adjusted score among all tested combinations.
   }
 
   async function runAgentCycle() {
-  try {
-    const response = await fetch(`${API_BASE}/agent-cycle`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        coin,
-        timeframe,
-        risk,
-        live_execution: liveExecution,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/agent-cycle`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          coin,
+          timeframe,
+          risk,
+          live_execution: liveExecution,
+        }),
+      });
 
-    const data = await response.json();
-    setAgentResult(data);
-  } catch (err) {
-    console.error(err);
-    alert("AGENT CYCLE FAILED");
+      const data = await response.json();
+      setAgentResult(data);
+    } catch (err) {
+      console.error(err);
+      alert("AGENT CYCLE FAILED");
+    }
   }
-}
 
   async function loadPortfolio() {
-  setPortfolio({
-    success: true,
-    source: "Browser Wallet",
-    walletAddress: walletAddress || "NOT CONNECTED",
-    chain:
-      walletChainId === "0x38"
-        ? "BNB Smart Chain"
-        : walletChainId || "UNKNOWN",
-    assets: [
-      {
-        symbol: "BNB",
-        balance: bnbBalance || "0",
-      },
-    ],
-    note:
-      "Portfolio loaded from connected browser wallet. Railway TWAK portfolio service unavailable.",
-  });
-}
+    try {
+      const tradeResponse = await fetch(`${API_BASE}/trade-log`);
+      const tradeData = await tradeResponse.json();
 
-  async function loadTradeLog() {
-  try {
-    const response = await fetch(`${API_BASE}/trade-log`);
-    const data = await response.json();
-    setTradeLog(data);
-  } catch (err) {
-    console.error(err);
-    alert("TRADE LOG LOAD FAILED");
+      const records = tradeData.records || [];
+
+      const bnbPrice =
+        result?.cmc_signal?.symbol === "BNB"
+          ? Number(result?.cmc_signal?.price_usd || 0)
+          : 0;
+
+      const bnbAmount = Number(bnbBalance || 0);
+      const bnbUsdValue = bnbPrice > 0 ? bnbAmount * bnbPrice : null;
+
+      let tradingPnlUsd = 0;
+
+      records.forEach((record) => {
+        const stdout =
+          record?.result?.stdout ||
+          record?.execution_result?.stdout ||
+          "";
+
+        if (stdout.includes('"input"') && stdout.includes('"output"')) {
+          try {
+            const parsed = JSON.parse(stdout);
+
+            const inputValue = String(parsed.input || "");
+            const outputValue = String(parsed.output || "");
+
+            const inputParts = inputValue.split(" ");
+            const outputParts = outputValue.split(" ");
+
+            const inputAmount = Number(inputParts[0] || 0);
+            const inputSymbol = inputParts[1] || "";
+            const outputAmount = Number(outputParts[0] || 0);
+            const outputSymbol = outputParts[1] || "";
+
+            if (inputSymbol === "BNB" && outputSymbol === "USDT" && bnbPrice > 0) {
+              tradingPnlUsd += outputAmount - inputAmount * bnbPrice;
+            }
+
+            if (inputSymbol === "USDT" && outputSymbol === "BNB" && bnbPrice > 0) {
+              tradingPnlUsd += outputAmount * bnbPrice - inputAmount;
+            }
+          } catch (error) {
+            // ignore bad stdout rows
+          }
+        }
+      });
+
+      setPortfolio({
+        success: true,
+        assets: [
+          {
+            symbol: "BNB",
+            usdValue: bnbUsdValue,
+          },
+        ],
+        totalUsdValue: bnbUsdValue,
+        tradingPnlUsd,
+      });
+    } catch (err) {
+      console.error(err);
+      alert("PORTFOLIO LOAD FAILED");
+    }
   }
-}
 
   return (
     <div className="terminal">
@@ -466,7 +513,7 @@ Best eligible risk-adjusted score among all tested combinations.
           <p>TWAK................ {String(twakStatus).toUpperCase()}</p>
           <p>AGENT ADDRESS....... {twakAgentAddress || "N/A"}</p>
           <p>CHAIN............... BSC</p>
-          <p>EXECUTION........... DISABLED</p>
+          <p>EXECUTION........... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
           <p>REGISTRATION........ {String(twakRegistration).toUpperCase()}</p>
 
           <button onClick={connectWallet} disabled={loading} className="copy-btn">
@@ -482,82 +529,53 @@ Best eligible risk-adjusted score among all tested combinations.
           <button onClick={checkRegistration} disabled={loading} className="copy-btn">
             {"> CHECK REGISTRATION <"}
           </button>
-<button onClick={loadPortfolio} disabled={loading} className="copy-btn">
-  {"> LOAD PORTFOLIO <"}
-</button>
 
-<button onClick={loadTradeLog} disabled={loading} className="copy-btn">
-  {"> LOAD TRADE LOG <"}
-</button>
+          <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
+            {"> LOAD PORTFOLIO <"}
+          </button>
 
-{tradeLog && (
-  <div className="panel">
-    <div className="panel-title">TRADE LOG</div>
+          {portfolio && (
+            <div className="panel">
+              <div className="panel-title">PORTFOLIO</div>
 
-    <div className="metrics">
-      <p>STATUS.............. {tradeLog.success ? "LOADED" : "ERROR"}</p>
-      <p>RECORDS............. {tradeLog.records?.length || 0}</p>
-      <p>LIMIT............... {tradeLog.limit || "N/A"}</p>
-    </div>
+              <div className="metrics">
+                {portfolio.assets?.map((asset, index) => (
+                  <p key={index}>
+                    {asset.symbol}................... {formatMoney(asset.usdValue)}
+                  </p>
+                ))}
 
-    <div className="trade-table">
-      <div className="trade-row trade-header">
-        <span>TIME</span>
-        <span>STATUS</span>
-        <span>ACTION</span>
-        <span>FROM</span>
-        <span>TO</span>
-        <span>AMOUNT</span>
-        <span>MODE</span>
-      </div>
+                <br />
 
-      {tradeLog.records?.slice(0, 10).map((record, index) => (
-        <div className="trade-row" key={index}>
-          <span>{record.timestamp || "N/A"}</span>
-          <span>{String(record.status || "N/A").toUpperCase()}</span>
-          <span>{record.decision || record.reason || "N/A"}</span>
-          <span>{record.from_token || record.trade_plan?.from_token || "N/A"}</span>
-          <span>{record.to_token || record.trade_plan?.to_token || "N/A"}</span>
-          <span>{record.amount || record.trade_plan?.amount || "N/A"}</span>
-          <span>{record.quote_only === true || record.live_execution === false ? "SAFE" : "LIVE"}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                <p>TOTAL VALUE........... {formatMoney(portfolio.totalUsdValue)}</p>
 
-<button
-  type="button"
-  className={`terminal-toggle ${liveExecution ? "active" : ""}`}
-  onClick={() => setLiveExecution(!liveExecution)}
->
-  <span className="terminal-toggle-box">
-    {liveExecution ? "X" : ""}
-  </span>
-  <span>LIVE EXECUTION</span>
-</button>
+                <p>
+                  TRADING P/L...........{" "}
+                  {Number(portfolio.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
+                  {Math.abs(Number(portfolio.tradingPnlUsd || 0)).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
 
-<button onClick={runAgentCycle} disabled={loading} className="copy-btn">
-  {"> RUN AGENT <"}
-</button>
+          <button
+            type="button"
+            className={`terminal-toggle ${liveExecution ? "active" : ""}`}
+            onClick={() => setLiveExecution(!liveExecution)}
+          >
+            <span className="terminal-toggle-box">
+              {liveExecution ? "X" : ""}
+            </span>
+            <span>LIVE EXECUTION</span>
+          </button>
+
+          <button onClick={runAgentCycle} disabled={loading} className="copy-btn">
+            {"> RUN AGENT <"}
+          </button>
         </div>
 
         <div className="input-row">
           <div>
-
-{portfolio && (
-  <div className="panel">
-    <div className="panel-title">PORTFOLIO</div>
-
-    <div className="metrics">
-      <p>STATUS.............. {portfolio.success ? "CONNECTED" : "ERROR"}</p>
-      <p>SOURCE.............. {portfolio.source}</p>
-      <p>ADDRESS............. {portfolio.walletAddress}</p>
-      <p>CHAIN............... {portfolio.chain}</p>
-      <p>BNB BALANCE......... {portfolio.assets?.[0]?.balance} BNB</p>
-    </div>
-  </div>
-)}
             <label>ASSET</label>
             <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
               <option value="BTC">Bitcoin (BTC)</option>
@@ -599,22 +617,23 @@ Best eligible risk-adjusted score among all tested combinations.
               <option value="high">HIGH</option>
             </select>
           </div>
-<div>
-   <label>INITIAL CAPITAL</label>
 
-  <div className="capital-input">
-    <span>$</span>
+          <div>
+            <label>INITIAL CAPITAL</label>
 
-    <input
-      type="number"
-      min="100"
-      step="100"
-      value={initialCapital}
-      disabled={loading}
-      onChange={(e) => setInitialCapital(Number(e.target.value))}
-    />
-  </div>
-</div>
+            <div className="capital-input">
+              <span>$</span>
+
+              <input
+                type="number"
+                min="100"
+                step="100"
+                value={initialCapital}
+                disabled={loading}
+                onChange={(e) => setInitialCapital(Number(e.target.value))}
+              />
+            </div>
+          </div>
 
           <button onClick={generateStrategy} disabled={loading}>
             {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
@@ -675,45 +694,100 @@ Best eligible risk-adjusted score among all tested combinations.
         <div className="panel">
           <div className="panel-title">RESULTS</div>
 
-          <h2>EXECUTIVE SUMMARY</h2>
+          <h2>STRATEGY ASSESSMENT</h2>
 
           <div className="metrics">
-            <p>STRATEGY........... {result.selected_strategy}</p>
-            <p>RETURN............. {result.backtest.net_return}</p>
-            <p>MAX DRAWDOWN....... {result.backtest.max_drawdown}</p>
-            <p>PROFIT FACTOR...... {result.backtest.profit_factor}</p>
-            <p>WIN RATE........... {result.backtest.win_rate}</p>
-            <p>RATING............. {getOverallRating()}</p>
+            <p>STRATEGY............ {result.selected_strategy}</p>
+            <p>STATUS.............. {isApproved() ? "APPROVED" : "REJECTED"}</p>
+            <p>RATING.............. {getOverallRating()}</p>
+            <p>RETURN.............. {result.backtest.net_return}</p>
+            <p>MAX DRAWDOWN........ {result.backtest.max_drawdown}</p>
+            <p>WIN RATE............ {result.backtest.win_rate}</p>
+            <p>PROFIT FACTOR....... {result.backtest.profit_factor}</p>
+            <p>EXPECTANCY.......... {result.backtest.expectancy}</p>
+            <p>EDGE................ {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
+            <p>BUY & HOLD.......... {parsePercent(result.backtest.strategy_vs_buy_hold) > 0 ? "OUTPERFORMED" : "UNDERPERFORMED"}</p>
           </div>
 
-          <h2>CURRENT MARKET SIGNAL</h2>
+          <h2>MARKET REGIME</h2>
 
           <div className="metrics">
-            <p>STATUS............. {result.backtest.current_signal?.status}</p>
-            <p>ACTION............. {result.backtest.current_signal?.action}</p>
-            <p>LATEST CLOSE....... {result.backtest.current_signal?.latest_close}</p>
-            <p>RSI................ {result.backtest.current_signal?.latest_rsi}</p>
-            <p>DEVIATION.......... {result.backtest.current_signal?.latest_deviation}%</p>
-            <p>MESSAGE............ {result.backtest.current_signal?.message}</p>
+            <p>ASSET............... {result.coin}</p>
+            <p>PRICE............... {formatPrice(result.cmc_signal?.price_usd)}</p>
+            <p>MARKET BIAS......... {String(result.cmc_signal?.market_bias || "UNKNOWN").toUpperCase()}</p>
+            <p>FEAR & GREED........ {result.cmc_signal?.fear_greed?.value ?? "N/A"} / 100 {String(result.cmc_signal?.fear_greed?.label || "").toUpperCase()}</p>
+            <p>ALTCOIN ROTATION.... {result.cmc_signal?.altcoin_season?.value ?? "N/A"} / 100 {String(result.cmc_signal?.altcoin_season?.label || "").toUpperCase()}</p>
+            <p>CHANGE 24H.......... {formatPercent(result.cmc_signal?.percent_change_24h)}</p>
+            <p>VOLUME 24H.......... {formatMoney(result.cmc_signal?.volume_24h)}</p>
+            <p>SIGNAL.............. {result.backtest.current_signal?.status}</p>
+            <p>ACTION.............. {result.backtest.current_signal?.action}</p>
+            <p>RSI................. {result.backtest.current_signal?.latest_rsi}</p>
+            <p>DEVIATION........... {result.backtest.current_signal?.latest_deviation}%</p>
+            <p>MESSAGE............. {result.backtest.current_signal?.message}</p>
           </div>
 
-          <h2>FINAL VERDICT</h2>
+          <h2>AGENT DECISION ENGINE</h2>
 
           <div className="metrics">
-            <p>STATUS............. {isApproved() ? "APPROVED" : "REJECTED"}</p>
-            <p>EDGE............... {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
-            <p>EXPECTANCY......... {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
-            <p>
-              PROFIT FACTOR......
-              {Number(result.backtest.profit_factor) >= 2
-                ? " STRONG"
-                : Number(result.backtest.profit_factor) >= 1
-                ? " ACCEPTABLE"
-                : " WEAK"}
-            </p>
-            <p>DRAWDOWN........... {parsePercent(result.backtest.max_drawdown) < 10 ? "CONTROLLED" : "ELEVATED"}</p>
-            <p>BUY & HOLD......... {parsePercent(result.backtest.strategy_vs_buy_hold) > 0 ? "OUTPERFORMED" : "UNDERPERFORMED"}</p>
-            <p>OVERALL RATING..... {getOverallRating()}</p>
+            <p>DATA SOURCE......... CoinMarketCap</p>
+            <p>EXECUTION LAYER..... Trust Wallet Agent Kit</p>
+            <p>VENUE............... BNB Chain / BSC</p>
+            <p>MODE................ {liveExecution ? "LIVE EXECUTION" : "SAFE / QUOTE ONLY"}</p>
+            <p>MARKET REGIME....... {getMarketRegime()}</p>
+            <p>SELECTED STRATEGY... {result.selected_strategy}</p>
+            <p>RISK PROFILE........ {String(result.risk).toUpperCase()}</p>
+            <p>LAST DECISION....... {getAgentDecision()}</p>
+            <p>TRADE PLAN.......... {agentResult?.trade_plan ? "GENERATED" : "NONE"}</p>
+            <p>ACTION TAKEN........ {agentResult?.execution_result ? "EXECUTION ATTEMPTED" : "NONE"}</p>
+          </div>
+
+          <h2>HACKATHON TRACK FIT</h2>
+
+          <div className="metrics">
+            <p>TRACK............... TRACK 1 / AUTONOMOUS TRADING AGENTS</p>
+            <p>GOAL................ READ SIGNALS, DECIDE, RISK-CHECK, EXECUTE ON BSC</p>
+            <p>SPONSOR STACK....... CMC + TRUST WALLET AGENT KIT + BNB CHAIN</p>
+            <p>AGENT FLOW.......... CMC SIGNAL → STRATEGY MODEL → RISK GOVERNOR → TWAK → BSC</p>
+            <p>SCORING FOCUS....... RETURNS + DRAWDOWN + RISK-ADJUSTED PERFORMANCE + RULE ADHERENCE</p>
+          </div>
+
+          <h2>COINMARKETCAP SIGNAL LAYER</h2>
+
+          <div className="metrics">
+            <p>CAPABILITY.......... CMC DATA API / AGENT HUB SIGNALS</p>
+            <p>LIVE ASSET.......... {result.coin}</p>
+            <p>PRICE FEED.......... {formatPrice(result.cmc_signal?.price_usd)}</p>
+            <p>MARKET BIAS......... {String(result.cmc_signal?.market_bias || "UNKNOWN").toUpperCase()}</p>
+            <p>SENTIMENT........... {result.cmc_signal?.fear_greed?.value ?? "N/A"} / 100 {String(result.cmc_signal?.fear_greed?.label || "UNKNOWN").toUpperCase()}</p>
+            <p>ALTCOIN ROTATION.... {result.cmc_signal?.altcoin_season?.value ?? "N/A"} / 100 {String(result.cmc_signal?.altcoin_season?.label || "UNKNOWN").toUpperCase()}</p>
+            <p>SKILL MATCH......... {getCmcTopSkill()}</p>
+            <p>QUERY............... {cmcSkillHub?.query || `${result.coin} strategy`}</p>
+            <p>ROLE................ MARKET REGIME + SIGNAL CONFIRMATION</p>
+          </div>
+
+          <h2>TRUST WALLET EXECUTION LAYER</h2>
+
+          <div className="metrics">
+            <p>CAPABILITY.......... TRUST WALLET AGENT KIT / TWAK</p>
+            <p>TWAK STATUS......... {String(twakStatus).toUpperCase()}</p>
+            <p>AGENT ADDRESS....... {twakAgentAddress || "N/A"}</p>
+            <p>REGISTRATION........ {String(twakRegistration).toUpperCase()}</p>
+            <p>EXECUTION MODE...... {liveExecution ? "LIVE EXECUTION" : "SAFE / QUOTE-ONLY"}</p>
+            <p>TRADE PLAN.......... {agentResult?.trade_plan ? "GENERATED" : "WAITING FOR SIGNAL"}</p>
+            <p>LAST ACTION......... {agentResult?.execution_result ? "EXECUTION ATTEMPTED" : "NO EXECUTION"}</p>
+            <p>RULE ADHERENCE...... MAX SIZE + USER RISK LIMITS + SAFE MODE</p>
+          </div>
+
+          <h2>BNB CHAIN VENUE LAYER</h2>
+
+          <div className="metrics">
+            <p>CAPABILITY.......... BNB CHAIN EXECUTION VENUE</p>
+            <p>CHAIN............... BSC</p>
+            <p>WALLET NETWORK...... {walletChainId === "0x38" ? "BNB SMART CHAIN" : walletChainId ? `WRONG NETWORK (${walletChainId})` : "UNKNOWN"}</p>
+            <p>NATIVE TOKEN........ BNB</p>
+            <p>WALLET BALANCE...... {bnbBalance !== null ? `${bnbBalance} BNB` : "N/A"}</p>
+            <p>DEX ROUTE........... PANCAKESWAP / BSC LIQUIDITY READY</p>
+            <p>VENUE ROLE.......... LOW-FEE ON-CHAIN TRADE SETTLEMENT</p>
           </div>
 
           {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
@@ -722,35 +796,35 @@ Best eligible risk-adjusted score among all tested combinations.
 
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={260}>
-<LineChart
-  data={getEquityCurveData()}
-  margin={{
-    top: 10,
-    right: 20,
-    left: 10,
-    bottom: 50
-  }}
->
-  <XAxis
-    dataKey="trade"
-    label={{
-      value: "TRADES",
-      position: "insideBottom",
-      offset: -15
-    }}
-  />
+                  <LineChart
+                    data={getEquityCurveData()}
+                    margin={{
+                      top: 10,
+                      right: 20,
+                      left: 10,
+                      bottom: 50
+                    }}
+                  >
+                    <XAxis
+                      dataKey="trade"
+                      label={{
+                        value: "TRADES",
+                        position: "insideBottom",
+                        offset: -15
+                      }}
+                    />
                     <YAxis domain={["auto", "auto"]} />
-<Tooltip
-  labelFormatter={(label) => `Trade ${label}`}
-  formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
-  contentStyle={{
-    backgroundColor: "#001a08",
-    border: "1px solid #00ff41",
-    color: "#00ff41"
-  }}
-  labelStyle={{ color: "#00ff41" }}
-  itemStyle={{ color: "#00ff41" }}
-/>
+                    <Tooltip
+                      labelFormatter={(label) => `Trade ${label}`}
+                      formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
+                      contentStyle={{
+                        backgroundColor: "#001a08",
+                        border: "1px solid #00ff41",
+                        color: "#00ff41"
+                      }}
+                      labelStyle={{ color: "#00ff41" }}
+                      itemStyle={{ color: "#00ff41" }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="equity"
@@ -764,104 +838,21 @@ Best eligible risk-adjusted score among all tested combinations.
             </>
           )}
 
-{cmcSkillHub && (
-  <>
-    <h2>COINMARKETCAP SKILL HUB COMPARISON</h2>
-
-    <div className="metrics">
-      <p>STATUS.............. {cmcSkillHub?.ok ? "ACTIVE" : "UNAVAILABLE"}</p>
-      <p>SELECTED ASSET...... {result.coin}</p>
-      <p>OPTIMIZED STRATEGY.. {result.selected_strategy}</p>
-
-      <br />
-
-      <p>PRIMARY CMC SKILL... daily_market_overview</p>
-      <p>SKILL MODE.......... preview: true</p>
-      <p>CMC ANALYST ROLE.... DAILY MARKET REGIME ANALYSIS</p>
-      <p>REPORT STYLE........ TL;DR + DETAILS</p>
-
-      <br />
-
-      <p>TOP MATCHED SKILL... {getCmcTopSkill()}</p>
-      <p>CMC RESEARCH QUERY.. {cmcSkillHub?.query || `${result.coin} strategy`}</p>
-      <p>SOURCE.............. CMC Skill Hub MCP</p>
-
-      <br />
-
-      <p>CMC VIEW............ EXTERNAL MARKET INTELLIGENCE</p>
-      <p>STRATEGY VIEW....... INTERNAL BACKTESTED EXECUTION MODEL</p>
-      <p>COMPETITION VALUE... CMC AGENT HUB + STRATEGY FORGE OPTIMIZER</p>
-      <p>DECISION IMPACT..... RESEARCH CONFIRMATION ONLY</p>
-
-      <br />
-
-      <p>
-        MARKET STATE........
-        {result.cmc_signal?.fear_greed?.value <= 25
-          ? " RISK-OFF / EXTREME FEAR"
-          : result.cmc_signal?.fear_greed?.value >= 75
-          ? " RISK-ON / HIGH GREED"
-          : " NEUTRAL MARKET CONDITIONS"}
-      </p>
-
-      <p>
-        KEY DRIVER.......... Fear & Greed{" "}
-        {result.cmc_signal?.fear_greed?.value ?? "N/A"}/100
-      </p>
-
-      <p>
-        ALTCOIN ROTATION....{" "}
-        {result.cmc_signal?.altcoin_season?.value ?? "N/A"}/100
-      </p>
-
-      <p>FINAL USE........... SUPPORTS STRATEGY CONTEXT, DOES NOT OVERRIDE BACKTEST</p>
-    </div>
-  </>
-)}
-
-<h2>DETAILS</h2>
-
           <details>
+            <summary>OPTIMIZER REPORT</summary>
 
-            <summary>WHY THIS WAS SELECTED</summary>
+            <div className="metrics">
+              <p>WHY SELECTED........ {result.reason}</p>
+              <p>MODE................ {result.optimization?.mode || "SINGLE RUN"}</p>
+              <p>COMBINATIONS TESTED. {result.optimization?.tested_combinations || "N/A"}</p>
+              <p>ELIGIBLE COMBOS..... {result.optimization?.eligible_combinations || "N/A"}</p>
+              <p>BEST TIMEFRAME...... {result.timeframe}</p>
+              <p>BEST RISK MODEL..... {String(result.risk).toUpperCase()}</p>
+              <p>BEST STRATEGY....... {result.selected_strategy}</p>
+              <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>
+            </div>
 
-
-            <div className="reason">{result.reason}</div>
-          </details>
-
-          {result.optimization && (
-            <details>
-
-              <summary>OPTIMIZATION RESULTS</summary>
-
- 
-              <div className="metrics">
-                <p>MODE................ {result.optimization.mode}</p>
-                <p>COMBINATIONS TESTED. {result.optimization.tested_combinations}</p>
-                <p>ELIGIBLE COMBOS..... {result.optimization.eligible_combinations}</p>
-                <p>BEST TIMEFRAME...... {result.timeframe}</p>
-                <p>BEST RISK MODEL..... {result.risk}</p>
-                <p>BEST STRATEGY....... {result.selected_strategy}</p>
-                <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>
-              </div>
-
-       <summary>SELECTED CONFIGURATION</summary>
-       
-
-              <div className="metrics">
-                <p>WINNER............. {result.selected_strategy}</p>
-                <p>TIMEFRAME.......... {result.timeframe}</p>
-                <p>RISK PROFILE....... {String(result.risk).toUpperCase()}</p>
-                <p>RETURN............. {result.backtest.net_return}</p>
-                <p>MAX DRAWDOWN....... {result.backtest.max_drawdown}</p>
-                <p>PROFIT FACTOR...... {result.backtest.profit_factor}</p>
-                <p>CALMAR RATIO....... {result.backtest.calmar_ratio}</p>
-                <p>SELECTION REASON... BEST ELIGIBLE RISK-ADJUSTED SCORE</p>
-              </div>
-
-<summary>TOP RANKINGS</summary>
-            
-
+            {result.optimization?.all_results && (
               <div className="optimizer-table">
                 <div className="optimizer-row optimizer-header">
                   <span>RANK</span>
@@ -895,13 +886,11 @@ Best eligible risk-adjusted score among all tested combinations.
                     </div>
                   ))}
               </div>
-            </details>
-          )}
+            )}
+          </details>
 
           <details>
-
             <summary>TRADING STRATEGY</summary>
-
 
             <div className="reason">
               <strong>STRATEGY:</strong> {result.selected_strategy}
@@ -941,178 +930,32 @@ Best eligible risk-adjusted score among all tested combinations.
             </button>
           </details>
 
-{result.cmc_signal && (
-  <details>
-    <summary>MARKET INTELLIGENCE</summary>
-
-    <div className="metrics">
-      <p>SOURCE.............. CoinMarketCap.com API</p>
-      <p>STATUS.............. {result.cmc_signal.status}</p>
-      <p>SYMBOL.............. {result.cmc_signal.symbol}</p>
-      <p>PRICE USD........... {formatPrice(result.cmc_signal.price_usd)}</p>
-      <p>CHANGE 1H........... {formatPercent(result.cmc_signal.percent_change_1h)}</p>
-      <p>CHANGE 24H.......... {formatPercent(result.cmc_signal.percent_change_24h)}</p>
-      <p>CHANGE 7D........... {formatPercent(result.cmc_signal.percent_change_7d)}</p>
-      <p>VOLUME 24H.......... {formatMoney(result.cmc_signal.volume_24h)}</p>
-      <p>VOLUME CHANGE 24H... {formatPercent(result.cmc_signal.volume_change_24h)}</p>
-      <p>MARKET CAP.......... {formatMoney(result.cmc_signal.market_cap)}</p>
-      <p>MARKET BIAS......... {String(result.cmc_signal.market_bias).toUpperCase()}</p>
-      <p>
-        FEAR & GREED........ {result.cmc_signal.fear_greed?.value ?? "N/A"} / 100{" "}
-        {String(result.cmc_signal.fear_greed?.label || "UNKNOWN").toUpperCase()}
-      </p>
-      <p>
-        ALTCOIN SEASON...... {result.cmc_signal.altcoin_season?.value ?? "N/A"} / 100{" "}
-        {String(result.cmc_signal.altcoin_season?.label || "UNKNOWN").toUpperCase()}
-      </p>
-    </div>
-  </details>
-)}
-
           <details>
-            <summary>VALIDATION CHECKS</summary>
+            <summary>PERFORMANCE ANALYTICS</summary>
 
             <div className="metrics">
-              <p>MIN TRADES REQUIRED. {result.backtest.min_trades_required}</p>
-              <p>MIN TRADE GATE...... {result.backtest.min_trade_gate}</p>
-              <p>DRAWDOWN LIMIT...... {result.backtest.drawdown_limit}</p>
-              <p>DRAWDOWN GATE....... {result.backtest.drawdown_gate}</p>
-              <p>
-                {result.backtest.min_trade_gate === "PASS"
-                  ? "✓ MINIMUM TRADES PASSED"
-                  : "✗ MINIMUM TRADES FAILED"}
-              </p>
-              <p>
-                {result.backtest.drawdown_gate === "PASS"
-                  ? "✓ DRAWDOWN LIMIT PASSED"
-                  : "✗ DRAWDOWN LIMIT FAILED"}
-              </p>
-              <p>
-                {parsePercent(result.backtest.expectancy) > 0
-                  ? "✓ POSITIVE EXPECTANCY"
-                  : "✗ NEGATIVE EXPECTANCY"}
-              </p>
-              <p>
-                {Number(result.backtest.profit_factor) > 1
-                  ? "✓ PROFIT FACTOR ABOVE 1"
-                  : "✗ PROFIT FACTOR BELOW 1"}
-              </p>
-              <p>
-                {parsePercent(result.backtest.net_return) > 0
-                  ? "✓ POSITIVE NET RETURN"
-                  : "✗ NEGATIVE NET RETURN"}
-              </p>
-              <p>
-                {parsePercent(result.backtest.strategy_vs_buy_hold) > 0
-                  ? "✓ OUTPERFORMED BUY & HOLD"
-                  : "✗ UNDERPERFORMED BUY & HOLD"}
-              </p>
-            </div>
-          </details>
-
-      <details>
-  <summary>RISK ANALYTICS</summary>
-
-  <div className="metrics">
-              <p>
-                SHARPE RATIO........ {result.backtest.sharpe_ratio}{" "}
-                (
-                {Number(result.backtest.sharpe_ratio) < 0.5
-                  ? "POOR"
-                  : Number(result.backtest.sharpe_ratio) < 1
-                  ? "FAIR"
-                  : Number(result.backtest.sharpe_ratio) < 2
-                  ? "GOOD"
-                  : "EXCELLENT"}
-                )
-              </p>
-              <p>Return earned per unit of volatility.</p>
-              <br />
-
-              <p>
-                SORTINO RATIO....... {result.backtest.sortino_ratio}{" "}
-                (
-                {Number(result.backtest.sortino_ratio) < 0.5
-                  ? "POOR"
-                  : Number(result.backtest.sortino_ratio) < 1
-                  ? "FAIR"
-                  : Number(result.backtest.sortino_ratio) < 2
-                  ? "GOOD"
-                  : "EXCELLENT"}
-                )
-              </p>
-              <p>Return earned per unit of downside risk.</p>
-              <br />
-
-              <p>
-                CALMAR RATIO........ {result.backtest.calmar_ratio}{" "}
-                (
-                {Number(result.backtest.calmar_ratio) < 1
-                  ? "POOR"
-                  : Number(result.backtest.calmar_ratio) < 2
-                  ? "FAIR"
-                  : Number(result.backtest.calmar_ratio) < 3
-                  ? "GOOD"
-                  : "EXCELLENT"}
-                )
-              </p>
-              <p>Return achieved relative to maximum drawdown.</p>
-              <br />
-
-              <p>
-                EXPECTANCY.......... {result.backtest.expectancy}{" "}
-                (
-                {parsePercent(result.backtest.expectancy) > 0
-                  ? "POSITIVE EDGE"
-                  : "NEGATIVE EDGE"}
-                )
-              </p>
-              <p>Average expected profit or loss per trade.</p>
-              <p>LONGEST WIN STREAK. {result.backtest.max_win_streak}</p>
-              <p>LONGEST LOSS STREAK {result.backtest.max_loss_streak}</p>
-              <p>AVERAGE WIN........ {result.backtest.avg_win}</p>
-              <p>AVERAGE LOSS....... {result.backtest.avg_loss}</p>
-              <p>PAYOFF RATIO....... {result.backtest.payoff_ratio}</p>
-            </div>
-          </details>
-
-            <details>
-            <summary>PERFORMANCE SUMMARY</summary>
-
-
-            <div className="metrics">
-              <p>COIN................ {result.coin}</p>
-              <p>TIMEFRAME........... {result.timeframe}</p>
               <p>TEST PERIOD......... {result.backtest.backtest_period}</p>
               <p>CANDLES TESTED...... {result.backtest.candles_tested}</p>
-              <p>TX COST / TRADE..... {result.backtest.transaction_cost_per_trade}</p>
-              <p>SLIPPAGE............ {result.backtest.slippage_per_trade}</p>
-              <p>TOTAL COST.......... {result.backtest.total_cost_per_trade}</p>
-              <p>RISK MODEL.......... {result.risk}</p>
               <p>TRADES.............. {result.backtest.trades}</p>
               <p>WINS................ {result.backtest.wins}</p>
               <p>LOSSES.............. {result.backtest.losses}</p>
-              <p>WIN RATE............ {result.backtest.win_rate}</p>
-              <p>INITIAL CAPITAL..... {result.backtest.initial_capital}</p>
-              <p>FINAL EQUITY........ {result.backtest.final_equity}</p>
-              <p>NET RETURN.......... {result.backtest.net_return}</p>
-              <p>BUY & HOLD RETURN... {result.backtest.buy_hold_return}</p>
-              <p>VS BUY & HOLD....... {result.backtest.strategy_vs_buy_hold}</p>
+              <p>AVG WIN............. {result.backtest.avg_win}</p>
+              <p>AVG LOSS............ {result.backtest.avg_loss}</p>
+              <p>PAYOFF RATIO........ {result.backtest.payoff_ratio}</p>
+              <p>SHARPE RATIO........ {result.backtest.sharpe_ratio}</p>
+              <p>SORTINO RATIO....... {result.backtest.sortino_ratio}</p>
+              <p>CALMAR RATIO........ {result.backtest.calmar_ratio}</p>
+              <p>RECOVERY FACTOR..... {result.backtest.recovery_factor}</p>
               <p>AVG PNL............. {result.backtest.avg_pnl}</p>
               <p>LARGEST PROFIT...... {result.backtest.largest_profit}</p>
               <p>LARGEST LOSS........ {result.backtest.largest_loss}</p>
-              <p>AVG BARS IN TRADE... {result.backtest.avg_bars_in_trade}</p>
-              <p>AVG DD DURATION..... {result.backtest.avg_drawdown_duration}</p>
-              <p>DD / INIT CAPITAL... {result.backtest.max_drawdown_initial_capital}</p>
-              <p>PROFIT FACTOR....... {result.backtest.profit_factor}</p>
-              <p>MAX DRAWDOWN........ {result.backtest.max_drawdown}</p>
-              <p>RECOVERY FACTOR..... {result.backtest.recovery_factor}</p>
+              <p>BUY & HOLD RETURN... {result.backtest.buy_hold_return}</p>
+              <p>VS BUY & HOLD....... {result.backtest.strategy_vs_buy_hold}</p>
               <p>RISK-ADJUSTED SCORE. {result.backtest.risk_adjusted_score}</p>
             </div>
           </details>
 
           <details>
-
             <summary>RECENT TRADES</summary>
 
             <div className="trade-table">
@@ -1144,40 +987,22 @@ Best eligible risk-adjusted score among all tested combinations.
           </details>
 
           <details>
-            <summary>MARKET CONDITIONS</summary>
+            <summary>SYSTEM STATUS</summary>
 
             <div className="metrics">
-              <p>FIRST HALF MARKET.... {result.backtest.first_half_return}</p>
-              <p>SECOND HALF MARKET... {result.backtest.second_half_return}</p>
-              <p>MARKET TREND GATE.... {result.backtest.consistency_gate}</p>
+              <p>MIN TRADE GATE...... {result.backtest.min_trade_gate}</p>
+              <p>DRAWDOWN GATE....... {result.backtest.drawdown_gate}</p>
+              <p>CONSISTENCY GATE.... {result.backtest.consistency_gate}</p>
+              <p>FIRST HALF MARKET... {result.backtest.first_half_return}</p>
+              <p>SECOND HALF MARKET.. {result.backtest.second_half_return}</p>
+              <p>MINIMUM TRADES...... {result.backtest.min_trade_gate === "PASS" ? "PASS" : "FAIL"}</p>
+              <p>DRAWDOWN LIMIT...... {result.backtest.drawdown_gate === "PASS" ? "PASS" : "FAIL"}</p>
+              <p>PROFIT FACTOR....... {Number(result.backtest.profit_factor) > 1 ? "PASS" : "FAIL"}</p>
+              <p>EXPECTANCY.......... {parsePercent(result.backtest.expectancy) > 0 ? "PASS" : "FAIL"}</p>
             </div>
           </details>
 
           <details>
-            <summary>SYSTEM HEALTH</summary>
-
-                  <div className="reason">
-              CMC DATA..............ACTIVE
-              <br />
-              MARKET ANALYSIS........ACTIVE
-              <br />
-              STRATEGY ENGINE........ACTIVE
-              <br />
-              BACKTEST ENGINE........ACTIVE
-              <br />
-              RISK MODEL............ACTIVE
-              <br />
-              OPTIMIZER.............ACTIVE
-              <br />
-              <br />
-              SIGNAL GENERATION LOGIC
-              <br />
-              CLASSIFIED
-            </div>
-          </details>
-
-          <details>
-
             <summary>PERFORMANCE METRICS EXPLAINED</summary>
 
             <div className="metrics">
@@ -1212,11 +1037,11 @@ Best eligible risk-adjusted score among all tested combinations.
               <p>Account value over time, starting from the selected initial capital and updating after each closed trade.</p>
             </div>
           </details>
-
         </div>
       )}
+
       <div className="footer">
-        CMC: OK &nbsp;&nbsp; DATA: OK &nbsp;&nbsp; BACKTEST: OK &nbsp;&nbsp; OPTIMIZER: OK &nbsp;&nbsp; PRIVATE ENGINE: LOCKED
+        CMC: OK &nbsp;&nbsp; DATA: OK &nbsp;&nbsp; BACKTEST: OK &nbsp;&nbsp; OPTIMIZER: OK &nbsp;&nbsp; AGENT STACK: CMC + TWAK + BNB
       </div>
     </div>
   );

@@ -505,8 +505,14 @@ Best eligible risk-adjusted score among all tested combinations.
           <p>AGENT ADDRESS....... {twakAgentAddress || "N/A"}</p>
           <p>CHAIN............... BSC</p>
           <p>EXECUTION........... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
-          <p>REGISTRATION........ {String(twakRegistration).toUpperCase()}</p>
-
+          <p>
+            ON-CHAIN STATUS.....{" "}
+            {twakRegistration === "ready_for_onchain_registration"
+              ? "READY FOR REGISTRATION"
+              : twakRegistration === "not_ready"
+              ? "NOT READY"
+              : String(twakRegistration || "UNKNOWN").toUpperCase()}
+</p>
           <button onClick={connectWallet} disabled={loading} className="copy-btn">
             {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
           </button>

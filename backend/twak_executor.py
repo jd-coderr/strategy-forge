@@ -4,11 +4,14 @@ import subprocess
 from typing import Optional
 import json
 
-def get_twak_command():
+def get_twak_base_command():
     if os.name == "nt":
-        return r"C:\Users\oo\AppData\Roaming\npm\twak.cmd"
+        return [r"C:\Users\oo\AppData\Roaming\npm\twak.cmd"]
 
-    return shutil.which("twak") or "twak"
+    if shutil.which("twak"):
+        return ["twak"]
+
+    return ["npx", "@trustwallet/cli"]
 
 
 def run_twak_swap(
@@ -21,8 +24,8 @@ def run_twak_swap(
     password: Optional[str] = None,
 ):
     cmd = [
-        get_twak_command(),
-        "swap",
+    *get_twak_base_command(),
+    "swap",
         amount,
         from_token,
         to_token,
@@ -60,8 +63,8 @@ def run_twak_swap(
 
 def run_twak_portfolio():
     cmd = [
-        get_twak_command(),
-        "wallet",
+    *get_twak_base_command(),
+    "wallet",
         "portfolio",
         "--chains",
         "bsc",

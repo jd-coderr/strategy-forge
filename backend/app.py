@@ -156,24 +156,12 @@ def pick_best_strategy(
 def generate_strategy(request: StrategyRequest):
     cmc_signal = get_cmc_signal(request.coin)
 
-strategy, backtest, compared_results = pick_best_strategy(
-    coin=request.coin,
-    timeframe=request.timeframe,
-    risk=request.risk,
-    initial_capital=request.initial_capital,
-)
-            coin=request.coin,
-            timeframe=request.timeframe,
-            risk=request.risk,
-            initial_capital=request.initial_capital,
-        )
-else:
     strategy, backtest, compared_results = pick_best_strategy(
         coin=request.coin,
         timeframe=request.timeframe,
         risk=request.risk,
         initial_capital=request.initial_capital,
-    )    
+    )
 
     if strategy is None or backtest is None:
         return {
@@ -326,17 +314,24 @@ def agent_cycle(request: AgentCycleRequest):
     cmc_signal = get_cmc_signal(request.coin)
 
     if request.selected_strategy:
-    strategy = find_strategy_by_name(request.selected_strategy)
+        strategy = find_strategy_by_name(request.selected_strategy)
 
-    if strategy is not None:
-        backtest = run_backtest(
-            strategy=strategy,
-            coin=request.coin,
-            timeframe=request.timeframe,
-            risk=request.risk,
-            initial_capital=request.initial_capital,
-        )
-        compared_results = []
+        if strategy is not None:
+            backtest = run_backtest(
+                strategy=strategy,
+                coin=request.coin,
+                timeframe=request.timeframe,
+                risk=request.risk,
+                initial_capital=request.initial_capital,
+            )
+            compared_results = []
+        else:
+            strategy, backtest, compared_results = pick_best_strategy(
+                coin=request.coin,
+                timeframe=request.timeframe,
+                risk=request.risk,
+                initial_capital=request.initial_capital,
+            )
     else:
         strategy, backtest, compared_results = pick_best_strategy(
             coin=request.coin,
@@ -344,13 +339,6 @@ def agent_cycle(request: AgentCycleRequest):
             risk=request.risk,
             initial_capital=request.initial_capital,
         )
-else:
-    strategy, backtest, compared_results = pick_best_strategy(
-        coin=request.coin,
-        timeframe=request.timeframe,
-        risk=request.risk,
-        initial_capital=request.initial_capital,
-    )
 
     if strategy is None or backtest is None:
         event = log_trade(
@@ -386,6 +374,7 @@ else:
 
     decision = "HOLD"
     trade_plan = None
+    execution_result = None
 
     if "bull" in market_bias and risk_score > 0:
         decision = "BUY_BNB"
@@ -422,8 +411,6 @@ else:
 
     else:
         decision = "HOLD"
-
-        execution_result = None
 
     if trade_plan is not None:
         if trade_plan["from_token"] == "BNB" and bnb_balance < float(trade_plan["amount"]):
@@ -477,6 +464,7 @@ else:
             "timeframe": request.timeframe,
             "risk": request.risk,
             "live_execution": request.live_execution,
+            "selected_strategy_requested": request.selected_strategy,
             "cmc_signal": cmc_signal,
             "selected_strategy": strategy["name"],
             "risk_adjusted_score": risk_score,
@@ -493,6 +481,7 @@ else:
         "portfolio": portfolio_result,
         "coin": request.coin,
         "cmc_signal": cmc_signal,
+        "selected_strategy_requested": request.selected_strategy,
         "selected_strategy": strategy["name"],
         "risk_adjusted_score": risk_score,
         "trade_plan": trade_plan,
@@ -569,7 +558,6 @@ def execute_trade(request: ExecuteTradeRequest):
         "event": event,
     }
 
-from fastapi import FastAPI
 import shutil
 
 @app.get("/debug-node")

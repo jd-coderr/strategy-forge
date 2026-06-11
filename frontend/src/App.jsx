@@ -511,20 +511,7 @@ Best eligible risk-adjusted score among all tested combinations.
             {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
           </button>
 
-          {walletAddress && walletChainId !== "0x38" && (
-            <button onClick={switchToBnbChain} disabled={loading} className="copy-btn">
-              {"> SWITCH TO BNB SMART CHAIN <"}
-            </button>
-          )}
-
-          <button onClick={checkRegistration} disabled={loading} className="copy-btn">
-            {"> CHECK REGISTRATION <"}
-          </button>
-
-          <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
-            {"> LOAD PORTFOLIO <"}
-          </button>
-
+       
           {portfolio && (
             <div className="panel">
               <div className="panel-title">PORTFOLIO</div>

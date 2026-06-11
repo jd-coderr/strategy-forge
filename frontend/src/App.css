@@ -549,10 +549,10 @@ text-shadow: none;
 
 details summary {
   color: #ffffff;
-  font-size: 1.4rem;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  margin: 16px 0;
+  margin: 8px 0;
   list-style: none;
 }
 
@@ -561,9 +561,29 @@ details summary::-webkit-details-marker {
 }
 
 details summary::before {
-  content: "▶ ";
+  content: "▶";
+  font-size: 0.9rem;
+  margin-right: 6px;
 }
 
 details[open] summary::before {
-  content: "▼ ";
+
+details h2,
+details summary {
+  color: #ffffff;
+  font-weight: bold;
+  letter-spacing: 6px;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #00ff41,
+    0 0 8px #00ff41;
+}
+
+details summary::before,
+details[open] summary::before {
+  color: #ffffff;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #00ff41,
+    0 0 8px #00ff41;
 }

@@ -18,6 +18,10 @@ function App() {
   const [risk, setRisk] = useState("medium");
   const [initialCapital, setInitialCapital] = useState(10000);
   const [result, setResult] = useState(null);
+  const [agentResult, setAgentResult] = useState(null);
+  const [portfolio, setPortfolio] = useState(null);
+  const [tradeLog, setTradeLog] = useState(null);
+  const [liveExecution, setLiveExecution] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showTrades, setShowTrades] = useState(false);
   const [showRankings, setShowRankings] = useState(false);
@@ -365,6 +369,51 @@ Best eligible risk-adjusted score among all tested combinations.
     setLoadingMode("");
   }
 
+  async function runAgentCycle() {
+  try {
+    const response = await fetch(`${API_BASE}/agent-cycle`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coin,
+        timeframe,
+        risk,
+        live_execution: liveExecution,
+      }),
+    });
+
+    const data = await response.json();
+    setAgentResult(data);
+  } catch (err) {
+    console.error(err);
+    alert("AGENT CYCLE FAILED");
+  }
+}
+
+  async function loadPortfolio() {
+  try {
+    const response = await fetch(`${API_BASE}/portfolio`);
+    const data = await response.json();
+    setPortfolio(data);
+  } catch (err) {
+    console.error(err);
+    alert("PORTFOLIO LOAD FAILED");
+  }
+}
+
+  async function loadTradeLog() {
+  try {
+    const response = await fetch(`${API_BASE}/trade-log`);
+    const data = await response.json();
+    setTradeLog(data);
+  } catch (err) {
+    console.error(err);
+    alert("TRADE LOG LOAD FAILED");
+  }
+}
+
   return (
     <div className="terminal">
       <div className="topbar">
@@ -424,6 +473,26 @@ Best eligible risk-adjusted score among all tested combinations.
           <button onClick={checkRegistration} disabled={loading} className="copy-btn">
             {"> CHECK REGISTRATION <"}
           </button>
+<button onClick={loadPortfolio} disabled={loading} className="copy-btn">
+  {"> LOAD PORTFOLIO <"}
+</button>
+
+<button onClick={loadTradeLog} disabled={loading} className="copy-btn">
+  {"> LOAD TRADE LOG <"}
+</button>
+
+<label className="copy-btn">
+  <input
+    type="checkbox"
+    checked={liveExecution}
+    onChange={(e) => setLiveExecution(e.target.checked)}
+  />
+  LIVE EXECUTION
+</label>
+
+<button onClick={runAgentCycle} disabled={loading} className="copy-btn">
+  {"> RUN AGENT <"}
+</button>
         </div>
 
         <div className="input-row">
@@ -695,7 +764,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
             <summary>WHY THIS WAS SELECTED</summary>
 
- <h2>WHY THIS WAS SELECTED</h2>
 
             <div className="reason">{result.reason}</div>
           </details>
@@ -705,8 +773,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
               <summary>OPTIMIZATION RESULTS</summary>
 
-  <h2>OPTIMIZATION RESULTS</h2>
-
+ 
               <div className="metrics">
                 <p>MODE................ {result.optimization.mode}</p>
                 <p>COMBINATIONS TESTED. {result.optimization.tested_combinations}</p>
@@ -717,7 +784,8 @@ Best eligible risk-adjusted score among all tested combinations.
                 <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>
               </div>
 
-              <h2>SELECTED CONFIGURATION</h2>
+       <summary>SELECTED CONFIGURATION</summary>
+       
 
               <div className="metrics">
                 <p>WINNER............. {result.selected_strategy}</p>
@@ -730,7 +798,8 @@ Best eligible risk-adjusted score among all tested combinations.
                 <p>SELECTION REASON... BEST ELIGIBLE RISK-ADJUSTED SCORE</p>
               </div>
 
-              <h2>TOP RANKINGS</h2>
+<summary>TOP RANKINGS</summary>
+            
 
               <div className="optimizer-table">
                 <div className="optimizer-row optimizer-header">
@@ -772,7 +841,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
             <summary>TRADING STRATEGY</summary>
 
-  <h2>TRADING STRATEGY</h2>
 
             <div className="reason">
               <strong>STRATEGY:</strong> {result.selected_strategy}
@@ -816,8 +884,6 @@ Best eligible risk-adjusted score among all tested combinations.
   <details>
     <summary>MARKET INTELLIGENCE</summary>
 
-    <h2>MARKET INTELLIGENCE</h2>
-
     <div className="metrics">
       <p>SOURCE.............. CoinMarketCap.com API</p>
       <p>STATUS.............. {result.cmc_signal.status}</p>
@@ -844,8 +910,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
           <details>
             <summary>VALIDATION CHECKS</summary>
-
-  <h2>VALIDATION CHECKS</h2>
 
             <div className="metrics">
               <p>MIN TRADES REQUIRED. {result.backtest.min_trades_required}</p>
@@ -887,8 +951,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
       <details>
   <summary>RISK ANALYTICS</summary>
-
-  <h2>RISK ANALYTICS</h2>
 
   <div className="metrics">
               <p>
@@ -956,7 +1018,6 @@ Best eligible risk-adjusted score among all tested combinations.
             <details>
             <summary>PERFORMANCE SUMMARY</summary>
 
-  <h2>PERFORMANCE SUMMARY</h2>
 
             <div className="metrics">
               <p>COIN................ {result.coin}</p>
@@ -993,8 +1054,6 @@ Best eligible risk-adjusted score among all tested combinations.
 
             <summary>RECENT TRADES</summary>
 
-  <h2>RECENT TRADES</h2>
-
             <div className="trade-table">
               <div className="trade-row trade-header">
                 <span>ENTRY TIME</span>
@@ -1026,8 +1085,6 @@ Best eligible risk-adjusted score among all tested combinations.
           <details>
             <summary>MARKET CONDITIONS</summary>
 
-    <h2>MARKET CONDITIONS</h2>
-
             <div className="metrics">
               <p>FIRST HALF MARKET.... {result.backtest.first_half_return}</p>
               <p>SECOND HALF MARKET... {result.backtest.second_half_return}</p>
@@ -1038,9 +1095,7 @@ Best eligible risk-adjusted score among all tested combinations.
           <details>
             <summary>SYSTEM HEALTH</summary>
 
-            <h2>SYSTEM HEALTH</h2>
-
-            <div className="reason">
+                  <div className="reason">
               CMC DATA..............ACTIVE
               <br />
               MARKET ANALYSIS........ACTIVE
@@ -1063,8 +1118,6 @@ Best eligible risk-adjusted score among all tested combinations.
           <details>
 
             <summary>PERFORMANCE METRICS EXPLAINED</summary>
-
-<h2>PERFORMANCE METRICS EXPLAINED</h2>
 
             <div className="metrics">
               <p><strong>PF / PROFIT FACTOR</strong></p>

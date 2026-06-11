@@ -379,28 +379,29 @@ Best eligible risk-adjusted score among all tested combinations.
     setLoadingMode("");
   }
 
-  async function runAgentCycle() {
-    try {
-      const response = await fetch(`${API_BASE}/agent-cycle`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          coin,
-          timeframe,
-          risk,
-          live_execution: liveExecution,
-          selected_strategy: result?.selected_strategy || null,
-      });
+async function runAgentCycle() {
+  try {
+    const response = await fetch(`${API_BASE}/agent-cycle`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coin,
+        timeframe,
+        risk,
+        live_execution: liveExecution,
+        selected_strategy: result?.selected_strategy || null,
+      }),
+    });
 
-      const data = await response.json();
-      setAgentResult(data);
-    } catch (err) {
-      console.error(err);
-      alert("AGENT CYCLE FAILED");
-    }
+    const data = await response.json();
+    setAgentResult(data);
+  } catch (err) {
+    console.error(err);
+    alert("AGENT CYCLE FAILED");
   }
+}
 
   async function loadPortfolio() {
   try {

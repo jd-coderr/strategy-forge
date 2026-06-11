@@ -526,6 +526,17 @@ def execute_trade(request: ExecuteTradeRequest):
         "event": event,
     }
 
+from fastapi import FastAPI
+import shutil
+
+@app.get("/debug-node")
+def debug_node():
+    return {
+        "node": shutil.which("node"),
+        "npm": shutil.which("npm"),
+        "npx": shutil.which("npx"),
+    }
+
 @app.get("/portfolio")
 def portfolio():
     result = run_twak_portfolio()

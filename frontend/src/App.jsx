@@ -490,6 +490,42 @@ Best eligible risk-adjusted score among all tested combinations.
   {"> LOAD TRADE LOG <"}
 </button>
 
+{tradeLog && (
+  <div className="panel">
+    <div className="panel-title">TRADE LOG</div>
+
+    <div className="metrics">
+      <p>STATUS.............. {tradeLog.success ? "LOADED" : "ERROR"}</p>
+      <p>RECORDS............. {tradeLog.records?.length || 0}</p>
+      <p>LIMIT............... {tradeLog.limit || "N/A"}</p>
+    </div>
+
+    <div className="trade-table">
+      <div className="trade-row trade-header">
+        <span>TIME</span>
+        <span>STATUS</span>
+        <span>ACTION</span>
+        <span>FROM</span>
+        <span>TO</span>
+        <span>AMOUNT</span>
+        <span>MODE</span>
+      </div>
+
+      {tradeLog.records?.slice(0, 10).map((record, index) => (
+        <div className="trade-row" key={index}>
+          <span>{record.timestamp || "N/A"}</span>
+          <span>{String(record.status || "N/A").toUpperCase()}</span>
+          <span>{record.decision || record.reason || "N/A"}</span>
+          <span>{record.from_token || record.trade_plan?.from_token || "N/A"}</span>
+          <span>{record.to_token || record.trade_plan?.to_token || "N/A"}</span>
+          <span>{record.amount || record.trade_plan?.amount || "N/A"}</span>
+          <span>{record.quote_only === true || record.live_execution === false ? "SAFE" : "LIVE"}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
 <button
   type="button"
   className={`terminal-toggle ${liveExecution ? "active" : ""}`}

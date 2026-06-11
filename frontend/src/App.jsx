@@ -393,14 +393,23 @@ Best eligible risk-adjusted score among all tested combinations.
 }
 
   async function loadPortfolio() {
-  try {
-    const response = await fetch(`${API_BASE}/portfolio`);
-    const data = await response.json();
-    setPortfolio(data);
-  } catch (err) {
-    console.error(err);
-    alert("PORTFOLIO LOAD FAILED");
-  }
+  setPortfolio({
+    success: true,
+    source: "Browser Wallet",
+    walletAddress: walletAddress || "NOT CONNECTED",
+    chain:
+      walletChainId === "0x38"
+        ? "BNB Smart Chain"
+        : walletChainId || "UNKNOWN",
+    assets: [
+      {
+        symbol: "BNB",
+        balance: bnbBalance || "0",
+      },
+    ],
+    note:
+      "Portfolio loaded from connected browser wallet. Railway TWAK portfolio service unavailable.",
+  });
 }
 
   async function loadTradeLog() {
@@ -504,15 +513,13 @@ Best eligible risk-adjusted score among all tested combinations.
   <div className="panel">
     <div className="panel-title">PORTFOLIO</div>
 
-    <pre
-      style={{
-        color: "#00ff41",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-      }}
-    >
-      {JSON.stringify(portfolio, null, 2)}
-    </pre>
+    <div className="metrics">
+  <p>STATUS.............. {portfolio.success ? "CONNECTED" : "ERROR"}</p>
+  <p>SOURCE.............. {portfolio.source}</p>
+  <p>ADDRESS............. {portfolio.walletAddress}</p>
+  <p>CHAIN............... {portfolio.chain}</p>
+  <p>BNB BALANCE......... {portfolio.assets?.[0]?.balance} BNB</p>
+
   </div>
 )}
             <label>ASSET</label>

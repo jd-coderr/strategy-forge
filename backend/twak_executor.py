@@ -1,6 +1,14 @@
+import os
+import shutil
 import subprocess
 from typing import Optional
 import json
+
+def get_twak_command():
+    if os.name == "nt":
+        return get_twak_command(),
+
+    return shutil.which("twak") or "twak"
 
 
 def run_twak_swap(
@@ -13,7 +21,7 @@ def run_twak_swap(
     password: Optional[str] = None,
 ):
     cmd = [
-        r"C:\Users\oo\AppData\Roaming\npm\twak.cmd",
+        get_twak_command(),
         "swap",
         amount,
         from_token,
@@ -52,7 +60,7 @@ def run_twak_swap(
 
 def run_twak_portfolio():
     cmd = [
-        r"C:\Users\oo\AppData\Roaming\npm\twak.cmd",
+        get_twak_command(),
         "wallet",
         "portfolio",
         "--chains",

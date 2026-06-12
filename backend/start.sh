@@ -3,14 +3,14 @@ set -e
 
 echo "Starting Bergmann backend..."
 
-export HOME=/data
+export HOME=/root
 
-mkdir -p "$HOME/.twak"
+mkdir -p /root/.twak
 
 echo "TWAK HOME: $HOME"
-echo "TWAK WALLET PATH: $HOME/.twak/wallet.json"
+echo "TWAK WALLET PATH: /root/.twak/wallet.json"
 
-if [ ! -f "$HOME/.twak/wallet.json" ]; then
+if [ ! -f /root/.twak/wallet.json ]; then
   echo "No TWAK wallet found. Creating headless wallet..."
 
   npx @trustwallet/cli wallet create \
@@ -24,6 +24,12 @@ fi
 
 echo "TWAK wallet status:"
 npx @trustwallet/cli wallet status --json || true
+
+echo "TWAK BSC address:"
+npx @trustwallet/cli wallet address \
+  --chain bsc \
+  --password "$TWAK_WALLET_PASSWORD" \
+  --json || true
 
 echo "Starting FastAPI..."
 uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}

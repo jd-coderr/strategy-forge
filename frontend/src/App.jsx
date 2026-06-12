@@ -32,7 +32,6 @@ function App() {
   const [twakStatus, setTwakStatus] = useState("CONFIGURED");
   const [twakRegistration, setTwakRegistration] = useState("READY");
   const [twakAgentAddress, setTwakAgentAddress] = useState(null);
-  );
 
   function formatMoney(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";

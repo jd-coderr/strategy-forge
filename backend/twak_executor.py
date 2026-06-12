@@ -13,6 +13,32 @@ def get_twak_base_command():
 
     return ["npx", "@trustwallet/cli"]
 
+def ensure_twak_wallet():
+    private_key = os.getenv("TWAK_PRIVATE_KEY")
+    password = os.getenv("TWAK_WALLET_PASSWORD")
+
+    if not private_key or not password:
+        return
+
+    cmd = [
+        *get_twak_base_command(),
+        "wallet",
+        "import",
+        private_key,
+        "--password",
+        password,
+    ]
+
+    try:
+        subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except Exception:
+        pass
+
 
 def run_twak_swap(
     amount: str,
@@ -23,6 +49,8 @@ def run_twak_swap(
     quote_only: bool = True,
     password: Optional[str] = None,
 ):
+    ensure_twak_wallet()
+
     cmd = [
     *get_twak_base_command(),
     "swap",
@@ -62,6 +90,8 @@ def run_twak_swap(
     }
 
 def run_twak_portfolio():
+    ensure_twak_wallet()
+
     cmd = [
         *get_twak_base_command(),
         "wallet",

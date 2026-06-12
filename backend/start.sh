@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 echo "Starting Bergmann backend..."
 
@@ -17,7 +16,7 @@ if [ ! -f /root/.twak/wallet.json ]; then
     --password "$TWAK_WALLET_PASSWORD" \
     --no-keychain \
     --skip-password-check \
-    --json
+    --json || true
 else
   echo "Existing TWAK wallet found."
 fi

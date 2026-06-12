@@ -154,6 +154,7 @@ async function loadAutonomousStatus() {
 
 useEffect(() => {
   loadAutonomousStatus();
+  checkRegistration();
 
   const timer = setInterval(() => {
     loadAutonomousStatus();
@@ -477,63 +478,44 @@ async function runAgentCycle() {
 }
 
   async function loadPortfolio() {
-  try {
-    const tradeResponse = await fetch(`${API_BASE}/trade-log`);
-    const tradeData = await tradeResponse.json();
-    const records = tradeData.records || [];
+    try {
+      const response = await fetch(`${API_BASE}/portfolio`);
+      const data = await response.json();
 
-    let bnbPrice =
-      Number(result?.cmc_signal?.price_usd || 0) ||
-      Number(agentResult?.cmc_signal?.price_usd || 0);
+      const rawPortfolio =
+        data?.result?.portfolio ||
+        data?.portfolio ||
+        data?.result?.result?.portfolio ||
+        [];
 
-    if (!bnbPrice) {
-      records.forEach((record) => {
-        const stdout =
-          record?.result?.stdout ||
-          record?.execution_result?.stdout ||
-          "";
+      const assets = Array.isArray(rawPortfolio)
+        ? rawPortfolio.map((item) => ({
+            symbol: item.symbol || item.token || "UNKNOWN",
+            balance: item.balance,
+            usdValue: Number(item.usdValue || 0),
+            chain: item.chain,
+            type: item.type,
+            address: item.address,
+            contract: item.contract,
+          }))
+        : [];
 
-        if (!bnbPrice && stdout.includes('"input"') && stdout.includes('"output"')) {
-          try {
-            const parsed = JSON.parse(stdout);
+      const totalUsdValue = assets.reduce(
+        (sum, asset) => sum + Number(asset.usdValue || 0),
+        0
+      );
 
-            const inputParts = String(parsed.input || "").split(" ");
-            const outputParts = String(parsed.output || "").split(" ");
-
-            const inputAmount = Number(inputParts[0] || 0);
-            const inputSymbol = inputParts[1] || "";
-            const outputAmount = Number(outputParts[0] || 0);
-            const outputSymbol = outputParts[1] || "";
-
-            if (inputSymbol === "BNB" && outputSymbol === "USDT" && inputAmount > 0) {
-              bnbPrice = outputAmount / inputAmount;
-            }
-          } catch (error) {
-            // ignore bad log rows
-          }
-        }
+      setPortfolio({
+        success: data?.success === true,
+        assets,
+        totalUsdValue,
+        tradingPnlUsd: 0,
       });
+    } catch (err) {
+      console.error(err);
+      alert("PORTFOLIO LOAD FAILED");
     }
-
-    const bnbAmount = Number(bnbBalance || 0);
-    const bnbUsdValue = bnbPrice > 0 ? bnbAmount * bnbPrice : null;
-
-    setPortfolio({
-      success: true,
-      assets: [
-        {
-          symbol: "BNB",
-          usdValue: bnbUsdValue,
-        },
-      ],
-      totalUsdValue: bnbUsdValue,
-      tradingPnlUsd: 0,
-    });
-  } catch (err) {
-    console.error(err);
-    alert("PORTFOLIO LOAD FAILED");
   }
-}
 
   return (
     <div className="terminal">
@@ -564,8 +546,8 @@ async function runAgentCycle() {
         <h2 className="strategy-library-title">AGENT STATUS</h2>
 
         <div className="metrics strategy-library-box">
-          <p>WALLET.............. {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-          <p>ADDRESS............. {walletAddress || "N/A"}</p>
+          <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
+          <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
           <p>
             NETWORK.............{" "}
             {walletChainId === "0x38"
@@ -574,9 +556,9 @@ async function runAgentCycle() {
               ? `WRONG NETWORK (${walletChainId})`
               : "UNKNOWN"}
           </p>
-          <p>BNB BALANCE......... {bnbBalance !== null ? `${bnbBalance} BNB` : "N/A"}</p>
+          <p>USER BNB BALANCE.... {bnbBalance !== null ? `${bnbBalance} BNB` : "N/A"}</p>
           <p>TWAK................ {String(twakStatus).toUpperCase()}</p>
-          <p>AGENT ADDRESS....... {twakAgentAddress || "N/A"}</p>
+          <p>AGENT ADDRESS....... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
           <p>CHAIN............... BSC</p>
           <p>EXECUTION........... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
           <p>
@@ -602,7 +584,7 @@ async function runAgentCycle() {
               <div className="metrics autonomous-section">
                 {portfolio.assets?.map((asset, index) => (
                   <p key={index}>
-                    {asset.symbol}................... {formatMoney(asset.usdValue)}
+                    {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
                   </p>
                 ))}
 

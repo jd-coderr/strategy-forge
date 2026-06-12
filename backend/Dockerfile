@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN sed -i 's/\r$//' /app/start.sh
 RUN chmod +x /app/start.sh
 
 CMD ["sh", "/app/start.sh"]

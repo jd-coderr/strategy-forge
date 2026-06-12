@@ -25,14 +25,16 @@ def ensure_twak_wallet():
         print("TWAK WALLET IMPORT SKIPPED: TWAK_WALLET_PASSWORD missing")
         return
 
-    cmd = [
-        *get_twak_base_command(),
-        "wallet",
-        "import",
-        private_key,
-        "--password",
-        password,
-    ]
+cmd = [
+    *get_twak_base_command(),
+    "wallet",
+    "keychain",
+    "save",
+    "--private-key",
+    private_key,
+    "--password",
+    password,
+]
 
     safe_cmd = [
         "***" if part == private_key or part == password else part

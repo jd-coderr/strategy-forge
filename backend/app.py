@@ -398,13 +398,21 @@ def agent_cycle(request: AgentCycleRequest):
     market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
     risk_score = backtest.get("risk_adjusted_score", 0)
     portfolio_result = run_twak_portfolio()
-    portfolio_items = portfolio_result.get("portfolio") or []
+    raw_portfolio_items = portfolio_result.get("portfolio") or []
+    portfolio_items = []
+
+    if isinstance(raw_portfolio_items, list):
+        portfolio_items = [
+            item for item in raw_portfolio_items
+            if isinstance(item, dict)
+    ]
+
     position_size = None
 
     balances = {
-        item.get("symbol"): float(item.get("balance", 0))
+        item.get("symbol"): float(item.get("balance", 0) or 0)
         for item in portfolio_items
-    }
+}
 
     bnb_balance = balances.get("BNB", 0)
     usdt_balance = balances.get("USDT", 0)

@@ -17,7 +17,12 @@ def ensure_twak_wallet():
     private_key = os.getenv("TWAK_PRIVATE_KEY")
     password = os.getenv("TWAK_WALLET_PASSWORD")
 
-    if not private_key or not password:
+    if not private_key:
+        print("TWAK WALLET IMPORT SKIPPED: TWAK_PRIVATE_KEY missing")
+        return
+
+    if not password:
+        print("TWAK WALLET IMPORT SKIPPED: TWAK_WALLET_PASSWORD missing")
         return
 
     cmd = [
@@ -29,15 +34,27 @@ def ensure_twak_wallet():
         password,
     ]
 
+    safe_cmd = [
+        "***" if part == private_key or part == password else part
+        for part in cmd
+    ]
+
+    print("TWAK WALLET IMPORT COMMAND:", safe_cmd)
+
     try:
-        subprocess.run(
+        result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=120,
         )
-    except Exception:
-        pass
+
+        print("TWAK WALLET IMPORT RETURNCODE:", result.returncode)
+        print("TWAK WALLET IMPORT STDOUT:", result.stdout)
+        print("TWAK WALLET IMPORT STDERR:", result.stderr)
+
+    except Exception as error:
+        print("TWAK WALLET IMPORT ERROR:", str(error))
 
 
 def run_twak_swap(

@@ -672,7 +672,7 @@ async function runAgentCycle() {
                 {autonomousMode ? "> STOP AUTONOMOUS MODE <" : "> START AUTONOMOUS MODE <"}
               </button>
             </div>
-          </div></div>
+          </div>
         </div>
 
         <div className="input-row">

@@ -4,6 +4,7 @@ import subprocess
 from typing import Optional
 import json
 
+
 def get_twak_base_command():
     if os.name == "nt":
         return [r"C:\Users\oo\AppData\Roaming\npm\twak.cmd"]
@@ -12,50 +13,6 @@ def get_twak_base_command():
         return ["twak"]
 
     return ["npx", "@trustwallet/cli"]
-
-def ensure_twak_wallet():
-    private_key = os.getenv("TWAK_PRIVATE_KEY")
-    password = os.getenv("TWAK_WALLET_PASSWORD")
-
-    if not private_key:
-        print("TWAK WALLET IMPORT SKIPPED: TWAK_PRIVATE_KEY missing")
-        return
-
-    if not password:
-        print("TWAK WALLET IMPORT SKIPPED: TWAK_WALLET_PASSWORD missing")
-        return
-
-    cmd = [
-        *get_twak_base_command(),
-        "wallet",
-        "keychain",
-        "save",
-        private_key,
-        "--password",
-        password,
-    ]
-
-    safe_cmd = [
-        "***" if part == private_key or part == password else part
-        for part in cmd
-    ]
-
-    print("TWAK WALLET IMPORT COMMAND:", safe_cmd)
-
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-
-        print("TWAK WALLET IMPORT RETURNCODE:", result.returncode)
-        print("TWAK WALLET IMPORT STDOUT:", result.stdout)
-        print("TWAK WALLET IMPORT STDERR:", result.stderr)
-
-    except Exception as error:
-        print("TWAK WALLET IMPORT ERROR:", str(error))
 
 
 def run_twak_swap(
@@ -67,11 +24,9 @@ def run_twak_swap(
     quote_only: bool = True,
     password: Optional[str] = None,
 ):
-    ensure_twak_wallet()
-
     cmd = [
-    *get_twak_base_command(),
-    "swap",
+        *get_twak_base_command(),
+        "swap",
         amount,
         from_token,
         to_token,
@@ -107,9 +62,8 @@ def run_twak_swap(
         "returncode": result.returncode,
     }
 
-def run_twak_portfolio():
-    ensure_twak_wallet()
 
+def run_twak_portfolio():
     cmd = [
         *get_twak_base_command(),
         "wallet",
@@ -136,7 +90,7 @@ def run_twak_portfolio():
             "stderr": str(error),
             "returncode": None,
             "command": " ".join(cmd),
-            "message": "TWAK CLI is not installed on this server. Portfolio works only on local backend unless TWAK/Node is installed on Railway.",
+            "message": "TWAK CLI is not installed on this server.",
         }
 
     parsed = None

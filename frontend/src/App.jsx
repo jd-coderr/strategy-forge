@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -12,6 +12,9 @@ import "./App.css";
 const API_BASE = import.meta.env.VITE_API_URL || "https://strategy-forge-production-a3f6.up.railway.app";
 
 function App() {
+  const [autonomousMode, setAutonomousMode] = useState(false);
+  const [autonomousStatus, setAutonomousStatus] = useState(null);
+  const [autonomousInterval, setAutonomousInterval] = useState(5);
   const [cmcSkillHub, setCmcSkillHub] = useState(null);
   const [coin, setCoin] = useState("BNB");
   const [timeframe, setTimeframe] = useState("4H");
@@ -83,11 +86,83 @@ function App() {
   }
 
   function isApproved() {
-    return (
-      result?.backtest?.drawdown_gate === "PASS" &&
-      result?.backtest?.min_trade_gate === "PASS"
-    );
+  return (
+    result?.backtest?.drawdown_gate === "PASS" &&
+    result?.backtest?.min_trade_gate === "PASS"
+  );
+}
+
+async function startAutonomousMode() {
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/start`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coin,
+        timeframe,
+        risk,
+        initial_capital: initialCapital,
+        live_execution: liveExecution,
+        selected_strategy: result?.selected_strategy || null,
+        interval_minutes: autonomousInterval,
+      }),
+    });
+
+    const data = await response.json();
+    setAutonomousStatus(data);
+    setAutonomousMode(true);
+  } catch (err) {
+    console.error(err);
+    alert("AUTONOMOUS MODE START FAILED");
   }
+}
+
+async function stopAutonomousMode() {
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/stop`, {
+      method: "POST",
+    });
+
+    const data = await response.json();
+    setAutonomousStatus(data);
+    setAutonomousMode(false);
+  } catch (err) {
+    console.error(err);
+    alert("AUTONOMOUS MODE STOP FAILED");
+  }
+}
+
+async function loadAutonomousStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/status`);
+    const data = await response.json();
+
+    setAutonomousStatus(data);
+    setAutonomousMode(data.running === true);
+
+    if (data.interval_minutes) {
+      setAutonomousInterval(data.interval_minutes);
+}
+
+    if (data.last_result) {
+      setAgentResult(data.last_result);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+useEffect(() => {
+  loadAutonomousStatus();
+
+  const timer = setInterval(() => {
+    loadAutonomousStatus();
+  }, 10000);
+
+  return () => clearInterval(timer);
+}, []);
 
   function parsePercent(value) {
     return parseFloat(String(value).replace("%", ""));
@@ -560,6 +635,33 @@ async function runAgentCycle() {
           <button onClick={runAgentCycle} disabled={loading} className="copy-btn">
             {"> RUN AGENT <"}
           </button>
+<div className="metrics">
+  <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
+  <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
+  <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
+  <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
+  <p>NEXT CHECK.......... {autonomousStatus?.next_run || "N/A"}</p>
+</div>
+
+<label>AUTONOMOUS INTERVAL</label>
+<select
+  value={autonomousInterval}
+  disabled={autonomousMode}
+  onChange={(e) => setAutonomousInterval(Number(e.target.value))}
+>
+  <option value={1}>1 MINUTE</option>
+  <option value={5}>5 MINUTES</option>
+  <option value={15}>15 MINUTES</option>
+  <option value={30}>30 MINUTES</option>
+</select>
+
+<button
+  onClick={autonomousMode ? stopAutonomousMode : startAutonomousMode}
+  disabled={loading}
+  className="copy-btn"
+>
+  {autonomousMode ? "> STOP AUTONOMOUS MODE <" : "> START AUTONOMOUS MODE <"}
+</button>
         </div>
 
         <div className="input-row">

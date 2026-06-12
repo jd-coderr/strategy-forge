@@ -718,7 +718,7 @@ async function runAgentCycle() {
         )}
 
         <div className="autonomous-container">
-          <div className="metrics autonomous-status-box">
+            <div className="autonomous-status-box">
             <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
             <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
             <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>

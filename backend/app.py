@@ -10,7 +10,11 @@ from cmc_data import get_cmc_signal
 from twak_config import get_twak_status
 from trade_safety import validate_trade_request, mark_live_trade_executed
 from trade_logger import log_trade, read_trade_log
+from datetime import datetime, timezone, timedelta
 import json
+import threading
+import time
+import shutil
 
 app = FastAPI()
 
@@ -36,6 +40,19 @@ STRATEGY_FILES = [
     "stochastic_quad.json",
     "tdi_white_signal.json",
 ]
+
+AUTONOMOUS_STATE = {
+    "running": False,
+    "interval_minutes": 5,
+    "last_run": None,
+    "next_run": None,
+    "last_decision": None,
+    "last_reason": None,
+    "last_result": None,
+}
+
+AUTONOMOUS_THREAD = None
+AUTONOMOUS_CONFIG = None
 
 
 class StrategyRequest(BaseModel):
@@ -66,6 +83,15 @@ class AgentCycleRequest(BaseModel):
     initial_capital: float = 10000
     live_execution: bool = False
     selected_strategy: str | None = None
+
+class AutonomousRequest(BaseModel):
+    coin: str = "BNB"
+    timeframe: str = "1H"
+    risk: str = "low"
+    initial_capital: float = 10000
+    live_execution: bool = False
+    selected_strategy: str | None = None
+    interval_minutes: int = 5
 
 
 @app.get("/")
@@ -150,6 +176,17 @@ def pick_best_strategy(
 
     best = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
     return best["strategy"], best["backtest"], results
+
+def get_hold_reason(cmc_signal):
+    market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
+
+    if market_bias == "neutral":
+        return "Neutral market conditions. Agent is waiting for bullish or bearish confirmation."
+
+    if market_bias == "unknown":
+        return "Market bias unavailable. Agent is holding until signal quality improves."
+
+    return "No valid trade setup from current market conditions."
 
 
 @app.post("/generate-strategy")
@@ -558,7 +595,96 @@ def execute_trade(request: ExecuteTradeRequest):
         "event": event,
     }
 
-import shutil
+def update_autonomous_state_from_result(result):
+    now = datetime.now(timezone.utc)
+    next_run = now + timedelta(minutes=AUTONOMOUS_STATE["interval_minutes"])
+
+    if result.get("decision") == "HOLD":
+        reason = get_hold_reason(result.get("cmc_signal", {}))
+    elif result.get("trade_plan") is None:
+        reason = "No trade plan was produced by the strategy and risk engine."
+    elif result.get("execution_result") is None:
+        reason = "Trade plan was not executed."
+    else:
+        reason = "Agent cycle completed."
+
+    AUTONOMOUS_STATE["last_run"] = now.isoformat()
+    AUTONOMOUS_STATE["next_run"] = next_run.isoformat()
+    AUTONOMOUS_STATE["last_decision"] = result.get("decision")
+    AUTONOMOUS_STATE["last_reason"] = reason
+    AUTONOMOUS_STATE["last_result"] = result
+
+
+def autonomous_loop():
+    while AUTONOMOUS_STATE["running"]:
+        try:
+            result = agent_cycle(AUTONOMOUS_CONFIG)
+            update_autonomous_state_from_result(result)
+        except Exception as error:
+            AUTONOMOUS_STATE["last_reason"] = f"Autonomous cycle error: {str(error)}"
+
+        time.sleep(AUTONOMOUS_STATE["interval_minutes"] * 60)
+
+@app.post("/autonomous/start")
+def autonomous_start(request: AutonomousRequest):
+    global AUTONOMOUS_THREAD
+    global AUTONOMOUS_CONFIG
+
+    now = datetime.now(timezone.utc)
+
+    AUTONOMOUS_CONFIG = AgentCycleRequest(
+        coin=request.coin,
+        timeframe=request.timeframe,
+        risk=request.risk,
+        initial_capital=request.initial_capital,
+        live_execution=request.live_execution,
+        selected_strategy=request.selected_strategy,
+    )
+
+    AUTONOMOUS_STATE["running"] = True
+    AUTONOMOUS_STATE["interval_minutes"] = request.interval_minutes
+    AUTONOMOUS_STATE["last_run"] = None
+    AUTONOMOUS_STATE["next_run"] = now.isoformat()
+    AUTONOMOUS_STATE["last_decision"] = None
+    AUTONOMOUS_STATE["last_reason"] = "Autonomous mode started. Backend loop is running."
+    AUTONOMOUS_STATE["last_result"] = None
+
+    if AUTONOMOUS_THREAD is None or not AUTONOMOUS_THREAD.is_alive():
+        AUTONOMOUS_THREAD = threading.Thread(
+            target=autonomous_loop,
+            daemon=True,
+        )
+        AUTONOMOUS_THREAD.start()
+
+    return {
+        "success": True,
+        "mode": "autonomous",
+        "status": "running",
+        "interval_minutes": request.interval_minutes,
+        "next_run": AUTONOMOUS_STATE["next_run"],
+        "message": "Autonomous backend loop started.",
+    }
+    
+@app.post("/autonomous/stop")
+def autonomous_stop():
+    AUTONOMOUS_STATE["running"] = False
+    AUTONOMOUS_STATE["next_run"] = None
+    AUTONOMOUS_STATE["last_reason"] = "Autonomous mode stopped by user."
+
+    return {
+        "success": True,
+        "mode": "autonomous",
+        "status": "stopped",
+    }
+
+
+@app.get("/autonomous/status")
+def autonomous_status():
+    return {
+        "success": True,
+        "mode": "autonomous",
+        **AUTONOMOUS_STATE,
+    }
 
 @app.get("/debug-node")
 def debug_node():

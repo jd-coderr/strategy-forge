@@ -532,16 +532,18 @@ async function runAgentCycle() {
       <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
 
       <div className="panel">
-        <div className="panel-title">INPUT PARAMETERS</div>
+        <div className="panel-title">QUICK START</div>
 
-        <h2 className="strategy-library-title">STRATEGY LIBRARY</h2>
-
-        <div className="metrics strategy-library-box">
-          <p>VWAP EXTREME REVERSION</p>
-          <p>SMC SEQUENCE CONTINUATION</p>
-          <p>STOCHASTIC QUAD ROTATION</p>
-          <p>TDI WHITE SIGNAL REVERSAL</p>
+        <div className="metrics">
+          <p>1. AUTO-OPTIMIZE SETUP</p>
+          <p>2. CONNECT WALLET</p>
+          <p>3. RUN AGENT</p>
+          <p>4. LOAD AGENT PORTFOLIO</p>
         </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-title">INPUT PARAMETERS</div>
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 
@@ -607,19 +609,35 @@ async function runAgentCycle() {
           </div>
         </div>
 
-        <h2 className="strategy-library-title">ACTION CENTER</h2>
+        <h2 className="strategy-library-title">QUICK START ACTIONS</h2>
 
         <div className="agent-control-panel">
-          <button onClick={generateStrategy} disabled={loading} className="copy-btn">
-            {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
-          </button>
-
           <button onClick={optimizeStrategy} disabled={loading} className="copy-btn">
             {loading && loadingMode === "optimize" ? "OPTIMIZING..." : "> AUTO-OPTIMIZE SETUP <"}
           </button>
 
           <button onClick={connectWallet} disabled={loading} className="copy-btn">
             {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
+          </button>
+
+          <button
+            onClick={runAgentCycle}
+            disabled={loading}
+            className="copy-btn run-agent-btn"
+          >
+            {"> RUN AGENT <"}
+          </button>
+
+          <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
+            {"> LOAD AGENT PORTFOLIO <"}
+          </button>
+        </div>
+
+        <h2 className="strategy-library-title">CUSTOM SETUP</h2>
+
+        <div className="agent-control-panel">
+          <button onClick={generateStrategy} disabled={loading} className="copy-btn">
+            {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
           </button>
 
           <button
@@ -631,18 +649,6 @@ async function runAgentCycle() {
               {liveExecution ? "X" : "□"}
             </span>
             <span>{liveExecution ? "LIVE EXECUTION ON" : "SAFE MODE / QUOTE ONLY"}</span>
-          </button>
-
-          <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
-            {"> LOAD AGENT PORTFOLIO <"}
-          </button>
-
-          <button
-            onClick={runAgentCycle}
-            disabled={loading}
-            className="copy-btn run-agent-btn"
-          >
-            {"> RUN AGENT <"}
           </button>
 
           <select
@@ -1034,6 +1040,14 @@ async function runAgentCycle() {
             <summary>PERFORMANCE METRICS EXPLAINED</summary>
 
             <div className="metrics">
+              <p><strong>AVAILABLE STRATEGIES</strong></p>
+              <p>VWAP EXTREME REVERSION</p>
+              <p>SMC SEQUENCE CONTINUATION</p>
+              <p>STOCHASTIC QUAD ROTATION</p>
+              <p>TDI WHITE SIGNAL REVERSAL</p>
+
+              <br />
+
               <p><strong>PF / PROFIT FACTOR</strong></p>
               <p>Total winning trade profit divided by total losing trade loss. Above 1.0 is profitable.</p>
 

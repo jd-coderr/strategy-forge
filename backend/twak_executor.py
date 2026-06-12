@@ -43,24 +43,55 @@ def run_twak_swap(
     if password:
         cmd.extend(["--password", password])
 
-    print("TWAK COMMAND:", cmd)
+    safe_command = " ".join(cmd)
+    if password:
+        safe_command = safe_command.replace(password, "***")
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    print("TWAK COMMAND:", cmd, flush=True)
 
-    return {
-        "success": result.returncode == 0,
-        "command": " ".join(cmd).replace(password or "", "***")
-        if password
-        else " ".join(cmd),
-        "stdout": result.stdout,
-        "stderr": result.stderr,
-        "returncode": result.returncode,
-    }
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+        print("TWAK SWAP RETURNCODE:", result.returncode, flush=True)
+        print("TWAK SWAP STDOUT:", result.stdout, flush=True)
+        print("TWAK SWAP STDERR:", result.stderr, flush=True)
+
+        return {
+            "success": result.returncode == 0,
+            "command": safe_command,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+
+    except subprocess.TimeoutExpired as error:
+        print("TWAK SWAP TIMEOUT:", str(error), flush=True)
+
+        return {
+            "success": False,
+            "command": safe_command,
+            "stdout": error.stdout or "",
+            "stderr": error.stderr or "TWAK swap timed out after 300 seconds.",
+            "returncode": None,
+            "error": "TIMEOUT",
+        }
+
+    except Exception as error:
+        print("TWAK SWAP ERROR:", str(error), flush=True)
+
+        return {
+            "success": False,
+            "command": safe_command,
+            "stdout": "",
+            "stderr": str(error),
+            "returncode": None,
+            "error": "EXCEPTION",
+        }
 
 
 def run_twak_portfolio():
@@ -73,7 +104,7 @@ def run_twak_portfolio():
         "--json",
     ]
 
-    print("TWAK PORTFOLIO COMMAND:", cmd)
+    print("TWAK PORTFOLIO COMMAND:", cmd, flush=True)
 
     try:
         result = subprocess.run(

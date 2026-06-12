@@ -627,33 +627,35 @@ details[open] summary::before {
   margin-top: 36px;
 }
 
+.run-agent-btn {
+  margin-top: 15px;
+  margin-bottom: 36px;
+}
+
 .autonomous-container {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  margin-top: 30px;
-  margin-bottom: 30px;
+  margin-top: 0;
+  margin-bottom: 36px;
 }
 
 .autonomous-status-box {
-  margin: 0;
-  padding: 30px;
+  margin: 0 0 36px 0;
+  padding: 48px 30px;
 }
 
 .autonomous-label {
-  margin: 0;
+  display: block;
+  margin: 0 0 36px 0;
   padding: 0;
+  line-height: 1;
   text-align: center;
 }
 
 .autonomous-container select {
-  margin: 0;
+  display: block;
+  margin: 0 0 36px 0;
 }
 
 .autonomous-start-btn {
+  display: block;
   margin: 0 auto;
-}
-
-.run-agent-btn {
-  margin-bottom: 30px;
 }

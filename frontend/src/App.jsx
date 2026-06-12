@@ -31,8 +31,7 @@ function App() {
   const [bnbBalance, setBnbBalance] = useState(null);
   const [twakStatus, setTwakStatus] = useState("CONFIGURED");
   const [twakRegistration, setTwakRegistration] = useState("READY");
-  const [twakAgentAddress, setTwakAgentAddress] = useState(
-    "0xd076C7C098a2A1f02d5954e6731E7d5929f3Ec6a"
+  const [twakAgentAddress, setTwakAgentAddress] = useState(null);
   );
 
   function formatMoney(value) {

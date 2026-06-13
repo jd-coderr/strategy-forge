@@ -651,7 +651,7 @@ details[open] summary::before {
 .agent-control-panel {
   width: 100%;
   max-width: 900px;
-  margin: 0 auto 48px;
+  margin: 0 auto 36px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;

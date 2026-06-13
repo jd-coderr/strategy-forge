@@ -536,6 +536,25 @@ async function runAgentCycle() {
 
       <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
 
+ <div className="agent-control-panel">
+  <button onClick={optimizeStrategy} disabled={loading} className="copy-btn">
+    {loading && loadingMode === "optimize" ? "OPTIMIZING..." : "> AUTO-OPTIMIZE SETUP <"}
+  </button>
+
+  <button onClick={connectWallet} disabled={loading} className="copy-btn">
+    {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
+  </button>
+</div>
+
+<div style={{ textAlign: "center", marginTop: "25px", marginBottom: "40px" }}>
+  <button
+    onClick={runAgentCycle}
+    disabled={loading}
+    className="copy-btn run-agent-btn"
+  >
+    {"> RUN AGENT <"}
+  </button>
+</div>
      
       <div className="panel">
         <div className="panel-title">QUICK START ACTIONS</div>
@@ -604,27 +623,7 @@ async function runAgentCycle() {
           </div>
         </div>
 
-        <h2 className="strategy-library-title">QUICK START ACTIONS</h2>
-
-        <div className="agent-control-panel">
-          <button onClick={optimizeStrategy} disabled={loading} className="copy-btn">
-            {loading && loadingMode === "optimize" ? "OPTIMIZING..." : "> AUTO-OPTIMIZE SETUP <"}
-          </button>
-
-          <button onClick={connectWallet} disabled={loading} className="copy-btn">
-            {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
-          </button>
-
-          <button
-            onClick={runAgentCycle}
-            disabled={loading}
-            className="copy-btn run-agent-btn"
-          >
-            {"> RUN AGENT <"}
-          </button>
-
-          
-        </div>
+       
 
         <h2 className="strategy-library-title">CUSTOM SETUP</h2>
 

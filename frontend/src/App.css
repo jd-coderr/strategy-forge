@@ -704,3 +704,13 @@ details[open] summary::before {
   }
 }
 
+.agent-control-panel select {
+  text-align: center;
+  text-align-last: center;
+}
+
+.run-agent-btn {
+  display: block;
+  margin: 0 auto;
+}
+

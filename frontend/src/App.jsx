@@ -633,12 +633,13 @@ async function runAgentCycle() {
             {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
           </button>
 
-          <button
-            type="button"
-            className={`terminal-toggle ${liveExecution ? "active" : ""}`}
-            onClick={() => setLiveExecution(!liveExecution)}
-          >
-            <span>{liveExecution ? "LIVE EXECUTION ON" : "SAFE MODE / QUOTE ONLY"}</span>
+        <button
+          type="button"
+          className={`terminal-toggle ${liveExecution ? "active" : ""}`}
+          onClick={() => setLiveExecution(!liveExecution)}
+        >
+          <span>{liveExecution ? "LIVE EXECUTION ON" : "SAFE MODE / QUOTE ONLY"}</span>
+        </button>
 
           <select
             value={autonomousInterval}

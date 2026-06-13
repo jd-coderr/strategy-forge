@@ -303,6 +303,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
       setTimeout(async () => {
         await updateWalletData(accounts[0]);
+        await loadPortfolio();
       }, 500);
     } catch (error) {
       console.error(error);
@@ -471,6 +472,10 @@ async function runAgentCycle() {
 
     const data = await response.json();
     setAgentResult(data);
+
+    if (!autonomousMode) {
+      await startAutonomousMode();
+    }
   } catch (err) {
     console.error(err);
     alert("AGENT CYCLE FAILED");
@@ -531,19 +536,9 @@ async function runAgentCycle() {
 
       <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
 
+     
       <div className="panel">
-        <div className="panel-title">QUICK START</div>
-
-        <div className="metrics">
-          <p>1. AUTO-OPTIMIZE SETUP</p>
-          <p>2. CONNECT WALLET</p>
-          <p>3. RUN AGENT</p>
-          <p>4. LOAD AGENT PORTFOLIO</p>
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="panel-title">INPUT PARAMETERS</div>
+        <div className="panel-title">QUICK START ACTIONS</div>
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 
@@ -628,9 +623,7 @@ async function runAgentCycle() {
             {"> RUN AGENT <"}
           </button>
 
-          <button onClick={loadPortfolio} disabled={loading} className="copy-btn">
-            {"> LOAD AGENT PORTFOLIO <"}
-          </button>
+          
         </div>
 
         <h2 className="strategy-library-title">CUSTOM SETUP</h2>
@@ -645,11 +638,7 @@ async function runAgentCycle() {
             className={`terminal-toggle ${liveExecution ? "active" : ""}`}
             onClick={() => setLiveExecution(!liveExecution)}
           >
-            <span className="terminal-toggle-box">
-              {liveExecution ? "X" : "□"}
-            </span>
             <span>{liveExecution ? "LIVE EXECUTION ON" : "SAFE MODE / QUOTE ONLY"}</span>
-          </button>
 
           <select
             value={autonomousInterval}
@@ -662,13 +651,7 @@ async function runAgentCycle() {
             <option value={30}>30 MINUTES</option>
           </select>
 
-          <button
-            onClick={autonomousMode ? stopAutonomousMode : startAutonomousMode}
-            disabled={loading}
-            className="copy-btn autonomous-start-btn"
-          >
-            {autonomousMode ? "> STOP AUTONOMOUS MODE <" : "> START AUTONOMOUS MODE <"}
-          </button>
+         
         </div>
 
         <h2 className="strategy-library-title">AGENT STATUS</h2>

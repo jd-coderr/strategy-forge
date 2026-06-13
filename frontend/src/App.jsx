@@ -760,18 +760,56 @@ async function loadTradeHistory() {
 
 {tradeHistory.length > 0 && (
   <div className="panel">
-    <div className="panel-title">TRADE HISTORY</div>
+    <div className="panel-title">LIVE AGENT ACTIVITY</div>
 
     <div className="metrics">
-      {tradeHistory.slice().reverse().map((trade, index) => (
-        <p key={index}>
-          {trade.timestamp?.slice(0, 19) || "N/A"} |{" "}
-          {trade.status || "N/A"} |{" "}
-          {trade.decision || trade.mode || "N/A"} |{" "}
-          {trade.coin || trade.from_token || "N/A"}
-          {trade.to_token ? ` → ${trade.to_token}` : ""}
+{tradeHistory
+  .slice()
+  .reverse()
+  .map((trade, index) => {
+    const timestamp = trade.timestamp
+      ? new Date(trade.timestamp).toLocaleString("de-DE")
+      : "N/A";
+
+    const tradeSize =
+      trade.amount ||
+      trade.trade_plan?.amount ||
+      "N/A";
+
+    return (
+      <div
+        key={index}
+        style={{
+          marginBottom: "20px",
+          paddingBottom: "20px",
+          borderBottom: "1px solid rgba(0,255,65,0.25)",
+        }}
+      >
+        <p>{timestamp}</p>
+
+        <p>
+          EVENT:{" "}
+          {(trade.status || "UNKNOWN")
+            .replaceAll("_", " ")
+            .toUpperCase()}
         </p>
-      ))}
+
+        {trade.decision && (
+          <p>DECISION: {trade.decision}</p>
+        )}
+
+        {(trade.coin || trade.from_token) && (
+          <p>
+            ASSET:{" "}
+            {trade.coin ||
+              `${trade.from_token} → ${trade.to_token}`}
+          </p>
+        )}
+
+        <p>TRADE SIZE: {tradeSize}</p>
+      </div>
+    );
+  })}
     </div>
   </div>
 )}
@@ -1058,7 +1096,7 @@ async function loadTradeHistory() {
           </details>
 
           <details>
-            <summary>RECENT TRADES</summary>
+            <summary>STRATEGY BACKTEST HISTORY</summary>
 
             <div className="trade-table">
               <div className="trade-row trade-header">

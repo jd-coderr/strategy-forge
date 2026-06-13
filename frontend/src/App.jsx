@@ -800,6 +800,12 @@ const isRealTrade =
   .slice()
   .reverse()
   .map((trade, index) => {
+const isRealTrade =
+  trade.status === "success" ||
+  trade.status === "failed" ||
+  trade.status === "blocked" ||
+  trade.from_token ||
+  trade.to_token;
     const timestamp = trade.timestamp
       ? new Date(trade.timestamp).toLocaleString("de-DE")
       : "N/A";
@@ -818,43 +824,42 @@ const isRealTrade =
           borderBottom: "1px solid rgba(0,255,65,0.25)",
         }}
       >
-        <p>{timestamp}</p>
+        <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+  {timestamp}
+</p>
 
-        <p>
+<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
   EVENT:{" "}
   {(trade.status || "UNKNOWN")
     .replaceAll("_", " ")
     .toUpperCase()}
 </p>
 
-<p
-  style={{
-    color:
-      trade.from_token || trade.to_token
-        ? "#00ff41"
-        : "#808080"
-  }}
->
+<p style={{ color: "#00ff41" }}>
   TYPE:{" "}
-  {trade.from_token || trade.to_token
+  {isRealTrade
     ? "REAL TRADE / EXECUTION"
     : "DECISION ONLY"}
 </p>
        
 
-        {trade.decision && (
-          <p>DECISION: {trade.decision}</p>
-        )}
+{trade.decision && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    DECISION: {trade.decision}
+  </p>
+)}
 
-        {(trade.coin || trade.from_token) && (
-          <p>
-            ASSET:{" "}
-            {trade.coin ||
-              `${trade.from_token} → ${trade.to_token}`}
-          </p>
-        )}
+{(trade.coin || trade.from_token) && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    ASSET:{" "}
+    {trade.coin ||
+      `${trade.from_token} → ${trade.to_token}`}
+  </p>
+)}
 
-        <p>TRADE SIZE: {tradeSize}</p>
+<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+  TRADE SIZE: {tradeSize}
+</p>
       </div>
     );
   })}

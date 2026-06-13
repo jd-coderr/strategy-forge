@@ -23,6 +23,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [agentResult, setAgentResult] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
+  const [tradeHistory, setTradeHistory] = useState([]);
   const [liveExecution, setLiveExecution] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMode, setLoadingMode] = useState("");
@@ -155,6 +156,7 @@ async function loadAutonomousStatus() {
 useEffect(() => {
   loadAutonomousStatus();
   checkRegistration();
+  loadTradeHistory();
 
   const timer = setInterval(() => {
     loadAutonomousStatus();
@@ -472,6 +474,7 @@ async function runAgentCycle() {
 
     const data = await response.json();
     setAgentResult(data);
+    await loadTradeHistory();
 
     if (!autonomousMode) {
       await startAutonomousMode();
@@ -521,6 +524,29 @@ async function runAgentCycle() {
       alert("PORTFOLIO LOAD FAILED");
     }
   }
+
+async function loadPortfolio() {
+  try {
+    ...
+  } catch (err) {
+    console.error(err);
+    alert("PORTFOLIO LOAD FAILED");
+  }
+}
+
+async function loadTradeHistory() {
+  try {
+    const response = await fetch(`${API_BASE}/trade-log?limit=20`);
+    const data = await response.json();
+
+    setTradeHistory(data.records || []);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+return (
+  <div className="terminal">
 
   return (
     <div className="terminal">
@@ -707,6 +733,24 @@ async function runAgentCycle() {
             </div>
           </div>
         )}
+
+{tradeHistory.length > 0 && (
+  <div className="panel">
+    <div className="panel-title">TRADE HISTORY</div>
+
+    <div className="metrics">
+      {tradeHistory.slice().reverse().map((trade, index) => (
+        <p key={index}>
+          {trade.timestamp?.slice(0, 19) || "N/A"} |{" "}
+          {trade.status || "N/A"} |{" "}
+          {trade.decision || trade.mode || "N/A"} |{" "}
+          {trade.coin || trade.from_token || "N/A"}
+          {trade.to_token ? ` → ${trade.to_token}` : ""}
+        </p>
+      ))}
+    </div>
+  </div>
+)}
 
         <div className="autonomous-container">
             <div className="autonomous-status-box">

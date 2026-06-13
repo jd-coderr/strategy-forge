@@ -713,18 +713,15 @@ details[open] summary::before {
   text-align-last: center;
 }
 
-.custom-select-wrapper::after {
-  content: "▼";
-  position: absolute;
-  right: 22px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 700;
-  pointer-events: none;
-  text-shadow:
-    0 0 2px #ffffff,
-    0 0 4px #00ff41,
-    0 0 8px #00ff41;
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  padding-right: 55px;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 24px;
 }

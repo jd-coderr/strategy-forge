@@ -772,6 +772,7 @@ async function loadTradeHistory() {
 
     <div className="metrics">
 {tradeHistory
+  .filter((trade) => trade.status !== "portfolio_check")
   .slice()
   .reverse()
   .map((trade, index) => {

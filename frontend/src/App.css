@@ -728,8 +728,18 @@ select {
 }
 
 .button-row {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 36px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  margin-top: 24px;
+  align-items: stretch;
+}
+
+.button-row button {
+  width: 100%;
+  max-width: none;
+  height: 58px;
+  margin: 0 !important;
 }

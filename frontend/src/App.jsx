@@ -24,6 +24,7 @@ function App() {
   const [agentResult, setAgentResult] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
   const [tradeHistory, setTradeHistory] = useState([]);
+  const [showOnlyRealTrades, setShowOnlyRealTrades] = useState(false);
   const [startingPortfolioValue, setStartingPortfolioValue] = useState(null);
   const [liveExecution, setLiveExecution] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -771,8 +772,31 @@ async function loadTradeHistory() {
     <div className="panel-title">LIVE AGENT ACTIVITY</div>
 
     <div className="metrics">
+
+<button
+  onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)}
+  className="copy-btn"
+  style={{ marginBottom: "24px" }}
+>
+  {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+</button>
 {tradeHistory
-  .filter((trade) => trade.status !== "portfolio_check")
+  .filter((trade) => {
+    const status = String(trade.status || "").toLowerCase();
+    const decision = String(trade.decision || "").toUpperCase();
+
+const isRealTrade =
+  status === "success" ||
+  status === "failed" ||
+  status === "blocked" ||
+  trade.from_token ||
+  trade.to_token;
+
+    if (status === "portfolio_check") return false;
+    if (showOnlyRealTrades && !isRealTrade) return false;
+
+    return true;
+  })
   .slice()
   .reverse()
   .map((trade, index) => {
@@ -797,11 +821,19 @@ async function loadTradeHistory() {
         <p>{timestamp}</p>
 
         <p>
-          EVENT:{" "}
-          {(trade.status || "UNKNOWN")
-            .replaceAll("_", " ")
-            .toUpperCase()}
-        </p>
+  EVENT:{" "}
+  {(trade.status || "UNKNOWN")
+    .replaceAll("_", " ")
+    .toUpperCase()}
+</p>
+
+<p>
+  TYPE:{" "}
+  {trade.from_token || trade.to_token
+    ? "REAL TRADE / EXECUTION"
+    : "DECISION ONLY"}
+</p>
+       
 
         {trade.decision && (
           <p>DECISION: {trade.decision}</p>

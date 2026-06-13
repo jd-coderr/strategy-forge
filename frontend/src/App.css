@@ -705,12 +705,11 @@ details[open] summary::before {
 }
 
 .agent-control-panel select {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 420px !important;
+  max-width: 420px !important;
   text-align: center;
   text-align-last: center;
-}
-
-.run-agent-btn {
-  display: block;
-  margin: 0 auto;
 }
 

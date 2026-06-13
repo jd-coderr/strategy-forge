@@ -713,3 +713,18 @@ details[open] summary::before {
   text-align-last: center;
 }
 
+.custom-select-wrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  pointer-events: none;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #00ff41,
+    0 0 8px #00ff41;
+}

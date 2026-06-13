@@ -536,7 +536,12 @@ async function runAgentCycle() {
 
       <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
 
- <div className="agent-control-panel">
+ 
+     
+      <div className="panel">
+        <div className="panel-title">QUICK START ACTIONS</div>
+
+<div className="agent-control-panel">
   <button onClick={optimizeStrategy} disabled={loading} className="copy-btn">
     {loading && loadingMode === "optimize" ? "OPTIMIZING..." : "> AUTO-OPTIMIZE SETUP <"}
   </button>
@@ -555,9 +560,6 @@ async function runAgentCycle() {
     {"> RUN AGENT <"}
   </button>
 </div>
-     
-      <div className="panel">
-        <div className="panel-title">QUICK START ACTIONS</div>
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 

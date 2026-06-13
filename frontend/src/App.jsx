@@ -608,7 +608,7 @@ async function runAgentCycle() {
           </div>
 
           <div>
-            <label>INITIAL CAPITAL</label>
+            <label>BACKTEST CAPITAL</label>
 
             <div className="capital-input">
               <span>$</span>

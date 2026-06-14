@@ -688,7 +688,11 @@ async function loadTradeHistory() {
           className={`terminal-toggle ${liveExecution ? "active" : ""}`}
           onClick={() => setLiveExecution(!liveExecution)}
         >
-          <span>{liveExecution ? "LIVE EXECUTION ON" : "SAFE MODE / QUOTE ONLY"}</span>
+          <span>
+  {liveExecution
+    ? "TEST MODE OFF / LIVE TRADE ON"
+    : "TEST MODE ON / LIVE TRADE OFF"}
+</span>
         </button>
 
           <select

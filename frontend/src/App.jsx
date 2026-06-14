@@ -898,7 +898,7 @@ const isRealTrade =
     </div>
   </div>
 )}
-
+</div>
 
       {loading && (
         <div className="panel loading-panel">

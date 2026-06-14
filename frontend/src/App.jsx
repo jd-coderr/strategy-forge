@@ -610,7 +610,8 @@ async function loadTradeHistory() {
   </button>
 </div>
 
-        <div className="panel portfolio-panel">
+        {walletAddress && (
+  <div className="panel portfolio-panel">
   <div className="panel-title">AGENT PORTFOLIO</div>
 
   <div className="metrics autonomous-section">
@@ -651,8 +652,8 @@ async function loadTradeHistory() {
       {"> RESET PNL BASELINE <"}
     </button>
 
-  </div>
-</div>
+    </div>
+    )}
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 

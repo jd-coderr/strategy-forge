@@ -492,11 +492,11 @@ async function runAgentCycle() {
       const response = await fetch(`${API_BASE}/portfolio`);
       const data = await response.json();
 
-      const rawPortfolio =
-        data?.result?.portfolio ||
-        data?.portfolio ||
-        data?.result?.result?.portfolio ||
-        [];
+    const rawPortfolio =
+      data?.result?.portfolio ||
+      data?.portfolio ||
+      data?.event?.result?.portfolio ||
+      [];
 
       const assets = Array.isArray(rawPortfolio)
         ? rawPortfolio.map((item) => ({

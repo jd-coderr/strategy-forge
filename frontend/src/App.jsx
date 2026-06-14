@@ -756,43 +756,49 @@ async function loadTradeHistory() {
 
         <h2 className="strategy-library-title">AGENT STATUS</h2>
 
-        <div className="metrics strategy-library-box">
-          <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-          <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
-          <p>
-            NETWORK.............{" "}
-            {walletChainId === "0x38"
-              ? "BNB SMART CHAIN"
-              : walletChainId
-              ? `WRONG NETWORK (${walletChainId})`
-              : "UNKNOWN"}
-          </p>
-          <p>
-  AGENT BNB BALANCE....{" "}
-  {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
-    ? `${portfolio.assets.find((asset) => asset.symbol === "BNB").balance} BNB`
-    : "N/A"}
-</p>
+<div className="metrics strategy-library-box">
+  <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
 
-<p>
-  AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
-</p>
-          <p>TWAK................ {String(twakStatus).toUpperCase()}</p>
-          <p>AGENT ADDRESS....... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-          <p>CHAIN............... BSC</p>
-          <p>EXECUTION........... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
-          <p>
-            AGENT STATUS........{" "}
-            {twakRegistration === "ready_for_onchain_registration"
-              ? "LIVE TRADING READY"
-              : twakRegistration === "not_ready"
-              ? "NOT READY"
-              : String(twakRegistration || "UNKNOWN").toUpperCase()}
-          </p>
-        </div>
+  <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
 
-        
+  <p>
+    NETWORK.............{" "}
+    {walletChainId === "0x38"
+      ? "BNB SMART CHAIN"
+      : walletChainId
+      ? `WRONG NETWORK (${walletChainId})`
+      : "UNKNOWN"}
+  </p>
 
+  <p>
+    AGENT BNB BALANCE....{" "}
+    {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
+      ? `${portfolio.assets.find((asset) => asset.symbol === "BNB").balance} BNB`
+      : "N/A"}
+  </p>
+
+  <p>
+    AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
+  </p>
+
+  <p>TWAK............... CONFIGURED</p>
+  <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+  <p>CHAIN.............. BSC</p>
+  <p>EXECUTION.......... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
+  <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
+</div>
+
+<div className="autonomous-container">
+  <div className="autonomous-status-box">
+    <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
+    <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
+    <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
+    <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
+    <p>NEXT CHECK.......... {autonomousStatus?.next_run || "N/A"}</p>
+  </div>
+</div>
+
+  
 {tradeHistory.length > 0 && (
   <div className="panel">
     <div className="panel-title">LIVE AGENT ACTIVITY</div>
@@ -893,16 +899,6 @@ const isRealTrade =
   </div>
 )}
 
-        <div className="autonomous-container">
-            <div className="autonomous-status-box">
-            <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
-            <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
-            <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
-            <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
-            <p>NEXT CHECK.......... {autonomousStatus?.next_run || "N/A"}</p>
-          </div>
-        </div>
-      </div>
 
       {loading && (
         <div className="panel loading-panel">

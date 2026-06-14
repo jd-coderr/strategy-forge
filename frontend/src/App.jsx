@@ -610,39 +610,49 @@ async function loadTradeHistory() {
   </button>
 </div>
 
-{portfolio && (
-          <div className="panel portfolio-panel">
-            <div className="panel-title">AGENT PORTFOLIO</div>
+        <div className="panel portfolio-panel">
+  <div className="panel-title">AGENT PORTFOLIO</div>
 
-            <div className="metrics autonomous-section">
-              {portfolio.assets?.map((asset, index) => (
-                <p key={index}>
-                  {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
-                </p>
-              ))}
+  <div className="metrics autonomous-section">
 
-              <br />
+    {portfolio?.assets?.length > 0 ? (
+      portfolio.assets.map((asset, index) => (
+        <p key={index}>
+          {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
+        </p>
+      ))
+    ) : (
+      <p>NO AGENT WALLET ASSETS LOADED</p>
+    )}
 
-              <p>TOTAL VALUE........... {formatMoney(portfolio.totalUsdValue)}</p>
+    <br />
 
-              <p>START VALUE........... {formatMoney(portfolio.startingPortfolioValue)}</p>
+    <p>
+      TOTAL VALUE...........
+      {formatMoney(portfolio?.totalUsdValue || 0)}
+    </p>
 
-<p>
-  TRADING P/L...........{" "}
-  {Number(portfolio.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
-  {Math.abs(Number(portfolio.tradingPnlUsd || 0)).toFixed(2)}
-</p>
+    <p>
+      START VALUE...........
+      {formatMoney(portfolio?.startingPortfolioValue || 0)}
+    </p>
 
-<button
-  onClick={resetPnlBaseline}
-  className="copy-btn"
-  style={{ marginTop: "12px" }}
->
-  {"> RESET PNL BASELINE <"}
-</button>
-            </div>
-          </div>
-        )}
+    <p>
+      TRADING P/L...........{" "}
+      {Number(portfolio?.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
+      {Math.abs(Number(portfolio?.tradingPnlUsd || 0)).toFixed(2)}
+    </p>
+
+    <button
+      onClick={resetPnlBaseline}
+      className="copy-btn"
+      style={{ marginTop: "12px" }}
+    >
+      {"> RESET PNL BASELINE <"}
+    </button>
+
+  </div>
+</div>
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 

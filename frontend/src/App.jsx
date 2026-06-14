@@ -610,6 +610,40 @@ async function loadTradeHistory() {
   </button>
 </div>
 
+{portfolio && (
+          <div className="panel portfolio-panel">
+            <div className="panel-title">AGENT PORTFOLIO</div>
+
+            <div className="metrics autonomous-section">
+              {portfolio.assets?.map((asset, index) => (
+                <p key={index}>
+                  {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
+                </p>
+              ))}
+
+              <br />
+
+              <p>TOTAL VALUE........... {formatMoney(portfolio.totalUsdValue)}</p>
+
+              <p>START VALUE........... {formatMoney(portfolio.startingPortfolioValue)}</p>
+
+<p>
+  TRADING P/L...........{" "}
+  {Number(portfolio.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
+  {Math.abs(Number(portfolio.tradingPnlUsd || 0)).toFixed(2)}
+</p>
+
+<button
+  onClick={resetPnlBaseline}
+  className="copy-btn"
+  style={{ marginTop: "12px" }}
+>
+  {"> RESET PNL BASELINE <"}
+</button>
+            </div>
+          </div>
+        )}
+
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 
         <div className="input-row">
@@ -737,39 +771,7 @@ async function loadTradeHistory() {
           </p>
         </div>
 
-        {portfolio && (
-          <div className="panel portfolio-panel">
-            <div className="panel-title">AGENT PORTFOLIO</div>
-
-            <div className="metrics autonomous-section">
-              {portfolio.assets?.map((asset, index) => (
-                <p key={index}>
-                  {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
-                </p>
-              ))}
-
-              <br />
-
-              <p>TOTAL VALUE........... {formatMoney(portfolio.totalUsdValue)}</p>
-
-              <p>START VALUE........... {formatMoney(portfolio.startingPortfolioValue)}</p>
-
-<p>
-  TRADING P/L...........{" "}
-  {Number(portfolio.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
-  {Math.abs(Number(portfolio.tradingPnlUsd || 0)).toFixed(2)}
-</p>
-
-<button
-  onClick={resetPnlBaseline}
-  className="copy-btn"
-  style={{ marginTop: "12px" }}
->
-  {"> RESET PNL BASELINE <"}
-</button>
-            </div>
-          </div>
-        )}
+        
 
 {tradeHistory.length > 0 && (
   <div className="panel">

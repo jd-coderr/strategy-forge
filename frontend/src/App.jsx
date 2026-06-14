@@ -23,6 +23,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [agentResult, setAgentResult] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [tradeHistory, setTradeHistory] = useState([]);
   const [showOnlyRealTrades, setShowOnlyRealTrades] = useState(false);
   const [startingPortfolioValue, setStartingPortfolioValue] = useState(null);
@@ -167,6 +168,17 @@ useEffect(() => {
   return () => clearInterval(timer);
 }, []);
 
+
+useEffect(() => {
+  if (walletAddress) {
+    loadPortfolio();
+  } else {
+    setPortfolio(null);
+    setStartingPortfolioValue(null);
+  }
+}, [walletAddress]);
+
+
   function parsePercent(value) {
     return parseFloat(String(value).replace("%", ""));
   }
@@ -305,10 +317,8 @@ Best eligible risk-adjusted score among all tested combinations.
 
       await forceBnbChain();
 
-      setTimeout(async () => {
-        await updateWalletData(accounts[0]);
-        await loadPortfolio();
-      }, 500);
+      await updateWalletData(accounts[0]);
+      await loadPortfolio();
     } catch (error) {
       console.error(error);
       alert("WALLET CONNECTION OR NETWORK SWITCH FAILED");
@@ -488,6 +498,8 @@ async function runAgentCycle() {
 }
 
   async function loadPortfolio() {
+    setPortfolioLoading(true);
+
     try {
       const response = await fetch(`${API_BASE}/portfolio`);
       const data = await response.json();
@@ -534,6 +546,8 @@ setPortfolio({
     } catch (err) {
       console.error(err);
       alert("PORTFOLIO LOAD FAILED");
+    } finally {
+      setPortfolioLoading(false);
     }
   }
 
@@ -610,7 +624,7 @@ async function loadTradeHistory() {
   </button>
 </div>
 
-{walletAddress ? (
+{walletAddress && (
   <div className="panel portfolio-panel">
     <div className="panel-title">AGENT PORTFOLIO</div>
 
@@ -621,8 +635,10 @@ async function loadTradeHistory() {
             {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
           </p>
         ))
-      ) : (
+      ) : portfolioLoading ? (
         <p>LOADING AGENT WALLET ASSETS...</p>
+      ) : (
+        <p>NO AGENT WALLET ASSETS LOADED</p>
       )}
 
       <br />
@@ -645,7 +661,7 @@ async function loadTradeHistory() {
       </button>
     </div>
   </div>
-) : null}
+)}
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 

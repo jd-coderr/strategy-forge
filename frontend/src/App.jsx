@@ -767,7 +767,16 @@ async function loadTradeHistory() {
               ? `WRONG NETWORK (${walletChainId})`
               : "UNKNOWN"}
           </p>
-          <p>USER BNB BALANCE.... {bnbBalance !== null ? `${bnbBalance} BNB` : "N/A"}</p>
+          <p>
+  AGENT BNB BALANCE....{" "}
+  {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
+    ? `${portfolio.assets.find((asset) => asset.symbol === "BNB").balance} BNB`
+    : "N/A"}
+</p>
+
+<p>
+  AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
+</p>
           <p>TWAK................ {String(twakStatus).toUpperCase()}</p>
           <p>AGENT ADDRESS....... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
           <p>CHAIN............... BSC</p>

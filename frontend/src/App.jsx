@@ -159,8 +159,7 @@ useEffect(() => {
   loadAutonomousStatus();
   checkRegistration();
   loadTradeHistory();
-  loadPortfolio();
-
+  
   const timer = setInterval(() => {
     loadAutonomousStatus();
   }, 10000);

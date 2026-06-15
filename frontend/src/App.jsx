@@ -923,7 +923,7 @@ async function loadTradeHistory() {
   <p>EXECUTION.......... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
   <p>SELECTED TIMEFRAME.. {timeframe}</p>
   <p>TRADE SIZE.......... {tradeSize} {coin}</p>
-  <p>CONFIDENCE.......... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score}%` : "N/A"}</p>
+  <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
   <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
   <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
   <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
@@ -942,13 +942,32 @@ async function loadTradeHistory() {
   
 {agentResult?.confidence_score !== undefined && (
   <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>AGENT CONFIDENCE SCORE</strong></p>
-    <p>CONFIDENCE.......... {agentResult.confidence_score}%</p>
-    <p>CMC BIAS............ {agentResult.signal_breakdown?.cmc_bias ?? "N/A"}</p>
-    <p>FEAR & GREED........ {agentResult.signal_breakdown?.fear_greed ?? "N/A"}</p>
-    <p>ALTCOIN SEASON...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"}</p>
-    <p>BACKTEST SCORE...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"}</p>
-    <p>DRAWDOWN SAFETY..... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"}</p>
+    <p><strong>{coin} TRADE CONFIDENCE</strong></p>
+    <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
+    <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
+
+    <br />
+
+    <p><strong>CONFIDENCE BREAKDOWN</strong></p>
+    <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
+    <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
+    <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
+    <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
+    <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+
+    <br />
+
+    <p>
+      INTERPRETATION.......{" "}
+      {agentResult.confidence_score < 60
+        ? "WAIT / HOLD"
+        : agentResult.confidence_score < 75
+        ? "WEAK TRADE"
+        : agentResult.confidence_score < 90
+        ? "STRONG TRADE"
+        : "HIGH CONVICTION"}
+    </p>
+    <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
   </div>
 )}
 
@@ -1049,7 +1068,7 @@ const isRealTrade =
 
 {trade.confidence_score !== undefined && (
   <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-    CONFIDENCE: {trade.confidence_score}%
+    TRADE CONFIDENCE: {trade.confidence_score} / 100
   </p>
 )}
 
@@ -1189,7 +1208,7 @@ const isRealTrade =
             <p>SELECTED STRATEGY... {result.selected_strategy}</p>
             <p>RISK PROFILE........ {String(result.risk).toUpperCase()}</p>
             <p>LAST DECISION....... {getAgentDecision()}</p>
-            <p>CONFIDENCE.......... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score}%` : "N/A"}</p>
+            <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
             <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
             <p>TRADE PLAN.......... {agentResult?.trade_plan ? "GENERATED" : "NONE"}</p>
             <p>ACTION TAKEN........ {agentResult?.execution_result ? "EXECUTION ATTEMPTED" : "NONE"}</p>

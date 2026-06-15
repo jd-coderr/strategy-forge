@@ -547,13 +547,26 @@ text-shadow: none;
     0 0 10px rgba(255,255,255,0.5);
 }
 
+details {
+  margin: 18px 0;
+}
+
+details[open] {
+  margin: 18px 0;
+}
+
 details summary {
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  margin: 8px 0;
+  margin: 0;
+  padding: 8px 0;
   list-style: none;
+}
+
+details > *:not(summary) {
+  margin-top: 18px;
 }
 
 details summary::-webkit-details-marker {

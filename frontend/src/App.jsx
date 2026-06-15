@@ -1408,7 +1408,7 @@ const isRealTrade =
             </div>
           </details>
 
-          <details style={{ marginTop: "24px" }}>
+          <details>
             <summary>STRATEGY BACKTEST HISTORY</summary>
 
             <div className="trade-table">
@@ -1440,7 +1440,7 @@ const isRealTrade =
           </details>
 
        
-          <details style={{ marginTop: "24px" }}>
+          <details>
             <summary>PERFORMANCE METRICS EXPLAINED</summary>
 
             <div className="metrics">

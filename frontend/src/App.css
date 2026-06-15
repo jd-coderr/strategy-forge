@@ -794,46 +794,59 @@ select {
 }
 
 
-/* ============================
-   COMPETITION-FIRST PAGE ORDER
-   ============================ */
-.competition-panel {
-  margin-top: 0;
-  background: rgba(0, 255, 65, 0.045);
+/* =========================================
+   USER-FIRST LAYOUT REBALANCE
+   ========================================= */
+
+/* Keep the dashboard user-first; verification is secondary and belongs lower down. */
+.verification-panel {
+  margin-top: 48px;
+  background: rgba(0, 255, 65, 0.025);
 }
 
-.competition-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 24px;
+.verification-panel .panel-title {
+  color: #ffffff;
 }
 
-.competition-grid p {
-  text-align: left;
-  margin: 8px 0;
+/* Better breathing room for user control sections */
+.strategy-library-title {
+  margin-top: 48px !important;
+  margin-bottom: 36px !important;
 }
 
-.portfolio-section-panel,
-.decision-section-panel,
-.operator-controls-panel {
-  margin-top: 34px;
+/* Keep boxed sections separated, without turning every title into a huge gap */
+.strategy-library-box,
+.execution-status-panel,
+.last-execution-panel {
+  margin-top: 32px !important;
+  margin-bottom: 36px !important;
 }
 
-.decision-section-panel .strategy-library-title,
-.operator-controls-panel .strategy-library-title {
+/* Equal space below important inline headings inside metric boxes */
+.execution-status-panel p:first-child,
+.last-execution-panel p:first-child,
+.strategy-library-box p:first-child {
   margin-top: 0 !important;
+  margin-bottom: 28px !important;
 }
 
-.operator-controls-panel {
-  background: rgba(0, 255, 65, 0.018);
+/* Custom setup should not sit too close to the previous controls */
+.operator-controls-panel .strategy-library-title,
+h2.strategy-library-title {
+  padding-top: 8px;
 }
 
-@media (max-width: 768px) {
-  .competition-grid {
-    grid-template-columns: 1fr;
-  }
+/* Make verification content compact because it is secondary information */
+.verification-panel .metrics p:first-child {
+  margin-bottom: 24px !important;
+}
 
-  .competition-grid p {
-    text-align: center;
-  }
+.verification-panel .metrics p {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+/* Avoid competition panel styles affecting the user-first layout if old class names remain anywhere */
+.competition-panel {
+  margin-top: 48px;
 }

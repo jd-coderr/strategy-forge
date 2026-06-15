@@ -29,6 +29,9 @@ function App() {
   const [showOnlyRealTrades, setShowOnlyRealTrades] = useState(false);
   const [startingPortfolioValue, setStartingPortfolioValue] = useState(null);
   const [liveExecution, setLiveExecution] = useState(false);
+  const [executionMode, setExecutionMode] = useState("decision_simulation");
+  const [paperPortfolio, setPaperPortfolio] = useState(null);
+  const [paperStartingBalance, setPaperStartingBalance] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [loadingMode, setLoadingMode] = useState("");
   const [activeButton, setActiveButton] = useState("");
@@ -111,6 +114,13 @@ function App() {
     return date.toLocaleString("de-DE");
   }
 
+  function getExecutionModeLabel() {
+    if (executionMode === "live_trading") return "LIVE TRADING";
+    if (executionMode === "paper_trading") return "PAPER TRADING";
+
+    return "DECISION SIMULATION";
+  }
+
   function getButtonStyle(name) {
     const isPersistentActive =
       (name === "wallet" && walletAddress) ||
@@ -155,7 +165,8 @@ async function startAutonomousMode() {
         timeframe,
         risk,
         initial_capital: initialCapital,
-        live_execution: liveExecution,
+        live_execution: executionMode === "live_trading",
+        execution_mode: executionMode,
         trade_size: tradeSize,
         selected_strategy: result?.selected_strategy || null,
         interval_minutes: autonomousInterval,
@@ -220,6 +231,7 @@ useEffect(() => {
   loadAutonomousStatus();
   checkRegistration();
   loadTradeHistory();
+  loadPaperPortfolio();
   
   const timer = setInterval(() => {
     loadAutonomousStatus();
@@ -549,13 +561,21 @@ async function runAgentCycle() {
         timeframe,
         risk,
         trade_size: tradeSize,
-        live_execution: liveExecution,
+        live_execution: executionMode === "live_trading",
+        execution_mode: executionMode,
         selected_strategy: result?.selected_strategy || null,
       }),
     });
 
     const data = await response.json();
     setAgentResult(data);
+
+    if (data.paper_portfolio) {
+      setPaperPortfolio(data.paper_portfolio);
+    } else if (executionMode === "paper_trading") {
+      await loadPaperPortfolio();
+    }
+
     await loadTradeHistory();
 
     if (!autonomousMode) {
@@ -621,6 +641,40 @@ setPortfolio({
     }
   }
 
+async function loadPaperPortfolio() {
+  try {
+    const response = await fetch(`${API_BASE}/paper-portfolio`);
+    const data = await response.json();
+
+    setPaperPortfolio(data.paper_portfolio || null);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function resetPaperPortfolio() {
+  pulseButton("resetPaper");
+
+  try {
+    const response = await fetch(`${API_BASE}/paper-portfolio/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        starting_balance_usdt: paperStartingBalance,
+      }),
+    });
+
+    const data = await response.json();
+    setPaperPortfolio(data.paper_portfolio || null);
+    alert("PAPER PORTFOLIO RESET");
+  } catch (err) {
+    console.error(err);
+    alert("PAPER PORTFOLIO RESET FAILED");
+  }
+}
+
 function resetPnlBaseline() {
   pulseButton("resetPnl");
 
@@ -662,6 +716,11 @@ async function loadTradeHistory() {
       </h1>
 
       <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
+
+      <div className="hero-description">
+        StrategyForge is an autonomous crypto trading terminal that compares strategies, reads market conditions,
+        explains its decisions, and can operate in Decision Simulation, Paper Trading, or Live Trading Mode through TWAK.
+      </div>
 
  
      
@@ -758,6 +817,56 @@ async function loadTradeHistory() {
     </div>
   </div>
 )}
+
+        {executionMode === "paper_trading" && (
+          <div className="panel portfolio-panel">
+            <div className="panel-title">PAPER PORTFOLIO</div>
+
+            <div className="metrics autonomous-section">
+              <p>STARTING VALUE..... {formatMoney(paperPortfolio?.starting_balance_usdt || paperStartingBalance)}</p>
+              <p>CURRENT VALUE...... {formatMoney(paperPortfolio?.total_value_usdt || paperStartingBalance)}</p>
+              <p>CASH USDT.......... {formatMoney(paperPortfolio?.cash_usdt || 0)}</p>
+              <p>BNB HOLDINGS....... {paperPortfolio?.bnb_balance ?? 0} BNB</p>
+
+              <br />
+
+              <p>REALIZED P/L....... {formatMoney(paperPortfolio?.realized_pnl_usdt || 0)}</p>
+              <p>UNREALIZED P/L..... {formatMoney(paperPortfolio?.unrealized_pnl_usdt || 0)}</p>
+              <p>TOTAL P/L.......... {formatMoney(paperPortfolio?.total_pnl_usdt || 0)}</p>
+              <p>RETURN............. {paperPortfolio?.return_pct ?? 0}%</p>
+              <p>DRAWDOWN........... {paperPortfolio?.drawdown_pct ?? 0}%</p>
+
+              <br />
+
+              <p>OPEN POSITIONS..... {paperPortfolio?.open_position_count ?? 0}</p>
+              <p>CLOSED TRADES...... {paperPortfolio?.closed_trade_count ?? 0}</p>
+
+              <br />
+
+              <label>PAPER STARTING BALANCE</label>
+              <div className="capital-input">
+                <span>$</span>
+                <input
+                  type="number"
+                  min="10"
+                  step="10"
+                  value={paperStartingBalance}
+                  disabled={autonomousMode || loading}
+                  onChange={(e) => setPaperStartingBalance(Number(e.target.value))}
+                />
+              </div>
+
+              <button
+                onClick={resetPaperPortfolio}
+                disabled={autonomousMode || loading}
+                className="copy-btn"
+                style={{ marginTop: "12px", ...getButtonStyle("resetPaper") }}
+              >
+                {"> RESET PAPER PORTFOLIO <"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <h2 className="strategy-library-title">TRADE SETUP</h2>
 
@@ -860,17 +969,22 @@ async function loadTradeHistory() {
             {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
           </button>
 
-        <button
-          type="button"
-          className={`terminal-toggle ${liveExecution ? "active" : ""}`}
-          onClick={() => setLiveExecution(!liveExecution)}
-        >
-          <span>
-  {liveExecution
-    ? "TEST MODE OFF / LIVE TRADE ON"
-    : "TEST MODE ON / LIVE TRADE OFF"}
-</span>
-        </button>
+        <div>
+          <label>EXECUTION MODE</label>
+          <select
+            value={executionMode}
+            disabled={autonomousMode || loading}
+            onChange={(e) => {
+              const mode = e.target.value;
+              setExecutionMode(mode);
+              setLiveExecution(mode === "live_trading");
+            }}
+          >
+            <option value="decision_simulation">DECISION SIMULATION</option>
+            <option value="paper_trading">PAPER TRADING</option>
+            <option value="live_trading">LIVE TRADING</option>
+          </select>
+        </div>
 
           <label style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: "10px" }}>
             AUTO CHECK FOR NEW TRADE OPPORTUNITY EVERY
@@ -920,12 +1034,13 @@ async function loadTradeHistory() {
   <p>TWAK............... CONFIGURED</p>
   <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
   <p>CHAIN.............. BSC</p>
-  <p>EXECUTION.......... {liveExecution ? "LIVE ENABLED" : "DISABLED"}</p>
+  <p>EXECUTION MODE..... {getExecutionModeLabel()}</p>
   <p>SELECTED TIMEFRAME.. {timeframe}</p>
   <p>TRADE SIZE.......... {tradeSize} {coin}</p>
   <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
   <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
   <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
+  <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
   <p>DAILY TRADE STATUS.. {agentResult?.daily_qualification?.status || "N/A"}</p>
   <p>TRADES TODAY........ {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? "N/A"}</p>
   <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
@@ -1238,7 +1353,7 @@ const isRealTrade =
 
             <p>AGENT FLOW.......... CMC → STRATEGY MODEL → RISK GOVERNOR → TWAK → BSC</p>
             <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
-            <p>EXECUTION MODE...... {liveExecution ? "LIVE" : "SAFE / QUOTE ONLY"}</p>
+            <p>EXECUTION MODE...... {getExecutionModeLabel()}</p>
           </div>
 
           {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
@@ -1441,46 +1556,65 @@ const isRealTrade =
 
        
           <details>
-            <summary>PERFORMANCE METRICS EXPLAINED</summary>
+            <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
 
             <div className="metrics">
-              <p><strong>AVAILABLE STRATEGIES</strong></p>
-              <p>VWAP EXTREME REVERSION</p>
-              <p>SMC SEQUENCE CONTINUATION</p>
-              <p>STOCHASTIC QUAD ROTATION</p>
-              <p>TDI WHITE SIGNAL REVERSAL</p>
+              <p><strong>WHAT STRATEGYFORGE DOES</strong></p>
+              <p>StrategyForge analyzes crypto markets, tests private strategies, scores trade quality, monitors risk, and can execute through TWAK when Live Trading Mode is enabled.</p>
 
               <br />
 
-              <p><strong>PF / PROFIT FACTOR</strong></p>
-              <p>Total winning trade profit divided by total losing trade loss. Above 1.0 is profitable.</p>
+              <p><strong>EXECUTION MODES</strong></p>
+              <p>Decision Simulation: the agent generates and logs decisions only. No live trade and no virtual position is opened.</p>
+              <p>Paper Trading: the agent opens and closes virtual positions, tracks paper PnL, and can be reset without touching the live wallet.</p>
+              <p>Live Trading: the agent attempts real TWAK execution using the connected/on-chain wallet setup.</p>
 
-              <p><strong>SHARPE RATIO</strong></p>
-              <p>Return earned per unit of total volatility. Higher is better.</p>
+              <br />
 
-              <p><strong>SORTINO RATIO</strong></p>
-              <p>Return earned per unit of downside risk only. Higher is better.</p>
+              <p><strong>AGENT DECISION HIERARCHY</strong></p>
+              <p>1. Risk Protection: drawdown limits, portfolio safety, daily loss control.</p>
+              <p>2. Strategy Quality: backtest performance, risk-adjusted score, robustness.</p>
+              <p>3. Market Trend: bullish, bearish, or neutral market bias.</p>
+              <p>4. Market Context: Fear & Greed and Altcoin Rotation support confidence, but should not act as hard blockers by themselves.</p>
+              <p>5. Execution Rules: mode, trade size, balances, and safety checks.</p>
 
-              <p><strong>CALMAR RATIO</strong></p>
-              <p>Net return divided by maximum drawdown. Higher is better.</p>
+              <br />
 
-              <p><strong>EXPECTANCY</strong></p>
-              <p>Average expected profit or loss per trade.</p>
+              <p><strong>TRADE CONFIDENCE</strong></p>
+              <p>A 0-100 score showing how strongly the agent supports the current trade decision.</p>
+              <p>0-44: very weak setup. 45-59: weak trade. 60-74: normal setup. 75-89: strong setup. 90-100: high conviction.</p>
 
-              <p><strong>MAX DD / MAX DRAWDOWN</strong></p>
-              <p>Largest peak-to-trough account decline during the test period.</p>
+              <p><strong>CONFIDENCE BREAKDOWN</strong></p>
+              <p>Market Trend: directional support for the trade.</p>
+              <p>Fear & Greed: broad market sentiment input.</p>
+              <p>Altcoin Rotation: whether capital is generally flowing toward altcoins.</p>
+              <p>Strategy Quality: backtest strength, return, drawdown, and risk-adjusted score.</p>
+              <p>Risk Conditions: whether drawdown and safety limits are acceptable.</p>
 
-              <p><strong>RISK-ADJUSTED SCORE</strong></p>
-              <p>Custom optimizer score. Rewards net return and penalizes drawdown.</p>
+              <br />
 
-              <p><strong>BUY & HOLD RETURN</strong></p>
-              <p>Return from simply buying the asset at the start of the test and holding until the end.</p>
+              <p><strong>DAILY QUALIFICATION GUARD</strong></p>
+              <p>Competition rule helper. If no live trade happened during the UTC day, the agent may attempt a small qualifying trade in the final UTC hour.</p>
+              <p>The forced trade uses the configured trade size, aims for +2%, limits downside to -1%, and exits before UTC day end.</p>
 
-              <p><strong>VS BUY & HOLD</strong></p>
-              <p>How much the strategy outperformed or underperformed buy-and-hold.</p>
+              <br />
 
-              <p><strong>EQUITY CURVE</strong></p>
-              <p>Account value over time, starting from the selected initial capital and updating after each closed trade.</p>
+              <p><strong>PORTFOLIO PERFORMANCE</strong></p>
+              <p>Starting Value: portfolio value when tracking began or after reset.</p>
+              <p>Current Value: current estimated portfolio value.</p>
+              <p>Best Value: highest portfolio value reached since tracking began.</p>
+              <p>Profit / Loss: difference between current value and starting value.</p>
+              <p>Current Drawdown: percentage decline from the best value.</p>
+
+              <br />
+
+              <p><strong>BACKTEST METRICS</strong></p>
+              <p>Profit Factor: winning trade profit divided by losing trade loss. Above 1.0 is profitable.</p>
+              <p>Sharpe Ratio: return earned per unit of volatility.</p>
+              <p>Sortino Ratio: return earned per unit of downside volatility.</p>
+              <p>Calmar Ratio: net return divided by maximum drawdown.</p>
+              <p>Expectancy: average expected profit or loss per trade.</p>
+              <p>Risk-Adjusted Score: custom optimizer score that rewards return and penalizes drawdown.</p>
             </div>
           </details>
         </div>

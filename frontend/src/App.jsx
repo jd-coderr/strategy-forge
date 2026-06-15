@@ -854,34 +854,7 @@ async function loadTradeHistory() {
         strategy validation, drawdown protection, portfolio risk controls,
         and execution safety checks before a trade is approved.
       </div>
-
- 
-     
-      
-
-      <div className="panel competition-panel">
-        <div className="panel-title">COMPETITION STATUS / QUALIFICATION</div>
-
-        <div className="metrics competition-grid">
-          <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-          <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
-          <p>CMC AGENT HUB...... CONNECTED</p>
-          <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
-          <p>REGISTRATION....... {String(twakRegistration || "READY").toUpperCase()}</p>
-          <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-          <p>SELECTED TOKEN..... {coin}</p>
-          <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
-          <p>TRADES TODAY....... {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? 1}</p>
-          <p>QUALIFICATION...... {agentResult?.daily_qualification?.status || "WAITING"}</p>
-          <p>DRAWDOWN STATUS.... {agentResult?.risk_control?.status || "N/A"}</p>
-          <p>CURRENT DRAWDOWN... {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
-          <p>PORTFOLIO VALUE.... {formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0)}</p>
-          <p>AGENT MODE......... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
-        </div>
-      </div>
-
-
-      <div className="panel">
+<div className="panel">
         <div className="panel-title">QUICK START ACTIONS</div>
 
 <div className="agent-control-panel">
@@ -937,6 +910,146 @@ async function loadTradeHistory() {
 </div>
       </div>
 
+
+
+<div className="panel operator-controls-panel">
+  <div className="panel-title">TRADE SETUP / OPERATOR CONTROLS</div>
+<h2 className="strategy-library-title">TRADE SETUP</h2>
+
+        <div className="input-row">
+          <div>
+            <label>ASSET</label>
+            <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="BNB">BNB (BNB)</option>
+              <option value="SOL">Solana (SOL)</option>
+              <option value="XRP">XRP (XRP)</option>
+              <option value="DOGE">Dogecoin (DOGE)</option>
+              <option value="LINK">Chainlink (LINK)</option>
+              <option value="ADA">Cardano (ADA)</option>
+              <option value="AVAX">Avalanche (AVAX)</option>
+              <option value="UNI">Uniswap (UNI)</option>
+              <option value="INJ">Injective (INJ)</option>
+              <option value="CAKE">PancakeSwap (CAKE)</option>
+              <option value="TWT">Trust Wallet Token (TWT)</option>
+              <option value="AAVE">Aave (AAVE)</option>
+              <option value="ATOM">Cosmos (ATOM)</option>
+              <option value="LTC">Litecoin (LTC)</option>
+              <option value="DOT">Polkadot (DOT)</option>
+              <option value="SHIB">Shiba Inu (SHIB)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>TIMEFRAME</label>
+            <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)}>
+              <option>15M</option>
+              <option>1H</option>
+              <option>4H</option>
+              <option>1D</option>
+            </select>
+          </div>
+
+          <div>
+            <label>RISK LEVEL</label>
+            <select value={risk} disabled={loading} onChange={(e) => setRisk(e.target.value)}>
+              <option value="low">LOW</option>
+              <option value="medium">MEDIUM</option>
+              <option value="high">HIGH</option>
+            </select>
+          </div>
+
+          <div>
+            <label>BACKTEST CAPITAL</label>
+
+            <div className="capital-input">
+              <span>$</span>
+
+              <input
+                type="number"
+                min="100"
+                step="100"
+                value={initialCapital}
+                disabled={loading}
+                onChange={(e) => setInitialCapital(Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label>TRADE SIZE ({coin})</label>
+
+            <div className="capital-input trade-size-input">
+              <input
+                type="number"
+                min="0"
+                step="0.001"
+                value={tradeSize}
+                disabled={loading}
+                onChange={(e) => setTradeSize(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        </div>
+
+       
+
+        {result && (
+          <div className="metrics strategy-library-box" style={{ marginTop: "26px" }}>
+            <p>AUTO-OPTIMIZER SELECTED TIMEFRAME..... {result.timeframe || timeframe}</p>
+            <p>AUTO-OPTIMIZER SELECTED STRATEGY...... {result.selected_strategy || "N/A"}</p>
+            <p>AUTO-OPTIMIZER SELECTED RISK.......... {String(result.risk || risk).toUpperCase()}</p>
+          </div>
+        )}
+
+        <h2 className="strategy-library-title">CUSTOM SETUP</h2>
+
+        <div className="agent-control-panel">
+          <button
+            onClick={generateStrategy}
+            disabled={loading}
+            className="copy-btn"
+            style={getButtonStyle("generate")}
+          >
+            {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
+          </button>
+
+        <div>
+          <select
+            value={executionMode}
+            disabled={autonomousMode || loading}
+            onChange={(e) => {
+              const mode = e.target.value;
+              setExecutionMode(mode);
+              setLiveExecution(mode === "live_trading");
+            }}
+          >
+            <option value="decision_simulation">EXECUTION MODE - SIMULATION</option>
+            <option value="paper_trading">EXECUTION MODE - PAPER</option>
+            <option value="live_trading">EXECUTION MODE - LIVE</option>
+          </select>
+        </div>
+
+          <label style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: "10px" }}>
+            AUTO CHECK FOR NEW TRADE OPPORTUNITY EVERY
+          </label>
+
+          <select
+            value={autonomousInterval}
+            disabled={autonomousMode}
+            onChange={(e) => setAutonomousInterval(Number(e.target.value))}
+          >
+            <option value={1}>1 MINUTE</option>
+            <option value={5}>5 MINUTES</option>
+            <option value={15}>15 MINUTES</option>
+            <option value={30}>30 MINUTES</option>
+          </select>
+
+         
+        </div>
+</div>
+
 {(() => {
   const executionStatus = getExecutionStatus();
   const tradePlan = getTradePlan();
@@ -976,7 +1089,7 @@ async function loadTradeHistory() {
 )}
 
 <div className="panel portfolio-section-panel">
-  <div className="panel-title">PORTFOLIO / CAPITAL AT WORK</div>
+  <div className="panel-title">PORTFOLIO</div>
 {walletAddress && (
   <div className="panel portfolio-panel">
     <div className="panel-title">AGENT PORTFOLIO</div>
@@ -1192,20 +1305,6 @@ async function loadTradeHistory() {
     <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
   </div>
 )}
-
-{agentResult?.daily_qualification && (
-  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>DAILY QUALIFICATION GUARD</strong></p>
-    <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
-    <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
-    <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
-    <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
-    <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
-    <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
-    <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
-  </div>
-)}
-
 {tradeHistory.length > 0 && (
   <div className="panel">
     <div className="panel-title">LIVE AGENT ACTIVITY</div>
@@ -1330,145 +1429,6 @@ const isRealTrade =
     </div>
   </div>
 )}
-
-<div className="panel operator-controls-panel">
-  <div className="panel-title">TRADE SETUP / OPERATOR CONTROLS</div>
-<h2 className="strategy-library-title">TRADE SETUP</h2>
-
-        <div className="input-row">
-          <div>
-            <label>ASSET</label>
-            <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
-              <option value="BTC">Bitcoin (BTC)</option>
-              <option value="ETH">Ethereum (ETH)</option>
-              <option value="BNB">BNB (BNB)</option>
-              <option value="SOL">Solana (SOL)</option>
-              <option value="XRP">XRP (XRP)</option>
-              <option value="DOGE">Dogecoin (DOGE)</option>
-              <option value="LINK">Chainlink (LINK)</option>
-              <option value="ADA">Cardano (ADA)</option>
-              <option value="AVAX">Avalanche (AVAX)</option>
-              <option value="UNI">Uniswap (UNI)</option>
-              <option value="INJ">Injective (INJ)</option>
-              <option value="CAKE">PancakeSwap (CAKE)</option>
-              <option value="TWT">Trust Wallet Token (TWT)</option>
-              <option value="AAVE">Aave (AAVE)</option>
-              <option value="ATOM">Cosmos (ATOM)</option>
-              <option value="LTC">Litecoin (LTC)</option>
-              <option value="DOT">Polkadot (DOT)</option>
-              <option value="SHIB">Shiba Inu (SHIB)</option>
-            </select>
-          </div>
-
-          <div>
-            <label>TIMEFRAME</label>
-            <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)}>
-              <option>15M</option>
-              <option>1H</option>
-              <option>4H</option>
-              <option>1D</option>
-            </select>
-          </div>
-
-          <div>
-            <label>RISK LEVEL</label>
-            <select value={risk} disabled={loading} onChange={(e) => setRisk(e.target.value)}>
-              <option value="low">LOW</option>
-              <option value="medium">MEDIUM</option>
-              <option value="high">HIGH</option>
-            </select>
-          </div>
-
-          <div>
-            <label>BACKTEST CAPITAL</label>
-
-            <div className="capital-input">
-              <span>$</span>
-
-              <input
-                type="number"
-                min="100"
-                step="100"
-                value={initialCapital}
-                disabled={loading}
-                onChange={(e) => setInitialCapital(Number(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label>TRADE SIZE ({coin})</label>
-
-            <div className="capital-input trade-size-input">
-              <input
-                type="number"
-                min="0"
-                step="0.001"
-                value={tradeSize}
-                disabled={loading}
-                onChange={(e) => setTradeSize(Number(e.target.value))}
-              />
-            </div>
-          </div>
-        </div>
-
-       
-
-        {result && (
-          <div className="metrics strategy-library-box" style={{ marginTop: "26px" }}>
-            <p>AUTO-OPTIMIZER SELECTED TIMEFRAME..... {result.timeframe || timeframe}</p>
-            <p>AUTO-OPTIMIZER SELECTED STRATEGY...... {result.selected_strategy || "N/A"}</p>
-            <p>AUTO-OPTIMIZER SELECTED RISK.......... {String(result.risk || risk).toUpperCase()}</p>
-          </div>
-        )}
-
-        <h2 className="strategy-library-title">CUSTOM SETUP</h2>
-
-        <div className="agent-control-panel">
-          <button
-            onClick={generateStrategy}
-            disabled={loading}
-            className="copy-btn"
-            style={getButtonStyle("generate")}
-          >
-            {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
-          </button>
-
-        <div>
-          <select
-            value={executionMode}
-            disabled={autonomousMode || loading}
-            onChange={(e) => {
-              const mode = e.target.value;
-              setExecutionMode(mode);
-              setLiveExecution(mode === "live_trading");
-            }}
-          >
-            <option value="decision_simulation">EXECUTION MODE - SIMULATION</option>
-            <option value="paper_trading">EXECUTION MODE - PAPER</option>
-            <option value="live_trading">EXECUTION MODE - LIVE</option>
-          </select>
-        </div>
-
-          <label style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: "10px" }}>
-            AUTO CHECK FOR NEW TRADE OPPORTUNITY EVERY
-          </label>
-
-          <select
-            value={autonomousInterval}
-            disabled={autonomousMode}
-            onChange={(e) => setAutonomousInterval(Number(e.target.value))}
-          >
-            <option value={1}>1 MINUTE</option>
-            <option value={5}>5 MINUTES</option>
-            <option value={15}>15 MINUTES</option>
-            <option value={30}>30 MINUTES</option>
-          </select>
-
-         
-        </div>
-</div>
-
 
       {loading && (
         <div className="panel loading-panel">
@@ -1840,6 +1800,37 @@ const isRealTrade =
           </details>
         </div>
       )}
+
+
+{agentResult?.daily_qualification && (
+  <div className="panel verification-panel">
+    <div className="panel-title">AGENT VERIFICATION</div>
+
+    <div className="metrics strategy-library-box">
+      <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
+      <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
+      <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
+      <p>CMC AGENT HUB...... CONNECTED</p>
+      <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
+      <p>REGISTRATION....... {String(twakRegistration || "READY").toUpperCase()}</p>
+      <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+      <p>SELECTED TOKEN..... {coin}</p>
+      <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
+
+      <br />
+
+      <p><strong>DAILY QUALIFICATION GUARD</strong></p>
+      <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
+      <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
+      <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
+      <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
+      <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
+      <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
+      <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
+    </div>
+  </div>
+)}
+
 
       <div className="footer">
         CMC AGENT HUB: OK &nbsp;&nbsp; TWAK: OK &nbsp;&nbsp; BNB CHAIN: OK &nbsp;&nbsp; BACKTEST ENGINE: OK &nbsp;&nbsp; OPTIMIZER: OK

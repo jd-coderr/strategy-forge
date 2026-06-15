@@ -850,3 +850,50 @@ h2.strategy-library-title {
 .competition-panel {
   margin-top: 48px;
 }
+
+
+/* =========================================
+   FINAL USER-FIRST LAYOUT FIX
+   ========================================= */
+
+/* Competition panel should not be used at the top anymore. If a stale render remains, hide it. */
+.competition-panel {
+  display: none !important;
+}
+
+/* Verification is secondary and belongs near the bottom. */
+.verification-panel {
+  display: block !important;
+  margin-top: 56px !important;
+  margin-bottom: 40px !important;
+  background: rgba(0, 255, 65, 0.025);
+}
+
+/* User-first spacing */
+.strategy-library-title {
+  margin-top: 48px !important;
+  margin-bottom: 36px !important;
+}
+
+.strategy-library-box,
+.execution-status-panel,
+.last-execution-panel {
+  margin-top: 32px !important;
+  margin-bottom: 36px !important;
+}
+
+.execution-status-panel p:first-child,
+.last-execution-panel p:first-child,
+.strategy-library-box p:first-child {
+  margin-top: 0 !important;
+  margin-bottom: 28px !important;
+}
+
+.verification-panel .metrics p {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.verification-panel .metrics p:first-child {
+  margin-bottom: 24px !important;
+}

@@ -1084,7 +1084,7 @@ async function loadTradeHistory() {
     <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
     <p>TX STATUS........... {getExecutionTxStatus()}</p>
     <p>CHAIN............... BSC</p>
-    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK" : "DECISION SIMULATION"}</p>
+    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
   </div>
 )}
 
@@ -1247,6 +1247,8 @@ async function loadTradeHistory() {
     <div>RISK GOVERNOR</div>
     <span>↓</span>
     <div>TWAK</div>
+    <span>↓</span>
+    <div>PANCAKESWAP</div>
     <span>↓</span>
     <div>BINANCE SMART CHAIN</div>
   </div>

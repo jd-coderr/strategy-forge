@@ -830,11 +830,6 @@ select {
   margin-bottom: 28px !important;
 }
 
-/* Custom setup should not sit too close to the previous controls */
-.operator-controls-panel .strategy-library-title,
-h2.strategy-library-title {
-  padding-top: 8px;
-}
 
 /* Make verification content compact because it is secondary information */
 .verification-panel .metrics p:first-child {
@@ -871,8 +866,8 @@ h2.strategy-library-title {
 
 /* User-first spacing */
 .strategy-library-title {
-  margin-top: 48px !important;
-  margin-bottom: 36px !important;
+  margin-top: 0 !important;
+  margin-bottom: 24px !important;
 }
 
 .strategy-library-box,

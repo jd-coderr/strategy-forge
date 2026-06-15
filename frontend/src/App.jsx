@@ -257,6 +257,130 @@ useEffect(() => {
     return agentResult?.decision || result?.backtest?.current_signal?.status || "N/A";
   }
 
+  function getExecutionAction() {
+    return agentResult?.decision || autonomousStatus?.last_decision || "WAITING";
+  }
+
+  function getTradePlan() {
+    return agentResult?.trade_plan || null;
+  }
+
+  function getExecutionResult() {
+    return agentResult?.execution_result || null;
+  }
+
+  function didExecuteTrade() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+
+    if (!tradePlan || !executionResult) return false;
+    if (executionResult.blocked === true) return false;
+    if (executionResult.executed === false) return false;
+    if (executionMode === "decision_simulation") return false;
+    if (executionResult.success !== true) return false;
+
+    return true;
+  }
+
+  function getExecutionStatus() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+    const action = getExecutionAction();
+
+    if (!agentResult) {
+      return {
+        action: autonomousMode ? "MONITORING" : "WAITING",
+        executed: "NO",
+        status: autonomousMode ? "AGENT MONITORING" : "AGENT STOPPED",
+        reason: autonomousStatus?.last_reason || "Run the agent to generate the next decision.",
+        nextAction: autonomousMode ? "Continue scanning for the next setup." : "Start the agent when ready.",
+      };
+    }
+
+    if (!tradePlan) {
+      return {
+        action,
+        executed: "NO",
+        status: action === "HOLD" ? "HOLD / NO EXECUTION" : "NO TRADE PLAN",
+        reason: agentResult?.reason || autonomousStatus?.last_reason || "No approved trade plan was generated.",
+        nextAction: "Continue monitoring until confidence, strategy quality, and risk controls align.",
+      };
+    }
+
+    if (!executionResult) {
+      return {
+        action,
+        executed: "NO",
+        status: "TRADE PLAN GENERATED",
+        reason: tradePlan.reason || "Trade plan exists, but execution has not returned a result yet.",
+        nextAction: "Wait for execution result or rerun the agent cycle.",
+      };
+    }
+
+    if (executionResult.blocked === true) {
+      return {
+        action,
+        executed: "NO",
+        status: "BLOCKED BY SAFETY",
+        reason: executionResult.safety_message || tradePlan.reason || "Execution blocked by safety checks.",
+        nextAction: "Fix the safety issue, balance, trade size, or risk status before attempting again.",
+      };
+    }
+
+    if (executionMode === "decision_simulation" || executionResult.executed === false) {
+      return {
+        action,
+        executed: "NO",
+        status: "DECISION SIMULATION",
+        reason: executionResult.message || tradePlan.reason || "Simulation mode logs the decision without opening a position.",
+        nextAction: "Switch to Paper or Live mode to execute trades.",
+      };
+    }
+
+    if (executionResult.success === true) {
+      return {
+        action,
+        executed: "YES",
+        status: executionMode === "paper_trading" ? "PAPER TRADE FILLED" : "LIVE EXECUTION CONFIRMED",
+        reason: tradePlan.reason || executionResult.message || "Trade execution completed successfully.",
+        nextAction: "Monitor PnL, risk status, and the next autonomous check.",
+      };
+    }
+
+    return {
+      action,
+      executed: "NO",
+      status: "EXECUTION FAILED",
+      reason: executionResult.stderr || executionResult.error || executionResult.message || "Execution attempt failed.",
+      nextAction: "Check TWAK output, wallet balance, network, and safety settings.",
+    };
+  }
+
+  function getTradeSide() {
+    const tradePlan = getTradePlan();
+    if (!tradePlan?.from_token || !tradePlan?.to_token) return "N/A";
+
+    if (tradePlan.from_token === "USDT" && tradePlan.to_token === "BNB") return "BUY BNB";
+    if (tradePlan.from_token === "BNB" && tradePlan.to_token === "USDT") return "SELL / REDUCE BNB";
+
+    return `${tradePlan.from_token} → ${tradePlan.to_token}`;
+  }
+
+  function getExecutionTxStatus() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+
+    if (!tradePlan) return "NO TRADE PLAN";
+    if (!executionResult) return "WAITING";
+    if (executionResult.blocked) return "BLOCKED";
+    if (executionMode === "decision_simulation" || executionResult.executed === false) return "SIMULATED / NOT SENT";
+    if (executionResult.success && executionMode === "paper_trading") return "PAPER FILLED";
+    if (executionResult.success && tradePlan.quote_only === true) return "QUOTE ONLY";
+    if (executionResult.success) return "CONFIRMED";
+
+    return "FAILED";
+  }
+
 
   function getCmcTopSkill() {
     try {
@@ -1063,6 +1187,63 @@ async function loadTradeHistory() {
     <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
   </div>
 </div>
+
+<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+  <p><strong>AGENT ARCHITECTURE</strong></p>
+  <div className="agent-flow-visual">
+    <div>COINMARKETCAP</div>
+    <span>↓</span>
+    <div>MARKET ANALYSIS</div>
+    <span>↓</span>
+    <div>STRATEGY ENGINE</div>
+    <span>↓</span>
+    <div>CONFIDENCE MODEL</div>
+    <span>↓</span>
+    <div>RISK GOVERNOR</div>
+    <span>↓</span>
+    <div>TWAK</div>
+    <span>↓</span>
+    <div>BINANCE SMART CHAIN</div>
+  </div>
+</div>
+
+{(() => {
+  const executionStatus = getExecutionStatus();
+  const tradePlan = getTradePlan();
+
+  return (
+    <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
+      <p><strong>EXECUTION STATUS</strong></p>
+      <p>MODE................ {getExecutionModeLabel()}</p>
+      <p>ACTION.............. {executionStatus.action}</p>
+      <p>TRADE EXECUTED...... {executionStatus.executed}</p>
+      <p>STATUS.............. {executionStatus.status}</p>
+      <p>REASON.............. {executionStatus.reason}</p>
+      <p>NEXT ACTION......... {executionStatus.nextAction}</p>
+      {tradePlan && (
+        <>
+          <br />
+          <p>TRADE PLAN.......... GENERATED</p>
+          <p>ROUTE............... {tradePlan.from_token || "N/A"} → {tradePlan.to_token || "N/A"}</p>
+          <p>AMOUNT.............. {tradePlan.amount || "N/A"}</p>
+        </>
+      )}
+    </div>
+  );
+})()}
+
+{getTradePlan() && (
+  <div className="metrics strategy-library-box last-execution-panel" style={{ marginTop: "24px" }}>
+    <p><strong>LAST EXECUTION</strong></p>
+    <p>ASSET............... {coin}</p>
+    <p>SIDE................ {getTradeSide()}</p>
+    <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
+    <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
+    <p>TX STATUS........... {getExecutionTxStatus()}</p>
+    <p>CHAIN............... BSC</p>
+    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK" : "DECISION SIMULATION"}</p>
+  </div>
+)}
 
   
 {agentResult?.confidence_score !== undefined && (

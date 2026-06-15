@@ -753,3 +753,111 @@ select {
   height: 58px;
   margin: 0 !important;
 }
+
+/* ============================
+   JUDGE-FACING AGENT PANELS
+   ============================ */
+.agent-flow-visual {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  max-width: 560px;
+  margin: 18px auto 4px;
+  text-align: center;
+}
+
+.agent-flow-visual div {
+  border: 1px solid #00ff41;
+  padding: 12px 10px;
+  background: rgba(0, 255, 65, 0.055);
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.agent-flow-visual span {
+  color: #ffffff;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 6px #00ff41;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.execution-status-panel,
+.last-execution-panel {
+  background: rgba(0, 255, 65, 0.035);
+}
+
+.execution-status-panel p,
+.last-execution-panel p {
+  text-align: center;
+}
+
+
+/* ============================
+   COMPETITION-FIRST PAGE ORDER
+   ============================ */
+.competition-panel {
+  margin-top: 0;
+  background: rgba(0, 255, 65, 0.045);
+}
+
+.competition-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+
+.competition-grid p {
+  text-align: left;
+  margin: 8px 0;
+}
+
+.portfolio-section-panel,
+.decision-section-panel,
+.operator-controls-panel {
+  margin-top: 34px;
+}
+
+.decision-section-panel .strategy-library-title,
+.operator-controls-panel .strategy-library-title {
+  margin-top: 0 !important;
+}
+
+.operator-controls-panel {
+  background: rgba(0, 255, 65, 0.018);
+}
+
+@media (max-width: 768px) {
+  .competition-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-grid p {
+    text-align: center;
+  }
+}
+
+
+/* ==================================
+   EQUAL SECTION HEADING SPACING FIX
+   ================================== */
+
+.strategy-library-title {
+  margin-top: 48px !important;
+  margin-bottom: 48px !important;
+}
+
+.execution-status-panel,
+.last-execution-panel,
+.strategy-library-box {
+  margin-top: 48px !important;
+  margin-bottom: 48px !important;
+}
+
+.execution-status-panel p:first-child,
+.last-execution-panel p:first-child,
+.strategy-library-box p:first-child {
+  margin-top: 0 !important;
+  margin-bottom: 48px !important;
+}

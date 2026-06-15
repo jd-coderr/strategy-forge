@@ -794,126 +794,46 @@ select {
 }
 
 
-/* =========================================
-   USER-FIRST LAYOUT REBALANCE
-   ========================================= */
-
-/* Keep the dashboard user-first; verification is secondary and belongs lower down. */
-.verification-panel {
-  margin-top: 48px;
-  background: rgba(0, 255, 65, 0.025);
-}
-
-.verification-panel .panel-title {
-  color: #ffffff;
-}
-
-/* Better breathing room for user control sections */
-.strategy-library-title {
-  margin-top: 48px !important;
-  margin-bottom: 36px !important;
-}
-
-/* Keep boxed sections separated, without turning every title into a huge gap */
-.strategy-library-box,
-.execution-status-panel,
-.last-execution-panel {
-  margin-top: 32px !important;
-  margin-bottom: 36px !important;
-}
-
-/* Equal space below important inline headings inside metric boxes */
-.execution-status-panel p:first-child,
-.last-execution-panel p:first-child,
-.strategy-library-box p:first-child {
-  margin-top: 0 !important;
-  margin-bottom: 28px !important;
-}
-
-
-/* Make verification content compact because it is secondary information */
-.verification-panel .metrics p:first-child {
-  margin-bottom: 24px !important;
-}
-
-.verification-panel .metrics p {
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-/* Avoid competition panel styles affecting the user-first layout if old class names remain anywhere */
+/* ============================
+   COMPETITION-FIRST PAGE ORDER
+   ============================ */
 .competition-panel {
-  margin-top: 48px;
+  margin-top: 0;
+  background: rgba(0, 255, 65, 0.045);
 }
 
-
-/* =========================================
-   FINAL USER-FIRST LAYOUT FIX
-   ========================================= */
-
-/* Competition panel should not be used at the top anymore. If a stale render remains, hide it. */
-.competition-panel {
-  display: none !important;
+.competition-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
 }
 
-/* Verification is secondary and belongs near the bottom. */
-.verification-panel {
-  display: block !important;
-  margin-top: 56px !important;
-  margin-bottom: 40px !important;
-  background: rgba(0, 255, 65, 0.025);
+.competition-grid p {
+  text-align: left;
+  margin: 8px 0;
 }
 
-/* User-first spacing */
-.strategy-library-title {
+.portfolio-section-panel,
+.decision-section-panel,
+.operator-controls-panel {
+  margin-top: 34px;
+}
+
+.decision-section-panel .strategy-library-title,
+.operator-controls-panel .strategy-library-title {
   margin-top: 0 !important;
-  margin-bottom: 24px !important;
 }
 
-.strategy-library-box,
-.execution-status-panel,
-.last-execution-panel {
-  margin-top: 32px !important;
-  margin-bottom: 36px !important;
+.operator-controls-panel {
+  background: rgba(0, 255, 65, 0.018);
 }
 
-.execution-status-panel p:first-child,
-.last-execution-panel p:first-child,
-.strategy-library-box p:first-child {
-  margin-top: 0 !important;
-  margin-bottom: 28px !important;
-}
+@media (max-width: 768px) {
+  .competition-grid {
+    grid-template-columns: 1fr;
+  }
 
-.verification-panel .metrics p {
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.verification-panel .metrics p:first-child {
-  margin-bottom: 24px !important;
-}
-
-
-/* =========================================
-   COMPACT AGENT ARCHITECTURE FIX
-   ========================================= */
-
-.agent-flow-visual {
-  max-width: 420px !important;
-  margin: 12px auto 0 !important;
-  gap: 6px !important;
-}
-
-.agent-flow-visual div {
-  padding: 7px 8px !important;
-  font-size: 13px !important;
-  line-height: 1.2 !important;
-  letter-spacing: 1px !important;
-  min-height: 0 !important;
-}
-
-.agent-flow-visual span {
-  font-size: 13px !important;
-  line-height: 1 !important;
-  margin: -1px 0 !important;
+  .competition-grid p {
+    text-align: center;
+  }
 }

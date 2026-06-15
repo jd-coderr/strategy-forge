@@ -43,8 +43,6 @@ function App() {
   const [twakStatus, setTwakStatus] = useState("CONFIGURED");
   const [twakRegistration, setTwakRegistration] = useState("READY");
   const [twakAgentAddress, setTwakAgentAddress] = useState(null);
-  const [openQuadrant, setOpenQuadrant] = useState("who");
-
 
   function formatMoney(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";
@@ -148,146 +146,837 @@ function App() {
 
   function isApproved() {
   return (
-    <div className="terminal retro-terminal">
-      <div className="retro-screen-header">
+    result?.backtest?.drawdown_gate === "PASS" &&
+    result?.backtest?.min_trade_gate === "PASS"
+  );
+}
+
+async function startAutonomousMode() {
+  pulseButton("run");
+
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/start`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coin,
+        timeframe,
+        risk,
+        initial_capital: initialCapital,
+        live_execution: executionMode === "live_trading",
+        execution_mode: executionMode,
+        trade_size: tradeSize,
+        selected_strategy: result?.selected_strategy || null,
+        interval_minutes: autonomousInterval,
+      }),
+    });
+
+    const data = await response.json();
+    setAutonomousStatus(data);
+    setAutonomousMode(true);
+    setAgentStopConfirmed(false);
+  } catch (err) {
+    console.error(err);
+    alert("AUTONOMOUS MODE START FAILED");
+  }
+}
+
+async function stopAutonomousMode() {
+  pulseButton("stop");
+
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/stop`, {
+      method: "POST",
+    });
+
+    const data = await response.json();
+    setAutonomousStatus(data);
+    setAutonomousMode(false);
+    setAgentStopConfirmed(true);
+  } catch (err) {
+    console.error(err);
+    alert("AUTONOMOUS MODE STOP FAILED");
+  }
+}
+
+async function loadAutonomousStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/autonomous/status`);
+    const data = await response.json();
+
+    setAutonomousStatus(data);
+    setAutonomousMode(data.running === true);
+
+    if (data.running === true) {
+      setAgentStopConfirmed(false);
+    }
+
+    if (data.interval_minutes) {
+      setAutonomousInterval(data.interval_minutes);
+}
+
+    if (data.last_result) {
+      setAgentResult(data.last_result);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+useEffect(() => {
+  document.title = "StrategyForge";
+
+  loadAutonomousStatus();
+  checkRegistration();
+  loadTradeHistory();
+  loadPaperPortfolio();
+  
+  const timer = setInterval(() => {
+    loadAutonomousStatus();
+  }, 10000);
+
+  return () => clearInterval(timer);
+}, []);
+
+  function parsePercent(value) {
+    return parseFloat(String(value).replace("%", ""));
+  }
+
+  function getMarketRegime() {
+    const fearValue = Number(result?.cmc_signal?.fear_greed?.value ?? 50);
+
+    if (fearValue <= 25) return "RISK-OFF / EXTREME FEAR";
+    if (fearValue >= 75) return "RISK-ON / HIGH GREED";
+
+    return "NEUTRAL";
+  }
+
+  function getAgentDecision() {
+    return agentResult?.decision || result?.backtest?.current_signal?.status || "N/A";
+  }
+
+  function getExecutionAction() {
+    return agentResult?.decision || autonomousStatus?.last_decision || "WAITING";
+  }
+
+  function getTradePlan() {
+    return agentResult?.trade_plan || null;
+  }
+
+  function getExecutionResult() {
+    return agentResult?.execution_result || null;
+  }
+
+  function didExecuteTrade() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+
+    if (!tradePlan || !executionResult) return false;
+    if (executionResult.blocked === true) return false;
+    if (executionResult.executed === false) return false;
+    if (executionMode === "decision_simulation") return false;
+    if (executionResult.success !== true) return false;
+
+    return true;
+  }
+
+  function getExecutionStatus() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+    const action = getExecutionAction();
+
+    if (!agentResult) {
+      return {
+        action: autonomousMode ? "MONITORING" : "WAITING",
+        executed: "NO",
+        status: autonomousMode ? "AGENT MONITORING" : "AGENT STOPPED",
+        reason: autonomousStatus?.last_reason || "Run the agent to generate the next decision.",
+        nextAction: autonomousMode ? "Continue scanning for the next setup." : "Start the agent when ready.",
+      };
+    }
+
+    if (!tradePlan) {
+      return {
+        action,
+        executed: "NO",
+        status: action === "HOLD" ? "HOLD / NO EXECUTION" : "NO TRADE PLAN",
+        reason: agentResult?.reason || autonomousStatus?.last_reason || "No approved trade plan was generated.",
+        nextAction: "Continue monitoring until confidence, strategy quality, and risk controls align.",
+      };
+    }
+
+    if (!executionResult) {
+      return {
+        action,
+        executed: "NO",
+        status: "TRADE PLAN GENERATED",
+        reason: tradePlan.reason || "Trade plan exists, but execution has not returned a result yet.",
+        nextAction: "Wait for execution result or rerun the agent cycle.",
+      };
+    }
+
+    if (executionResult.blocked === true) {
+      return {
+        action,
+        executed: "NO",
+        status: "BLOCKED BY SAFETY",
+        reason: executionResult.safety_message || tradePlan.reason || "Execution blocked by safety checks.",
+        nextAction: "Fix the safety issue, balance, trade size, or risk status before attempting again.",
+      };
+    }
+
+    if (executionMode === "decision_simulation" || executionResult.executed === false) {
+      return {
+        action,
+        executed: "NO",
+        status: "DECISION SIMULATION",
+        reason: executionResult.message || tradePlan.reason || "Simulation mode logs the decision without opening a position.",
+        nextAction: "Switch to Paper or Live mode to execute trades.",
+      };
+    }
+
+    if (executionResult.success === true) {
+      return {
+        action,
+        executed: "YES",
+        status: executionMode === "paper_trading" ? "PAPER TRADE FILLED" : "LIVE EXECUTION CONFIRMED",
+        reason: tradePlan.reason || executionResult.message || "Trade execution completed successfully.",
+        nextAction: "Monitor PnL, risk status, and the next autonomous check.",
+      };
+    }
+
+    return {
+      action,
+      executed: "NO",
+      status: "EXECUTION FAILED",
+      reason: executionResult.stderr || executionResult.error || executionResult.message || "Execution attempt failed.",
+      nextAction: "Check TWAK output, wallet balance, network, and safety settings.",
+    };
+  }
+
+  function getTradeSide() {
+    const tradePlan = getTradePlan();
+    if (!tradePlan?.from_token || !tradePlan?.to_token) return "N/A";
+
+    if (tradePlan.from_token === "USDT" && tradePlan.to_token === "BNB") return "BUY BNB";
+    if (tradePlan.from_token === "BNB" && tradePlan.to_token === "USDT") return "SELL / REDUCE BNB";
+
+    return `${tradePlan.from_token} → ${tradePlan.to_token}`;
+  }
+
+  function getExecutionTxStatus() {
+    const tradePlan = getTradePlan();
+    const executionResult = getExecutionResult();
+
+    if (!tradePlan) return "NO TRADE PLAN";
+    if (!executionResult) return "WAITING";
+    if (executionResult.blocked) return "BLOCKED";
+    if (executionMode === "decision_simulation" || executionResult.executed === false) return "SIMULATED / NOT SENT";
+    if (executionResult.success && executionMode === "paper_trading") return "PAPER FILLED";
+    if (executionResult.success && tradePlan.quote_only === true) return "QUOTE ONLY";
+    if (executionResult.success) return "CONFIRMED";
+
+    return "FAILED";
+  }
+
+
+  function getCmcTopSkill() {
+    try {
+      const rawText = cmcSkillHub?.result?.content?.[0]?.text;
+      if (!rawText) return "N/A";
+
+      const parsed = JSON.parse(rawText);
+      return parsed?.candidates?.[0]?.uniqueName || "N/A";
+    } catch (error) {
+      return "N/A";
+    }
+  }
+
+  function copyStrategySummary() {
+    const text = `
+STRATEGY: ${result.selected_strategy}
+
+ENTRY RULE:
+${result.entry?.condition}
+
+CONFIRMATION:
+${result.confirmation?.condition}
+
+TAKE PROFIT:
+${result.take_profit?.condition}
+
+STOP LOSS:
+${result.stop_loss?.condition}
+
+RISK GOVERNOR:
+MAX OPEN TRADES: ${result.risk_governor?.max_open_trades}
+RISK PER TRADE: ${result.risk_governor?.risk_per_trade}
+STOP AFTER LOSSES: ${result.risk_governor?.stop_after_consecutive_losses}
+
+PERFORMANCE SUMMARY:
+COIN: ${result.coin}
+TIMEFRAME: ${result.timeframe}
+RISK: ${String(result.risk).toUpperCase()}
+TRADES: ${result.backtest.trades}
+WIN RATE: ${result.backtest.win_rate}
+NET RETURN: ${result.backtest.net_return}
+MAX DRAWDOWN: ${result.backtest.max_drawdown}
+PROFIT FACTOR: ${result.backtest.profit_factor}
+
+OPTIMIZER SELECTION:
+RISK-ADJUSTED SCORE: ${result.backtest.risk_adjusted_score}
+SHARPE RATIO: ${result.backtest.sharpe_ratio}
+SORTINO RATIO: ${result.backtest.sortino_ratio}
+CALMAR RATIO: ${result.backtest.calmar_ratio}
+RECOVERY FACTOR: ${result.backtest.recovery_factor}
+EXPECTANCY: ${result.backtest.expectancy}
+
+SELECTION REASON:
+Best eligible risk-adjusted score among all tested combinations.
+`;
+
+    navigator.clipboard.writeText(text);
+    alert("STRATEGY SUMMARY COPIED");
+  }
+
+  async function updateWalletData(address) {
+    const chainId = await window.ethereum.request({
+      method: "eth_chainId"
+    });
+
+    setWalletChainId(chainId);
+
+    const balanceHex = await window.ethereum.request({
+      method: "eth_getBalance",
+      params: [address, "latest"]
+    });
+
+    const balanceBNB = parseInt(balanceHex, 16) / 10 ** 18;
+    setBnbBalance(balanceBNB.toFixed(4));
+  }
+
+  async function forceBnbChain() {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x38" }]
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: "0x38",
+              chainName: "BNB Smart Chain",
+              nativeCurrency: {
+                name: "BNB",
+                symbol: "BNB",
+                decimals: 18
+              },
+              rpcUrls: ["https://bsc-dataseed.binance.org/"],
+              blockExplorerUrls: ["https://bscscan.com"]
+            }
+          ]
+        });
+      } else {
+        throw switchError;
+      }
+    }
+  }
+
+  async function connectWallet() {
+    pulseButton("wallet");
+
+    if (!window.ethereum) {
+      alert("NO WALLET FOUND. INSTALL TRUST WALLET OR METAMASK.");
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts"
+      });
+
+      const address = accounts[0];
+      setWalletAddress(address);
+
+      try {
+        await forceBnbChain();
+      } catch (networkError) {
+        console.error("NETWORK SWITCH FAILED:", networkError);
+      }
+
+      try {
+        await updateWalletData(address);
+      } catch (balanceError) {
+        console.error("USER WALLET BALANCE LOAD FAILED:", balanceError);
+      }
+
+      await loadPortfolio();
+    } catch (error) {
+      console.error(error);
+      alert("WALLET CONNECTION FAILED");
+    }
+  }
+
+  async function switchToBnbChain() {
+    if (!window.ethereum) {
+      alert("NO WALLET FOUND.");
+      return;
+    }
+
+    try {
+      await forceBnbChain();
+
+      setTimeout(async () => {
+        if (walletAddress) {
+          await updateWalletData(walletAddress);
+        }
+      }, 500);
+    } catch (error) {
+      console.error(error);
+      alert("FAILED TO SWITCH TO BNB SMART CHAIN");
+    }
+  }
+
+  async function checkRegistration() {
+    try {
+      const response = await fetch(`${API_BASE}/register-agent`, {
+        method: "POST"
+      });
+
+      const data = await response.json();
+
+      setTwakStatus("CONFIGURED");
+      setTwakRegistration(data.registration);
+      setTwakAgentAddress(data.agent_address);
+    } catch (error) {
+      alert("REGISTRATION CHECK FAILED");
+    }
+  }
+
+  async function generateStrategy() {
+    pulseButton("generate");
+    setAutoOptimized(false);
+    setLoading(true);
+    setLoadingMode("generate");
+    setResult(null);
+    setAgentResult(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/generate-strategy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          coin,
+          timeframe,
+          risk,
+          initial_capital: initialCapital
+        })
+      });
+
+      const data = await response.json();
+      setResult(data);
+    } catch (error) {
+      alert("FAILED TO CONNECT TO BACKEND");
+    }
+
+    setLoading(false);
+    setLoadingMode("");
+  }
+
+  async function optimizeStrategy() {
+    pulseButton("optimize");
+    setAutoOptimized(false);
+    setLoading(true);
+    setLoadingMode("optimize");
+    setResult(null);
+    setAgentResult(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/optimize-strategy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          coin,
+          initial_capital: initialCapital
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error || !data.best_setup) {
+        throw new Error(data.error || "Optimizer returned no best setup.");
+      }
+
+      const best = data.best_setup;
+
+      try {
+        const skillQuery = `${best.coin || coin} strategy`;
+        const skillResponse = await fetch(
+          `${API_BASE}/cmc-skill-hub/find?query=${encodeURIComponent(skillQuery)}`
+        );
+        const skillData = await skillResponse.json();
+
+        setCmcSkillHub({
+          ...skillData,
+          query: skillQuery
+        });
+      } catch (skillError) {
+        setCmcSkillHub({
+          ok: false,
+          query: `${best.coin || coin} strategy`,
+          error: "CMC Skill Hub unavailable"
+        });
+      }
+
+      setTimeframe(best.timeframe);
+      setRisk(best.risk);
+
+      setAutoOptimized(true);
+
+      setResult({
+        coin: best.coin,
+        timeframe: best.timeframe,
+        risk: best.risk,
+        cmc_signal: best.cmc_signal || data.cmc_signal,
+        selected_strategy: best.selected_strategy,
+        type: best.type,
+        reason: `AUTO-OPTIMIZER tested ${data.tested_combinations} combinations and selected ${best.selected_strategy} on ${best.timeframe} with ${best.risk.toUpperCase()} risk.`,
+        entry: best.entry,
+        confirmation: best.confirmation,
+        take_profit: best.take_profit,
+        stop_loss: best.stop_loss,
+        risk_governor: best.risk_governor,
+        backtest: best.backtest,
+        optimization: {
+          mode: data.mode,
+          tested_combinations: data.tested_combinations,
+          eligible_combinations: data.eligible_combinations,
+          all_results: data.all_results
+        }
+      });
+    } catch (error) {
+      alert("FAILED TO CONNECT TO OPTIMIZER");
+    }
+
+    setLoading(false);
+    setLoadingMode("");
+  }
+
+async function runAgentCycle() {
+  pulseButton("run");
+
+  try {
+    const response = await fetch(`${API_BASE}/agent-cycle`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coin,
+        timeframe,
+        risk,
+        trade_size: tradeSize,
+        live_execution: executionMode === "live_trading",
+        execution_mode: executionMode,
+        selected_strategy: result?.selected_strategy || null,
+      }),
+    });
+
+    const data = await response.json();
+    setAgentResult(data);
+
+    if (data.paper_portfolio) {
+      setPaperPortfolio(data.paper_portfolio);
+    } else if (executionMode === "paper_trading") {
+      await loadPaperPortfolio();
+    }
+
+    await loadTradeHistory();
+
+    if (!autonomousMode) {
+      await startAutonomousMode();
+    }
+  } catch (err) {
+    console.error(err);
+    alert("AGENT CYCLE FAILED");
+  }
+}
+
+  async function loadPortfolio() {
+    setPortfolioLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/portfolio`);
+      const data = await response.json();
+
+    const rawPortfolio =
+      data?.result?.portfolio ||
+      data?.portfolio ||
+      data?.event?.result?.portfolio ||
+      [];
+
+      const assets = Array.isArray(rawPortfolio)
+        ? rawPortfolio.map((item) => ({
+            symbol: item.symbol || item.token || "UNKNOWN",
+            balance: item.balance,
+            usdValue: Number(item.usdValue || 0),
+            chain: item.chain,
+            type: item.type,
+            address: item.address,
+            contract: item.contract,
+          }))
+        : [];
+
+      const totalUsdValue = assets.reduce(
+        (sum, asset) => sum + Number(asset.usdValue || 0),
+        0
+      );
+
+const startingValue =
+  startingPortfolioValue === null
+    ? totalUsdValue
+    : startingPortfolioValue;
+
+if (startingPortfolioValue === null) {
+  setStartingPortfolioValue(totalUsdValue);
+}
+
+setPortfolio({
+  success: data?.success === true,
+  assets,
+  totalUsdValue,
+  startingPortfolioValue: startingValue,
+  tradingPnlUsd: totalUsdValue - startingValue,
+});
+    } catch (err) {
+      console.error(err);
+      alert("PORTFOLIO LOAD FAILED");
+    } finally {
+      setPortfolioLoading(false);
+    }
+  }
+
+async function loadPaperPortfolio() {
+  try {
+    const response = await fetch(`${API_BASE}/paper-portfolio`);
+    const data = await response.json();
+
+    setPaperPortfolio(data.paper_portfolio || null);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function resetPaperPortfolio() {
+  pulseButton("resetPaper");
+
+  try {
+    const response = await fetch(`${API_BASE}/paper-portfolio/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        starting_balance_usdt: paperStartingBalance,
+      }),
+    });
+
+    const data = await response.json();
+    setPaperPortfolio(data.paper_portfolio || null);
+    alert("PAPER PORTFOLIO RESET");
+  } catch (err) {
+    console.error(err);
+    alert("PAPER PORTFOLIO RESET FAILED");
+  }
+}
+
+function resetPnlBaseline() {
+  pulseButton("resetPnl");
+
+  if (!portfolio) {
+    alert("LOAD PORTFOLIO FIRST");
+    return;
+  }
+
+  setStartingPortfolioValue(portfolio.totalUsdValue);
+
+  setPortfolio({
+    ...portfolio,
+    startingPortfolioValue: portfolio.totalUsdValue,
+    tradingPnlUsd: 0,
+  });
+}
+
+async function loadTradeHistory() {
+  try {
+    const response = await fetch(`${API_BASE}/trade-log?limit=20`);
+    const data = await response.json();
+
+    setTradeHistory(data.records || []);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+  return (
+    <div className="terminal">
+      <div className="topbar">
         <span>SF v0.1.0</span>
         <span>BERGMANN TRADING PRESENTS</span>
         <span>AI ONLINE</span>
       </div>
 
-      <div className="retro-square">
-        <section className="retro-quadrant retro-who">
-          <div className="retro-titlebar">WHO?</div>
-          <div className="retro-window-body">
-            <h1 className="retro-logo">STRATEGY FORGE<span className="blink">_</span></h1>
-            <p className="retro-slogan">AUTONOMOUS MARKET JUDGEMENT. PROVABLE EXECUTION.</p>
-            <p className="retro-tagline">AI-POWERED TRADING STRATEGY GENERATOR</p>
+      <h1 className="title">
+        STRATEGY FORGE<span className="blink">_</span>
+      </h1>
 
-            <div className="retro-mini-card">
-              <p>NAME............... STRATEGYFORGE</p>
-              <p>ROLE............... AUTONOMOUS CRYPTO TRADING TERMINAL</p>
-              <p>TRACK.............. CMC / TWAK / BNB AGENT</p>
-              <p>MODE............... {getExecutionModeLabel()}</p>
-            </div>
+      <p className="subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
 
-            <details open>
-              <summary>WHO IS THIS PROGRAM?</summary>
-              <div className="hero-description retro-hero">
-                StrategyForge is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
-                Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
-                and Binance Smart Chain infrastructure.
+      <div className="hero-description">
+        StrategyForge is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
+        Trust Wallet Agent Kit (TWAK), and Binance Smart Chain infrastructure.
 
-                It continuously analyzes market conditions, compares strategy performance,
-                backtests multiple approaches, evaluates portfolio risk, generates explainable
-                AI trade decisions, and can operate in Decision Simulation, Paper Trading,
-                or Live Trading Mode.
+        It continuously analyzes market conditions, compares strategy performance,
+        backtests multiple approaches, evaluates portfolio risk, generates explainable
+        AI trade decisions, and can operate in Decision Simulation, Paper Trading,
+        or Live Trading Mode.
 
-                Every decision passes through market regime analysis, confidence scoring,
-                strategy validation, drawdown protection, portfolio risk controls,
-                and execution safety checks before a trade is approved.
-              </div>
-            </details>
-          </div>
-        </section>
+        Every decision passes through market regime analysis, confidence scoring,
+        strategy validation, drawdown protection, portfolio risk controls,
+        and execution safety checks before a trade is approved.
+      </div>
 
-        <section className="retro-quadrant retro-what">
-          <div className="retro-titlebar">WHAT?</div>
-          <div className="retro-window-body">
-            <details open>
-              <summary>WHAT IT DOES</summary>
-              <div className="metrics retro-compact-metrics">
-                <p>DATA SOURCE......... CoinMarketCap Agent Hub</p>
-                <p>EXECUTION LAYER..... Trust Wallet Agent Kit</p>
-                <p>ROUTING VENUE....... PancakeSwap</p>
-                <p>SETTLEMENT CHAIN.... BNB Smart Chain / BSC</p>
-                <p>CORE PURPOSE........ Compare strategies, read market conditions, score risk, execute only when approved.</p>
-              </div>
-            </details>
+ 
+     
+      
 
-            <details>
-              <summary>AGENT STATUS / ARCHITECTURE</summary>
-              <div className="panel decision-section-panel">
-  <div className="panel-title">AGENT DECISION ENGINE</div>
-<h2 className="strategy-library-title">AGENT STATUS</h2>
+      <div className="panel competition-panel">
+        <div className="panel-title">COMPETITION STATUS / QUALIFICATION</div>
 
-<div className="metrics strategy-library-box">
-  <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
+        <div className="metrics competition-grid">
+          <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
+          <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
+          <p>CMC AGENT HUB...... CONNECTED</p>
+          <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
+          <p>REGISTRATION....... {String(twakRegistration || "READY").toUpperCase()}</p>
+          <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+          <p>SELECTED TOKEN..... {coin}</p>
+          <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
+          <p>TRADES TODAY....... {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? 1}</p>
+          <p>QUALIFICATION...... {agentResult?.daily_qualification?.status || "WAITING"}</p>
+          <p>DRAWDOWN STATUS.... {agentResult?.risk_control?.status || "N/A"}</p>
+          <p>CURRENT DRAWDOWN... {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
+          <p>PORTFOLIO VALUE.... {formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0)}</p>
+          <p>AGENT MODE......... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
+        </div>
+      </div>
 
-  <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
 
-  <p>
-    NETWORK.............{" "}
-    {walletChainId === "0x38"
-      ? "BNB SMART CHAIN"
-      : walletChainId
-      ? `WRONG NETWORK (${walletChainId})`
-      : "UNKNOWN"}
-  </p>
+      <div className="panel">
+        <div className="panel-title">QUICK START ACTIONS</div>
 
-  <p>
-    AGENT BNB BALANCE....{" "}
-    {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
-      ? `${portfolio.assets.find((asset) => asset.symbol === "BNB").balance} BNB`
-      : "N/A"}
-  </p>
+<div className="agent-control-panel">
+  <button
+    onClick={optimizeStrategy}
+    disabled={loading}
+    className="copy-btn"
+    style={getButtonStyle("optimize")}
+  >
+    {loading && loadingMode === "optimize" ? (
+      <>
+        OPTIMIZING<span className="loading-dots"></span>
+      </>
+    ) : autoOptimized ? (
+      "AUTO-OPTIMIZED"
+    ) : (
+      "> AUTO-OPTIMIZE SETUP <"
+    )}
+  </button>
 
-  <p>
-    AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
-  </p>
-
-  <p>TWAK............... CONFIGURED</p>
-  <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-  <p>CHAIN.............. BSC</p>
-  <p>EXECUTION MODE..... {getExecutionModeLabel()}</p>
-  <p>SELECTED TIMEFRAME.. {timeframe}</p>
-  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-  <p>TRADE SIZE.......... {tradeSize} BNB TARGET</p>
-  <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
-  <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
-  <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
-  <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
-  <p>DAILY TRADE STATUS.. {agentResult?.daily_qualification?.status || "N/A"}</p>
-  <p>TRADES TODAY........ {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? "N/A"}</p>
-  <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
+  <button
+    onClick={connectWallet}
+    disabled={loading}
+    className="copy-btn"
+    style={getButtonStyle("wallet")}
+  >
+    {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
+  </button>
 </div>
 
-<div className="autonomous-container">
-  <div className="autonomous-status-box">
-    <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
-    <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
-    <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
-    <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
-    <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
+<div className="button-row">
+  <button
+    onClick={runAgentCycle}
+    disabled={loading}
+    className="copy-btn"
+    style={getButtonStyle("run")}
+  >
+    {autonomousMode ? "AGENT RUNNING" : activeButton === "run" ? "> RUNNING... <" : "> RUN AGENT <"}
+  </button>
+
+  <button
+    onClick={stopAutonomousMode}
+    disabled={loading}
+    className="copy-btn"
+    style={getButtonStyle("stop")}
+  >
+    {agentStopConfirmed && !autonomousMode
+      ? "AGENT STOPPED"
+      : activeButton === "stop"
+      ? "> STOPPING... <"
+      : "> STOP AGENT <"}
+  </button>
+</div>
+      </div>
+
+{(() => {
+  const executionStatus = getExecutionStatus();
+  const tradePlan = getTradePlan();
+
+  return (
+    <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
+      <p><strong>EXECUTION STATUS</strong></p>
+      <p>MODE................ {getExecutionModeLabel()}</p>
+      <p>ACTION.............. {executionStatus.action}</p>
+      <p>TRADE EXECUTED...... {executionStatus.executed}</p>
+      <p>STATUS.............. {executionStatus.status}</p>
+      <p>REASON.............. {executionStatus.reason}</p>
+      <p>NEXT ACTION......... {executionStatus.nextAction}</p>
+      {tradePlan && (
+        <>
+          <br />
+          <p>TRADE PLAN.......... GENERATED</p>
+          <p>ROUTE............... {tradePlan.from_token || "N/A"} → {tradePlan.to_token || "N/A"}</p>
+          <p>AMOUNT.............. {tradePlan.amount || "N/A"}</p>
+        </>
+      )}
+    </div>
+  );
+})()}
+
+{getTradePlan() && (
+  <div className="metrics strategy-library-box last-execution-panel" style={{ marginTop: "24px" }}>
+    <p><strong>LAST EXECUTION</strong></p>
+    <p>ASSET............... {coin}</p>
+    <p>SIDE................ {getTradeSide()}</p>
+    <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
+    <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
+    <p>TX STATUS........... {getExecutionTxStatus()}</p>
+    <p>CHAIN............... BSC</p>
+    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK" : "DECISION SIMULATION"}</p>
   </div>
-</div>
-<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-  <p><strong>AGENT ARCHITECTURE</strong></p>
-  <div className="agent-flow-visual">
-    <div>COINMARKETCAP</div>
-    <span>↓</span>
-    <div>MARKET ANALYSIS</div>
-    <span>↓</span>
-    <div>STRATEGY ENGINE</div>
-    <span>↓</span>
-    <div>CONFIDENCE MODEL</div>
-    <span>↓</span>
-    <div>RISK GOVERNOR</div>
-    <span>↓</span>
-    <div>TWAK</div>
-    <span>↓</span>
-    <div>PANCAKESWAP</div>
-    <span>↓</span>
-    <div>BINANCE SMART CHAIN</div>
-  </div>
-</div>
-</div>
+)}
 
-            </details>
-
-            <details>
-              <summary>PORTFOLIO</summary>
-              <div className="panel portfolio-section-panel">
-  <div className="panel-title">PORTFOLIO</div>
+<div className="panel portfolio-section-panel">
+  <div className="panel-title">PORTFOLIO / CAPITAL AT WORK</div>
 {walletAddress && (
   <div className="panel portfolio-panel">
     <div className="panel-title">AGENT PORTFOLIO</div>
@@ -378,83 +1067,271 @@ function App() {
         )}
 </div>
 
-            </details>
-          </div>
-        </section>
+<div className="panel decision-section-panel">
+  <div className="panel-title">AGENT DECISION ENGINE</div>
+<h2 className="strategy-library-title">AGENT STATUS</h2>
 
-        <section className="retro-quadrant retro-when">
-          <div className="retro-titlebar">WHEN?</div>
-          <div className="retro-window-body">
-            <div className="retro-flow-strip">
-              <span>1 AUTO OPTIMIZE</span>
-              <span>2 CONNECT WALLET</span>
-              <span>3 RUN AGENT</span>
-              <span>4 STOP AGENT</span>
-            </div>
+<div className="metrics strategy-library-box">
+  <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
 
-            <details open>
-              <summary>QUICK START ACTIONS</summary>
-              <div className="panel">
-        <div className="panel-title">QUICK START ACTIONS</div>
+  <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
 
-<div className="agent-control-panel">
-  <button
-    onClick={optimizeStrategy}
-    disabled={loading}
-    className="copy-btn"
-    style={getButtonStyle("optimize")}
-  >
-    {loading && loadingMode === "optimize" ? (
-      <>
-        OPTIMIZING<span className="loading-dots"></span>
-      </>
-    ) : autoOptimized ? (
-      "AUTO-OPTIMIZED"
-    ) : (
-      "> AUTO-OPTIMIZE SETUP <"
-    )}
-  </button>
+  <p>
+    NETWORK.............{" "}
+    {walletChainId === "0x38"
+      ? "BNB SMART CHAIN"
+      : walletChainId
+      ? `WRONG NETWORK (${walletChainId})`
+      : "UNKNOWN"}
+  </p>
 
-  <button
-    onClick={connectWallet}
-    disabled={loading}
-    className="copy-btn"
-    style={getButtonStyle("wallet")}
-  >
-    {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
-  </button>
+  <p>
+    AGENT BNB BALANCE....{" "}
+    {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
+      ? `${portfolio.assets.find((asset) => asset.symbol === "BNB").balance} BNB`
+      : "N/A"}
+  </p>
+
+  <p>
+    AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
+  </p>
+
+  <p>TWAK............... CONFIGURED</p>
+  <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+  <p>CHAIN.............. BSC</p>
+  <p>EXECUTION MODE..... {getExecutionModeLabel()}</p>
+  <p>SELECTED TIMEFRAME.. {timeframe}</p>
+  <p>TRADE SIZE.......... {tradeSize} {coin}</p>
+  <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
+  <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
+  <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
+  <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
+  <p>DAILY TRADE STATUS.. {agentResult?.daily_qualification?.status || "N/A"}</p>
+  <p>TRADES TODAY........ {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? "N/A"}</p>
+  <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
 </div>
 
-<div className="button-row">
-  <button
-    onClick={runAgentCycle}
-    disabled={loading}
-    className="copy-btn"
-    style={getButtonStyle("run")}
-  >
-    {autonomousMode ? "AGENT RUNNING" : activeButton === "run" ? "> RUNNING... <" : "> RUN AGENT <"}
-  </button>
-
-  <button
-    onClick={stopAutonomousMode}
-    disabled={loading}
-    className="copy-btn"
-    style={getButtonStyle("stop")}
-  >
-    {agentStopConfirmed && !autonomousMode
-      ? "AGENT STOPPED"
-      : activeButton === "stop"
-      ? "> STOPPING... <"
-      : "> STOP AGENT <"}
-  </button>
+<div className="autonomous-container">
+  <div className="autonomous-status-box">
+    <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
+    <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
+    <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
+    <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
+    <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
+  </div>
 </div>
+<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+  <p><strong>AGENT ARCHITECTURE</strong></p>
+  <div className="agent-flow-visual">
+    <div>COINMARKETCAP</div>
+    <span>↓</span>
+    <div>MARKET ANALYSIS</div>
+    <span>↓</span>
+    <div>STRATEGY ENGINE</div>
+    <span>↓</span>
+    <div>CONFIDENCE MODEL</div>
+    <span>↓</span>
+    <div>RISK GOVERNOR</div>
+    <span>↓</span>
+    <div>TWAK</div>
+    <span>↓</span>
+    <div>BINANCE SMART CHAIN</div>
+  </div>
+</div>
+</div>
+
+{agentResult?.confidence_score !== undefined && (
+  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+    <p><strong>{coin} TRADE CONFIDENCE</strong></p>
+    <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
+    <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
+
+    <br />
+
+    <p><strong>CONFIDENCE BREAKDOWN</strong></p>
+    <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
+    <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
+    <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
+    <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
+    <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+
+    <br />
+
+    <p>
+      INTERPRETATION.......{" "}
+      {agentResult.confidence_score < 60
+        ? "WAIT / HOLD"
+        : agentResult.confidence_score < 75
+        ? "WEAK TRADE"
+        : agentResult.confidence_score < 90
+        ? "STRONG TRADE"
+        : "HIGH CONVICTION"}
+    </p>
+    <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
+  </div>
+)}
+
+{agentResult?.why?.length > 0 && (
+  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+    <p><strong>WHY THE AGENT DECIDED</strong></p>
+    {agentResult.why.map((reason, index) => (
+      <p key={index}>- {reason}</p>
+    ))}
+  </div>
+)}
+
+{agentResult?.risk_control && (
+  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+    <p><strong>RISK CONTROL</strong></p>
+    <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
+    <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
+    <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
+    <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
+    <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
+    <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
+    <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
+  </div>
+)}
+
+{agentResult?.daily_qualification && (
+  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+    <p><strong>DAILY QUALIFICATION GUARD</strong></p>
+    <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
+    <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
+    <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
+    <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
+    <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
+    <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
+    <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
+  </div>
+)}
+
+{tradeHistory.length > 0 && (
+  <div className="panel">
+    <div className="panel-title">LIVE AGENT ACTIVITY</div>
+
+    <div className="metrics">
+
+<button
+  onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)}
+  className="copy-btn"
+  style={{ marginBottom: "24px" }}
+>
+  {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+</button>
+{tradeHistory
+  .filter((trade) => {
+    const status = String(trade.status || "").toLowerCase();
+    const decision = String(trade.decision || "").toUpperCase();
+
+const isRealTrade =
+  status === "success" ||
+  status === "failed" ||
+  status === "blocked" ||
+  trade.from_token ||
+  trade.to_token;
+
+    if (status === "portfolio_check") return false;
+    if (showOnlyRealTrades && !isRealTrade) return false;
+
+    return true;
+  })
+  .slice()
+  .reverse()
+  .map((trade, index) => {
+const isRealTrade =
+  trade.status === "success" ||
+  trade.status === "failed" ||
+  trade.status === "blocked" ||
+  trade.from_token ||
+  trade.to_token;
+    const timestamp = formatDateTime(trade.timestamp);
+
+    const tradeSize =
+      trade.amount ||
+      trade.trade_plan?.amount ||
+      "N/A";
+
+    return (
+      <div
+        key={index}
+        style={{
+          marginBottom: "20px",
+          paddingBottom: "20px",
+          borderBottom: "1px solid rgba(0,255,65,0.25)",
+        }}
+      >
+        <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+  {timestamp}
+</p>
+
+<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+  EVENT:{" "}
+  {(trade.status || "UNKNOWN")
+    .replaceAll("_", " ")
+    .toUpperCase()}
+</p>
+
+<p style={{ color: "#00ff41" }}>
+  TYPE:{" "}
+  {isRealTrade
+    ? "REAL TRADE / EXECUTION"
+    : "DECISION ONLY"}
+</p>
+
+{trade.confidence_score !== undefined && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    TRADE CONFIDENCE: {trade.confidence_score} / 100
+  </p>
+)}
+
+{trade.risk_control?.current_drawdown_pct !== undefined && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%
+  </p>
+)}
+
+{trade.daily_qualification && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    DAILY QUALIFICATION: {trade.daily_qualification.trades_today} / {trade.daily_qualification.target_trades_per_day} — {trade.daily_qualification.status}
+  </p>
+)}
+
+{trade.why?.length > 0 && (
+  <div style={{ color: isRealTrade ? "#00ff41" : "#808080", marginTop: "8px" }}>
+    <p>WHY:</p>
+    {trade.why.slice(0, 5).map((reason, reasonIndex) => (
+      <p key={reasonIndex}>- {reason}</p>
+    ))}
+  </div>
+)}
+       
+
+{trade.decision && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    DECISION: {trade.decision}
+  </p>
+)}
+
+{(trade.coin || trade.from_token) && (
+  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+    ASSET:{" "}
+    {trade.coin ||
+      `${trade.from_token} → ${trade.to_token}`}
+  </p>
+)}
+
+<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
+  TRADE SIZE: {tradeSize}
+</p>
       </div>
+    );
+  })}
+    </div>
+  </div>
+)}
 
-            </details>
-
-            <details>
-              <summary>TRADE SETUP / OPERATOR CONTROLS</summary>
-              <div className="panel operator-controls-panel">
+<div className="panel operator-controls-panel">
   <div className="panel-title">TRADE SETUP / OPERATOR CONTROLS</div>
 <h2 className="strategy-library-title">TRADE SETUP</h2>
 
@@ -592,11 +1469,8 @@ function App() {
         </div>
 </div>
 
-            </details>
 
-            <details>
-              <summary>PROCESSING WINDOW</summary>
-                    {loading && (
+      {loading && (
         <div className="panel loading-panel">
           <div className="panel-title">PROCESSING</div>
 
@@ -639,290 +1513,7 @@ function App() {
         </div>
       )}
 
-            </details>
-          </div>
-        </section>
-
-        <section className="retro-quadrant retro-how">
-          <div className="retro-titlebar">HOW? + PROOF</div>
-          <div className="retro-window-body">
-            <details open>
-              <summary>EXECUTION STATUS</summary>
-              {(() => {
-  const executionStatus = getExecutionStatus();
-  const tradePlan = getTradePlan();
-
-  return (
-    <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
-      <p><strong>EXECUTION STATUS</strong></p>
-      <p>MODE................ {getExecutionModeLabel()}</p>
-      <p>ACTION.............. {executionStatus.action}</p>
-      <p>TRADE EXECUTED...... {executionStatus.executed}</p>
-      <p>STATUS.............. {executionStatus.status}</p>
-      <p>REASON.............. {executionStatus.reason}</p>
-      <p>NEXT ACTION......... {executionStatus.nextAction}</p>
-      {tradePlan && (
-        <>
-          <br />
-          <p>TRADE PLAN.......... GENERATED</p>
-          <p>ROUTE............... {tradePlan.from_token || "N/A"} → {tradePlan.to_token || "N/A"}</p>
-          <p>AMOUNT.............. {tradePlan.amount || "N/A"}</p>
-        </>
-      )}
-    </div>
-  );
-})()}
-
-              {getTradePlan() && (
-  <div className="metrics strategy-library-box last-execution-panel" style={{ marginTop: "24px" }}>
-    <p><strong>LAST EXECUTION</strong></p>
-    <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-    <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
-    <p>SIDE................ {getTradeSide()}</p>
-    <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
-    <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
-    <p>TX STATUS........... {getExecutionTxStatus()}</p>
-    <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
-    {getExecutionTxHash() && (
-      <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
-    )}
-    <p>CHAIN............... BSC</p>
-    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
-  </div>
-)}
-
-            </details>
-
-            <details>
-              <summary>WHY IT DECIDED</summary>
-              {agentResult?.confidence_score !== undefined && (
-  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
-    <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
-    <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
-
-    <br />
-
-    <p><strong>CONFIDENCE BREAKDOWN</strong></p>
-    <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
-    <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
-    <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
-    <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
-    <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
-
-    <br />
-
-    <p>
-      INTERPRETATION.......{" "}
-      {agentResult.confidence_score < 60
-        ? "WAIT / HOLD"
-        : agentResult.confidence_score < 75
-        ? "WEAK TRADE"
-        : agentResult.confidence_score < 90
-        ? "STRONG TRADE"
-        : "HIGH CONVICTION"}
-    </p>
-    <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
-  </div>
-)}
-
-{agentResult?.why?.length > 0 && (
-  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>WHY THE AGENT DECIDED</strong></p>
-    {agentResult.why.map((reason, index) => (
-      <p key={index}>- {reason}</p>
-    ))}
-  </div>
-)}
-
-{agentResult?.risk_control && (
-  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>RISK CONTROL</strong></p>
-    <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
-    <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
-    <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
-    <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
-    <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
-    <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
-    <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
-  </div>
-)}
-
-            </details>
-
-            <details>
-              <summary>LIVE AGENT ACTIVITY / PROOF OF TRADE</summary>
-              {tradeHistory.length > 0 && (
-  <div className="panel">
-    <div className="panel-title">LIVE AGENT ACTIVITY</div>
-
-    <div className="metrics">
-
-<button
-  onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)}
-  className="copy-btn"
-  style={{ marginBottom: "24px" }}
->
-  {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
-</button>
-{tradeHistory
-  .filter((trade) => {
-    const status = String(trade.status || "").toLowerCase();
-    const decision = String(trade.decision || "").toUpperCase();
-
-const executionResult = trade.execution_result || trade.result || {};
-const tradePlan = trade.trade_plan || {};
-const isRealTrade =
-  status === "success" ||
-  status === "failed" ||
-  status === "blocked" ||
-  executionResult.success === true ||
-  executionResult.executed === true ||
-  tradePlan.from_token ||
-  tradePlan.to_token ||
-  trade.from_token ||
-  trade.to_token;
-
-    if (status === "portfolio_check") return false;
-    if (showOnlyRealTrades && !isRealTrade) return false;
-
-    return true;
-  })
-  .slice()
-  .reverse()
-  .map((trade, index) => {
-const executionResult = trade.execution_result || trade.result || {};
-const tradePlan = trade.trade_plan || {};
-const isRealTrade =
-  trade.status === "success" ||
-  trade.status === "failed" ||
-  trade.status === "blocked" ||
-  executionResult.success === true ||
-  executionResult.executed === true ||
-  tradePlan.from_token ||
-  tradePlan.to_token ||
-  trade.from_token ||
-  trade.to_token;
-    const timestamp = formatDateTime(trade.timestamp);
-    const txText = [
-      executionResult.tx_hash,
-      executionResult.transaction_hash,
-      executionResult.transactionHash,
-      executionResult.hash,
-      executionResult.stdout,
-      executionResult.stderr,
-      executionResult.message,
-    ].filter(Boolean).join(" ");
-    const txMatch = txText.match(/0x[a-fA-F0-9]{64}/);
-    const txHash = txMatch ? txMatch[0] : null;
-    const executionRoute =
-      tradePlan.from_token || trade.from_token
-        ? `${tradePlan.from_token || trade.from_token} → ${tradePlan.to_token || trade.to_token}`
-        : null;
-
-    const tradeSize =
-      trade.amount ||
-      trade.trade_plan?.amount ||
-      "N/A";
-
-    return (
-      <div
-        key={index}
-        style={{
-          marginBottom: "20px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid rgba(0,255,65,0.25)",
-        }}
-      >
-        <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-  {timestamp}
-</p>
-
-<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-  EVENT:{" "}
-  {(trade.status || "UNKNOWN")
-    .replaceAll("_", " ")
-    .toUpperCase()}
-</p>
-
-<p style={{ color: "#00ff41" }}>
-  TYPE:{" "}
-  {isRealTrade
-    ? "REAL TRADE / EXECUTION"
-    : "DECISION ONLY"}
-</p>
-
-{trade.confidence_score !== undefined && (
-  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-    TRADE CONFIDENCE: {trade.confidence_score} / 100
-  </p>
-)}
-
-{trade.risk_control?.current_drawdown_pct !== undefined && (
-  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-    DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%
-  </p>
-)}
-
-{trade.daily_qualification && (
-  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-    DAILY QUALIFICATION: {trade.daily_qualification.trades_today} / {trade.daily_qualification.target_trades_per_day} — {trade.daily_qualification.status}
-  </p>
-)}
-
-{trade.why?.length > 0 && (
-  <div style={{ color: isRealTrade ? "#00ff41" : "#808080", marginTop: "8px" }}>
-    <p>WHY:</p>
-    {trade.why.slice(0, 5).map((reason, reasonIndex) => (
-      <p key={reasonIndex}>- {reason}</p>
-    ))}
-  </div>
-)}
-       
-
-{trade.decision && (
-  <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-    DECISION: {trade.decision}
-  </p>
-)}
-
-{(trade.coin || executionRoute) && (
-  <>
-    <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-      SIGNAL ASSET: {trade.coin || "N/A"}
-    </p>
-    <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-      EXECUTION ROUTE: {executionRoute || "N/A"}
-    </p>
-  </>
-)}
-
-{txHash && (
-  <>
-    <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-      TX HASH: {txHash}
-    </p>
-    <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-      BSCSCAN: https://bscscan.com/tx/{txHash}
-    </p>
-  </>
-)}
-
-<p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>
-  TRADE SIZE: {tradeSize}
-</p>
-      </div>
-    );
-  })}
-    </div>
-  </div>
-)}
-
-            </details>
-
-            <details>
-              <summary>RESULTS</summary>
-                    {result && (
+      {result && (
         <div className="panel">
           <div className="panel-title">RESULTS</div>
 
@@ -965,8 +1556,7 @@ const isRealTrade =
           <div className="metrics">
             <p>DATA SOURCE......... CoinMarketCap Agent Hub</p>
             <p>EXECUTION LAYER..... Trust Wallet Agent Kit</p>
-            <p>ROUTING VENUE....... PancakeSwap</p>
-            <p>SETTLEMENT CHAIN.... BNB Chain / BSC</p>
+            <p>VENUE............... BNB Chain / BSC</p>
 
             <br />
 
@@ -982,7 +1572,7 @@ const isRealTrade =
 
             <br />
 
-            <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
+            <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → BINANCE SMART CHAIN</p>
             <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
             <p>EXECUTION MODE...... {getExecutionModeLabel()}</p>
           </div>
@@ -1191,14 +1781,14 @@ const isRealTrade =
 
             <div className="metrics">
               <p><strong>WHAT STRATEGYFORGE DOES</strong></p>
-              <p>StrategyForge combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement into a single autonomous trading platform.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
+              <p>StrategyForge combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), and Binance Smart Chain execution into a single autonomous trading platform.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
 
               <br />
 
               <p><strong>EXECUTION MODES</strong></p>
               <p>Decision Simulation: the agent generates and logs decisions only. No live trade and no virtual position is opened.</p>
               <p>Paper Trading: the agent opens and closes virtual positions, tracks paper PnL, and can be reset without touching the live wallet.</p>
-              <p>Live Trading: the agent attempts real TWAK execution, routes swaps through PancakeSwap, and settles transactions on BNB Smart Chain.</p>
+              <p>Live Trading: the agent attempts real TWAK execution using the connected/on-chain wallet setup.</p>
 
               <br />
 
@@ -1251,55 +1841,11 @@ const isRealTrade =
         </div>
       )}
 
-            </details>
-
-            <details>
-              <summary>AGENT VERIFICATION</summary>
-              {agentResult?.daily_qualification && (
-  <div className="panel verification-panel">
-    <div className="panel-title">AGENT VERIFICATION</div>
-
-    <div className="metrics strategy-library-box">
-      <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
-      <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-      <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
-      <p>CMC AGENT HUB...... CONNECTED</p>
-      <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
-      <p>REGISTRATION....... {getRegistrationLabel()}</p>
-      <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-      <p>SELECTED TOKEN..... {coin}</p>
-      <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
-      <p>LAST TX HASH....... {getExecutionTxHash() || "N/A"}</p>
-      {getExecutionTxHash() && (
-        <p>BSCSCAN............ https://bscscan.com/tx/{getExecutionTxHash()}</p>
-      )}
-
-      <br />
-
-      <p><strong>DAILY QUALIFICATION GUARD</strong></p>
-      <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
-      <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
-      <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
-      <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
-      <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
-      <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
-      <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
-    </div>
-  </div>
-)}
-
-            </details>
-
-            <div className="retro-footer-line">
-              CMC AGENT HUB: OK &nbsp;&nbsp; TWAK: OK &nbsp;&nbsp; PANCAKESWAP: OK &nbsp;&nbsp; BNB CHAIN: OK &nbsp;&nbsp; BACKTEST ENGINE: OK &nbsp;&nbsp; OPTIMIZER: OK
-            </div>
-          </div>
-        </section>
+      <div className="footer">
+        CMC AGENT HUB: OK &nbsp;&nbsp; TWAK: OK &nbsp;&nbsp; BNB CHAIN: OK &nbsp;&nbsp; BACKTEST ENGINE: OK &nbsp;&nbsp; OPTIMIZER: OK
       </div>
     </div>
   );
-}
-
 }
 
 export default App;

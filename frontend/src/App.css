@@ -792,3 +792,48 @@ select {
 .last-execution-panel p {
   text-align: center;
 }
+
+
+/* ============================
+   COMPETITION-FIRST PAGE ORDER
+   ============================ */
+.competition-panel {
+  margin-top: 0;
+  background: rgba(0, 255, 65, 0.045);
+}
+
+.competition-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+
+.competition-grid p {
+  text-align: left;
+  margin: 8px 0;
+}
+
+.portfolio-section-panel,
+.decision-section-panel,
+.operator-controls-panel {
+  margin-top: 34px;
+}
+
+.decision-section-panel .strategy-library-title,
+.operator-controls-panel .strategy-library-title {
+  margin-top: 0 !important;
+}
+
+.operator-controls-panel {
+  background: rgba(0, 255, 65, 0.018);
+}
+
+@media (max-width: 768px) {
+  .competition-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-grid p {
+    text-align: center;
+  }
+}

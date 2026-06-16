@@ -21,6 +21,10 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://www.iknowquantfu.com",
+        "https://iknowquantfu.com",
+        "http://www.iknowquantfu.com",
+        "http://iknowquantfu.com",
         "https://www.bergmanntrading.com",
         "https://bergmanntrading.com",
         "http://localhost:5173",
@@ -503,7 +507,7 @@ def should_force_daily_qualification_trade():
     return is_in_forced_daily_trade_window()
 
 
-def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal):
+def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_execution_enabled=False):
     requested_trade_size = max(0.0, safe_float(request.trade_size, 0.0))
     market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
 
@@ -560,7 +564,7 @@ def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal):
     }
 
 
-def maybe_build_forced_trade_close_plan(request, cmc_signal):
+def maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enabled=False):
     open_trade = DAILY_QUALIFICATION_STATE.get("open_forced_trade")
 
     if not open_trade:
@@ -1077,7 +1081,7 @@ def agent_cycle(request: AgentCycleRequest):
     execution_result = None
     daily_qualification = get_daily_qualification_status()
 
-    forced_close_plan = maybe_build_forced_trade_close_plan(request, cmc_signal)
+    forced_close_plan = maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enabled=live_execution_enabled)
 
     if forced_close_plan is not None:
         decision = "DAILY_QUALIFICATION_CLOSE"
@@ -1089,6 +1093,7 @@ def agent_cycle(request: AgentCycleRequest):
             request=request,
             portfolio_items=portfolio_items,
             cmc_signal=cmc_signal,
+            live_execution_enabled=live_execution_enabled,
         )
 
     elif "bull" in market_bias and risk_score > 0:

@@ -1074,7 +1074,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("controls", "simple-quadrant simple-q-controls")}>
             <div className="simple-quadrant-header">
-              <span>WE PREPARE THE TRADE</span>
+              <span>PREPARE TO TRADE</span>
               {renderSimpleExpandButton("controls")}
             </div>
             <div className="simple-quadrant-body">
@@ -1163,7 +1163,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")}>
             <div className="simple-quadrant-header">
-              <span>ACT OR I WAIT</span>
+              <span>I ACT OR I WAIT</span>
               {renderSimpleExpandButton("proof")}
             </div>
             <div className="simple-quadrant-body">
@@ -1607,7 +1607,8 @@ async function loadTradeHistory() {
 
         <section className={getDetailedQuadrantClass("how", "retro-quadrant retro-how")}>
           <div className="retro-quadrant-header">
-            <span>HOW? LOGIC + PROOF</span>
+            <span>HOW?</span>
+            <span>LOGIC + PROOF</span>
             {renderDetailedExpandButton("how")}
           </div>
 

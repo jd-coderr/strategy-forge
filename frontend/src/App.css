@@ -198,8 +198,9 @@ label {
 
 .retro-quadrant-header > span:nth-of-type(2) {
   color: #9cff8f;
-  font-size: clamp(8px, 1.05vmin, 12px);
-  letter-spacing: clamp(0px, 0.25vmin, 2px);
+  font-size: clamp(6px, 0.82vmin, 10px);
+  line-height: 1.05;
+  letter-spacing: clamp(0px, 0.18vmin, 1.4px);
   margin-left: 8px;
   margin-right: 2px;
   text-align: right;
@@ -1943,6 +1944,14 @@ h2 {
   text-shadow: 0 0 7px rgba(156, 255, 143, 0.9);
 }
 
+.table-scroll-hint span:nth-child(2),
+.table-scroll-hint strong {
+  color: #ffffff;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 6px rgba(156, 255, 143, 0.9);
+}
+
 /* Keep Live Agent Activity on the same green system color as the rest of the site */
 .trade-log-panel .retro-log-entry,
 .trade-log-panel .retro-log-entry p,
@@ -2011,13 +2020,15 @@ h2 {
 
 .full-terminal .title {
   text-align: center;
-  color: #00ff41;
+  color: #ffffff;
   font-size: clamp(28px, 6vw, 46px);
   margin: 45px 0 18px;
   letter-spacing: clamp(3px, 1vw, 10px);
   line-height: 1.1;
   word-break: break-word;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 10px #00ff41;
 }
 
 .full-terminal .subtitle {

@@ -43,6 +43,8 @@ function App() {
   const [twakStatus, setTwakStatus] = useState("CONFIGURED");
   const [twakRegistration, setTwakRegistration] = useState("READY");
   const [twakAgentAddress, setTwakAgentAddress] = useState(null);
+  const [viewMode, setViewMode] = useState("simple");
+  const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
 
   function formatMoney(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";
@@ -865,7 +867,286 @@ async function loadTradeHistory() {
   }
 }
 
-  return (
+  function renderVersionMenu() {
+    return (
+      <div className="version-menu-wrap">
+        <button
+          type="button"
+          className="version-menu-button"
+          onClick={() => setOptionsMenuOpen(!optionsMenuOpen)}
+          aria-label="Open version options"
+          aria-expanded={optionsMenuOpen}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        {optionsMenuOpen && (
+          <div className="version-menu-panel">
+            <div className="version-menu-title">OPTIONS MENU</div>
+            <button
+              type="button"
+              className={viewMode === "simple" ? "version-menu-option active" : "version-menu-option"}
+              onClick={() => {
+                setViewMode("simple");
+                setOptionsMenuOpen(false);
+              }}
+            >
+              SIMPLE VERSION
+            </button>
+            <button
+              type="button"
+              className={viewMode === "detailed" ? "version-menu-option active" : "version-menu-option"}
+              onClick={() => {
+                setViewMode("detailed");
+                setOptionsMenuOpen(false);
+              }}
+            >
+              DETAILED VERSION
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderSimpleVersion() {
+    const executionStatus = getExecutionStatus();
+    const tradePlan = getTradePlan();
+    const txHash = getExecutionTxHash();
+    const latestRealTrade = tradeHistory.find((entry) => {
+      const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result;
+      return execution?.success === true || execution?.executed === true;
+    });
+    const selectedStrategy = result?.selected_strategy || "not optimized yet";
+    const marketRegime = result ? getMarketRegime() : "waiting for CoinMarketCap data";
+    const confidenceLabel = agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "not scored yet";
+    const riskStatus = agentResult?.risk_control?.status || "not checked yet";
+    const portfolioValue = formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0);
+    const executionSource = executionMode === "paper_trading"
+      ? "Paper Trading Engine"
+      : executionMode === "live_trading"
+      ? "TWAK → PancakeSwap"
+      : "Decision Simulation";
+
+    return (
+      <div className="retro-page">
+        <div className="simple-square">
+          <section className="simple-quadrant simple-q-intro">
+            <div className="simple-quadrant-header">
+              <span>I AM STRATEGYFORGE</span>
+              <span>SIMPLE VERSION</span>
+            </div>
+            <div className="simple-quadrant-body">
+              <div className="simple-brand-block">
+                <p className="simple-kicker">BNB HACK // AI TRADING AGENT EDITION</p>
+                <h1 className="simple-square-title">
+                  STRATEGY FORGE<span className="blink">_</span>
+                </h1>
+                <p className="simple-speech-text">
+                  I am an autonomous crypto trading agent. I read CoinMarketCap market intelligence,
+                  compare strategy options, check risk, and only then decide whether I should wait,
+                  simulate, paper trade, or execute through TWAK → PancakeSwap → BNB Smart Chain.
+                </p>
+              </div>
+
+              <div className="simple-status-grid">
+                <div className="simple-status-box">
+                  <span>MODE</span>
+                  <strong>{getExecutionModeLabel()}</strong>
+                </div>
+                <div className="simple-status-box">
+                  <span>STATUS</span>
+                  <strong>{autonomousMode ? "I AM RUNNING" : "I AM STOPPED"}</strong>
+                </div>
+                <div className="simple-status-box simple-status-box-full">
+                  <span>WALLET</span>
+                  <strong>{walletAddress ? "YOUR WALLET IS CONNECTED" : "YOUR WALLET IS NOT CONNECTED"}</strong>
+                </div>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY JOB</strong>
+                <p>
+                  I explain myself logically. First I read the market. Then I choose a strategy.
+                  Then I check my guardrails. Only after that do I act or wait.
+                </p>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY FULL ROUTE</strong>
+                <p>
+                  COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="simple-quadrant simple-q-market">
+            <div className="simple-quadrant-header">
+              <span>1 / I READ THE MARKET</span>
+              <span>MARKET + STRATEGY</span>
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                Right now I am watching the selected market, checking the current regime, and looking at the strategy I would use if conditions line up.
+              </p>
+
+              <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
+              <div className="simple-metric-row"><span>TIMEFRAME</span><strong>{result?.timeframe || timeframe}</strong></div>
+              <div className="simple-metric-row"><span>MARKET REGIME</span><strong>{marketRegime}</strong></div>
+              <div className="simple-metric-row"><span>SELECTED STRATEGY</span><strong>{selectedStrategy}</strong></div>
+              <div className="simple-metric-row"><span>AUTO STATUS</span><strong>{autoOptimized ? "optimizer selected a setup" : "optimizer not run yet"}</strong></div>
+              <div className="simple-metric-row"><span>CMC SKILL</span><strong>{getCmcTopSkill()}</strong></div>
+              <div className="simple-metric-row"><span>CONFIDENCE</span><strong>{confidenceLabel}</strong></div>
+
+              <div className="simple-message-box">
+                <strong>WHAT I AM THINKING</strong>
+                <p>
+                  My first question is simple: is this market clear enough, strong enough, and safe enough for me to continue toward execution?
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="simple-quadrant simple-q-controls">
+            <div className="simple-quadrant-header">
+              <span>2 / I PREPARE THE TRADE</span>
+              <span>CONTROLS + GUARDRAILS</span>
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                This is where you tell me what to watch and how to behave. I also show the guardrails that stop me from forcing a bad trade.
+              </p>
+
+              <div className="simple-action-grid">
+                <button onClick={optimizeStrategy} disabled={loading} style={getButtonStyle("optimize")}>
+                  {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
+                </button>
+                <button onClick={connectWallet} disabled={loading} style={getButtonStyle("wallet")}>
+                  {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
+                </button>
+                <button onClick={runAgentCycle} disabled={loading} style={getButtonStyle("run")}>
+                  {autonomousMode ? "I AM RUNNING" : "> RUN AGENT <"}
+                </button>
+                <button onClick={stopAutonomousMode} disabled={loading} style={getButtonStyle("stop")}>
+                  {agentStopConfirmed && !autonomousMode ? "I AM STOPPED" : "> STOP AGENT <"}
+                </button>
+              </div>
+
+              <div className="simple-control-grid">
+                <div>
+                  <label>ASSET</label>
+                  <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
+                    <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="BNB">BNB (BNB)</option>
+                    <option value="SOL">Solana (SOL)</option>
+                    <option value="XRP">XRP (XRP)</option>
+                    <option value="DOGE">Dogecoin (DOGE)</option>
+                    <option value="LINK">Chainlink (LINK)</option>
+                    <option value="ADA">Cardano (ADA)</option>
+                    <option value="AVAX">Avalanche (AVAX)</option>
+                    <option value="UNI">Uniswap (UNI)</option>
+                    <option value="INJ">Injective (INJ)</option>
+                    <option value="CAKE">PancakeSwap (CAKE)</option>
+                    <option value="TWT">Trust Wallet Token (TWT)</option>
+                    <option value="AAVE">Aave (AAVE)</option>
+                    <option value="ATOM">Cosmos (ATOM)</option>
+                    <option value="LTC">Litecoin (LTC)</option>
+                    <option value="DOT">Polkadot (DOT)</option>
+                    <option value="SHIB">Shiba Inu (SHIB)</option>
+                  </select>
+                </div>
+                <div>
+                  <label>MODE</label>
+                  <select
+                    value={executionMode}
+                    disabled={autonomousMode || loading}
+                    onChange={(e) => {
+                      const mode = e.target.value;
+                      setExecutionMode(mode);
+                      setLiveExecution(mode === "live_trading");
+                    }}
+                  >
+                    <option value="decision_simulation">DECISION SIMULATION</option>
+                    <option value="paper_trading">PAPER TRADING</option>
+                    <option value="live_trading">LIVE TRADING</option>
+                  </select>
+                </div>
+                <div>
+                  <label>INTERVAL</label>
+                  <select value={autonomousInterval} disabled={autonomousMode} onChange={(e) => setAutonomousInterval(Number(e.target.value))}>
+                    <option value={1}>1 MINUTE</option>
+                    <option value={5}>5 MINUTES</option>
+                    <option value={15}>15 MINUTES</option>
+                    <option value={30}>30 MINUTES</option>
+                  </select>
+                </div>
+                <div>
+                  <label>TRADE SIZE ({coin})</label>
+                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => setTradeSize(Number(e.target.value))} />
+                </div>
+              </div>
+
+              <div className="simple-metric-row"><span>RISK STATUS</span><strong>{riskStatus}</strong></div>
+              <div className="simple-metric-row"><span>CURRENT DRAWDOWN</span><strong>{agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>MAX DRAWDOWN LIMIT</span><strong>{agentResult?.risk_control?.max_drawdown_limit_pct !== undefined ? `${agentResult.risk_control.max_drawdown_limit_pct}%` : "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>PORTFOLIO VALUE</span><strong>{portfolioValue}</strong></div>
+              <div className="simple-metric-row"><span>DAILY QUALIFICATION</span><strong>{agentResult?.daily_qualification?.status || "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>TRADES TODAY</span><strong>{agentResult?.daily_qualification ? `${agentResult.daily_qualification.trades_today ?? "N/A"} / ${agentResult.daily_qualification.target_trades_per_day ?? "N/A"}` : "N/A"}</strong></div>
+            </div>
+          </section>
+
+          <section className="simple-quadrant simple-q-proof">
+            <div className="simple-quadrant-header">
+              <span>3 / I ACT OR I WAIT</span>
+              <span>EXECUTION + PROOF</span>
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                This is my final answer. If I wait, I explain why. If I act, I show the route, the status, and the proof.
+              </p>
+
+              <div className="simple-metric-row"><span>MY ACTION</span><strong>{executionStatus.action}</strong></div>
+              <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
+              <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
+              <div className="simple-metric-row"><span>TX STATUS</span><strong>{getExecutionTxStatus()}</strong></div>
+              <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
+              <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{getExecutionRouteLabel()}</strong></div>
+              <div className="simple-metric-row"><span>SOURCE</span><strong>{executionSource}</strong></div>
+              <div className="simple-metric-row"><span>CHAIN</span><strong>BNB SMART CHAIN / BSC</strong></div>
+              <div className="simple-metric-row"><span>REGISTRATION</span><strong>{getRegistrationLabel()}</strong></div>
+              <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
+              <div className="simple-metric-row"><span>TX HASH</span><strong>{txHash || "N/A"}</strong></div>
+              {tradePlan && (
+                <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
+              )}
+
+              <div className="simple-message-box">
+                <strong>MY LAST EXPLANATION</strong>
+                <p>{agentResult?.reason || autonomousStatus?.last_reason || executionStatus.reason}</p>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY LAST REAL TRADE</strong>
+                <p>{latestRealTrade ? `${formatDateTime(latestRealTrade.timestamp)} // ${latestRealTrade.decision || latestRealTrade.event || "TRADE LOGGED"}` : "I have not loaded a real trade yet."}</p>
+              </div>
+
+              {txHash && (
+                <a className="simple-proof-link" href={`https://bscscan.com/tx/${txHash}`} target="_blank" rel="noreferrer">
+                  OPEN BSCSCAN PROOF
+                </a>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  const renderDetailedVersion = () => (
     <div className="retro-page">
       <div className="retro-square">
         <section className="retro-quadrant retro-who">
@@ -1724,6 +2005,13 @@ async function loadTradeHistory() {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {renderVersionMenu()}
+      {viewMode === "simple" ? renderSimpleVersion() : renderDetailedVersion()}
+    </>
   );
 
 }

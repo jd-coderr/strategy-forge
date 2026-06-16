@@ -1959,3 +1959,23 @@ h2 {
 .equity-curve-window .recharts-label {
   transform: translateY(6px);
 }
+
+
+/* Full Size Version - added as a third option in the top-right menu */
+.full-size-page {
+  padding: clamp(8px, 1.3vmin, 18px);
+}
+
+.full-size-square {
+  width: min(96vw, 1540px);
+  height: min(94dvh, 980px);
+  max-width: 1540px;
+  max-height: 980px;
+}
+
+@media (max-width: 760px), (max-height: 720px) {
+  .full-size-square {
+    width: min(98vw, 98dvh);
+    height: min(98vw, 98dvh);
+  }
+}

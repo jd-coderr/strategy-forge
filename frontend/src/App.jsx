@@ -2954,6 +2954,47 @@ const isRealTrade =
             </>
           )}
 
+        </div>
+      )}
+
+
+{agentResult?.daily_qualification && (
+  <div className="panel verification-panel">
+    <div className="panel-title">AGENT VERIFICATION</div>
+
+    <div className="metrics strategy-library-box">
+      <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
+      <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
+      <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
+      <p>CMC AGENT HUB...... CONNECTED</p>
+      <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
+      <p>REGISTRATION....... {getRegistrationLabel()}</p>
+      <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+      <p>SELECTED TOKEN..... {coin}</p>
+      <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
+      <p>LAST TX HASH....... {getExecutionTxHash() || "N/A"}</p>
+      {getExecutionTxHash() && (
+        <p>BSCSCAN............ https://bscscan.com/tx/{getExecutionTxHash()}</p>
+      )}
+
+      <br />
+
+      <p><strong>DAILY QUALIFICATION GUARD</strong></p>
+      <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
+      <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
+      <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
+      <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
+      <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
+      <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
+      <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
+    </div>
+  </div>
+)}
+
+{result && (
+  <div className="panel result-details-panel">
+    <div className="panel-title">RESULT DETAILS</div>
+
           <details>
             <summary>OPTIMIZER REPORT</summary>
 
@@ -3171,42 +3212,9 @@ const isRealTrade =
               <p>Risk-Adjusted Score: custom optimizer score that rewards return and penalizes drawdown.</p>
             </div>
           </details>
-        </div>
-      )}
-
-
-{agentResult?.daily_qualification && (
-  <div className="panel verification-panel">
-    <div className="panel-title">AGENT VERIFICATION</div>
-
-    <div className="metrics strategy-library-box">
-      <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
-      <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-      <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
-      <p>CMC AGENT HUB...... CONNECTED</p>
-      <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
-      <p>REGISTRATION....... {getRegistrationLabel()}</p>
-      <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-      <p>SELECTED TOKEN..... {coin}</p>
-      <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
-      <p>LAST TX HASH....... {getExecutionTxHash() || "N/A"}</p>
-      {getExecutionTxHash() && (
-        <p>BSCSCAN............ https://bscscan.com/tx/{getExecutionTxHash()}</p>
-      )}
-
-      <br />
-
-      <p><strong>DAILY QUALIFICATION GUARD</strong></p>
-      <p>STATUS.............. {agentResult.daily_qualification.status || "N/A"}</p>
-      <p>TRADES TODAY........ {agentResult.daily_qualification.trades_today ?? "N/A"} / {agentResult.daily_qualification.target_trades_per_day ?? "N/A"}</p>
-      <p>FORCED WINDOW....... LAST {agentResult.daily_qualification.forced_window_minutes ?? "N/A"} MINUTES OF UTC DAY</p>
-      <p>MINUTES LEFT TODAY.. {agentResult.daily_qualification.minutes_until_utc_day_end ?? "N/A"}</p>
-      <p>FORCED TP TARGET.... +{agentResult.daily_qualification.take_profit_pct ?? "N/A"}%</p>
-      <p>FORCED MAX DOWNSIDE. -{agentResult.daily_qualification.stop_loss_pct ?? "N/A"}%</p>
-      <p>TIME EXIT BUFFER.... {agentResult.daily_qualification.time_exit_buffer_minutes ?? "N/A"} MINUTES BEFORE UTC DAY END</p>
-    </div>
   </div>
 )}
+
 
 
       <div className="footer">

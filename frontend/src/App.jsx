@@ -1623,84 +1623,8 @@ async function loadTradeHistory() {
               })()}
             </details>
 
-            {getTradePlan() && (
-              <details className="retro-window" open>
-                <summary>LAST EXECUTION / PROOF OF TRADE</summary>
-                <div className="metrics strategy-library-box last-execution-panel">
-                  <p><strong>LAST EXECUTION</strong></p>
-                  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-                  <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
-                  <p>SIDE................ {getTradeSide()}</p>
-                  <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
-                  <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
-                  <p>TX STATUS........... {getExecutionTxStatus()}</p>
-                  <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
-                  {getExecutionTxHash() && (
-                    <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
-                  )}
-                  <p>CHAIN............... BSC</p>
-                  <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
-                </div>
-              </details>
-            )}
-
-            {agentResult?.confidence_score !== undefined && (
-              <details className="retro-window" open>
-                <summary>TRADE CONFIDENCE / WHY</summary>
-                <div className="metrics strategy-library-box">
-                  <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
-                  <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
-                  <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
-                  <br />
-                  <p><strong>CONFIDENCE BREAKDOWN</strong></p>
-                  <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
-                  <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
-                  <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
-                  <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
-                  <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
-                  <br />
-                  <p>
-                    INTERPRETATION.......{" "}
-                    {agentResult.confidence_score < 60
-                      ? "WAIT / HOLD"
-                      : agentResult.confidence_score < 75
-                      ? "WEAK TRADE"
-                      : agentResult.confidence_score < 90
-                      ? "STRONG TRADE"
-                      : "HIGH CONVICTION"}
-                  </p>
-                  <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
-                </div>
-
-                {agentResult?.why?.length > 0 && (
-                  <div className="metrics strategy-library-box">
-                    <p><strong>WHY THE AGENT DECIDED</strong></p>
-                    {agentResult.why.map((reason, index) => (
-                      <p key={index}>- {reason}</p>
-                    ))}
-                  </div>
-                )}
-              </details>
-            )}
-
-            {agentResult?.risk_control && (
-              <details className="retro-window">
-                <summary>RISK CONTROL</summary>
-                <div className="metrics strategy-library-box">
-                  <p><strong>RISK CONTROL</strong></p>
-                  <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
-                  <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
-                  <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
-                  <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
-                  <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
-                  <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
-                  <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
-                </div>
-              </details>
-            )}
-
-            <details className="retro-window">
-              <summary>LIVE AGENT ACTIVITY / TRADE LOG</summary>
+            <details className="retro-window trade-log-window" open>
+              <summary>TRADE LOG / LIVE AGENT ACTIVITY</summary>
               <div className="metrics trade-log-panel">
                 <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn" style={{ marginBottom: "14px" }}>
                   {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
@@ -1798,6 +1722,84 @@ async function loadTradeHistory() {
                     })}
               </div>
             </details>
+
+            {getTradePlan() && (
+              <details className="retro-window" open>
+                <summary>LAST EXECUTION / PROOF OF TRADE</summary>
+                <div className="metrics strategy-library-box last-execution-panel">
+                  <p><strong>LAST EXECUTION</strong></p>
+                  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
+                  <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
+                  <p>SIDE................ {getTradeSide()}</p>
+                  <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
+                  <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
+                  <p>TX STATUS........... {getExecutionTxStatus()}</p>
+                  <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
+                  {getExecutionTxHash() && (
+                    <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
+                  )}
+                  <p>CHAIN............... BSC</p>
+                  <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
+                </div>
+              </details>
+            )}
+
+            {agentResult?.confidence_score !== undefined && (
+              <details className="retro-window" open>
+                <summary>TRADE CONFIDENCE / WHY</summary>
+                <div className="metrics strategy-library-box">
+                  <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
+                  <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
+                  <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
+                  <br />
+                  <p><strong>CONFIDENCE BREAKDOWN</strong></p>
+                  <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
+                  <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
+                  <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
+                  <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
+                  <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+                  <br />
+                  <p>
+                    INTERPRETATION.......{" "}
+                    {agentResult.confidence_score < 60
+                      ? "WAIT / HOLD"
+                      : agentResult.confidence_score < 75
+                      ? "WEAK TRADE"
+                      : agentResult.confidence_score < 90
+                      ? "STRONG TRADE"
+                      : "HIGH CONVICTION"}
+                  </p>
+                  <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
+                </div>
+
+                {agentResult?.why?.length > 0 && (
+                  <div className="metrics strategy-library-box">
+                    <p><strong>WHY THE AGENT DECIDED</strong></p>
+                    {agentResult.why.map((reason, index) => (
+                      <p key={index}>- {reason}</p>
+                    ))}
+                  </div>
+                )}
+              </details>
+            )}
+
+            {agentResult?.risk_control && (
+              <details className="retro-window">
+                <summary>RISK CONTROL</summary>
+                <div className="metrics strategy-library-box">
+                  <p><strong>RISK CONTROL</strong></p>
+                  <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
+                  <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
+                  <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
+                  <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
+                  <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
+                  <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
+                  <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
+                </div>
+              </details>
+            )}
+
+
 
             {result && (
               <details className="retro-window" open>

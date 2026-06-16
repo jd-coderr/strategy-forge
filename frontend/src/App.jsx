@@ -1624,7 +1624,7 @@ async function loadTradeHistory() {
             </details>
 
             <details className="retro-window trade-log-window" open>
-              <summary>TRADING LOGS / LIVE AGENT ACTIVITY</summary>
+              <summary>LIVE AGENT ACTIVITY</summary>
               <div className="metrics trade-log-panel">
                 <div className="trade-log-controls">
                   <button onClick={loadTradeHistory} className="copy-btn">
@@ -1730,35 +1730,37 @@ async function loadTradeHistory() {
             </details>
 
             <details className="retro-window trade-history-window" open>
-              <summary>TRADING HISTORY / STRATEGY BACKTEST HISTORY</summary>
-              <div className="metrics">
-                {!result && (
+              <summary>STRATEGY BACKTEST HISTORY</summary>
+              {!result && (
+                <div className="metrics">
                   <p className="trade-log-empty">NO STRATEGY BACKTEST HISTORY LOADED YET. RUN AUTO-OPTIMIZE OR GENERATE STRATEGY TO FILL THIS TABLE.</p>
-                )}
+                </div>
+              )}
 
-                {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
+              {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
+                <div className="metrics">
                   <p className="trade-log-empty">STRATEGY LOADED, BUT NO RECENT BACKTEST TRADES WERE RETURNED.</p>
-                )}
+                </div>
+              )}
 
-                {result?.backtest?.recent_trades?.length > 0 && (
-                  <div className="trade-table">
-                    <div className="trade-row trade-header">
-                      <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
-                    </div>
-                    {result.backtest.recent_trades.map((trade, index) => (
-                      <div className="trade-row" key={index}>
-                        <span>{trade.entry_time}</span>
-                        <span>{trade.exit_time}</span>
-                        <span>{trade.entry_price}</span>
-                        <span>{trade.exit_price}</span>
-                        <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{String(trade.result || "N/A").toUpperCase()}</span>
-                        <span>{trade.pnl_pct}%</span>
-                        <span>{trade.duration}</span>
-                      </div>
-                    ))}
+              {result?.backtest?.recent_trades?.length > 0 && (
+                <div className="trade-table">
+                  <div className="trade-row trade-header">
+                    <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
                   </div>
-                )}
-              </div>
+                  {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
+                    <div className="trade-row" key={index}>
+                      <span>{trade.entry_time}</span>
+                      <span>{trade.exit_time}</span>
+                      <span>{trade.entry_price}</span>
+                      <span>{trade.exit_price}</span>
+                      <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
+                      <span>{trade.pnl_pct}%</span>
+                      <span>{trade.duration}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </details>
 
             {getTradePlan() && (

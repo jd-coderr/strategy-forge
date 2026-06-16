@@ -45,6 +45,8 @@ function App() {
   const [twakAgentAddress, setTwakAgentAddress] = useState(null);
   const [viewMode, setViewMode] = useState("simple");
   const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
+  const [expandedSimpleQuadrant, setExpandedSimpleQuadrant] = useState(null);
+  const [expandedDetailedQuadrant, setExpandedDetailedQuadrant] = useState(null);
 
   function formatMoney(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";
@@ -911,57 +913,171 @@ async function loadTradeHistory() {
     );
   }
 
+  function getSimpleQuadrantClass(name, baseClass) {
+    const isExpanded = expandedSimpleQuadrant === name;
+    const isHidden = expandedSimpleQuadrant && !isExpanded;
+
+    return `${baseClass} ${isExpanded ? "simple-expanded" : ""} ${isHidden ? "simple-hidden-behind-expanded" : ""}`;
+  }
+
+  function renderSimpleExpandButton(name) {
+    const isExpanded = expandedSimpleQuadrant === name;
+
+    return (
+      <button
+        type="button"
+        className="simple-expand-button"
+        aria-label={isExpanded ? "Collapse section" : "Expand section"}
+        onClick={() => setExpandedSimpleQuadrant(isExpanded ? null : name)}
+      >
+        {isExpanded ? "−" : "+"}
+      </button>
+    );
+  }
+
+  function getDetailedQuadrantClass(name, baseClass) {
+    const isExpanded = expandedDetailedQuadrant === name;
+    const isHidden = expandedDetailedQuadrant && !isExpanded;
+
+    return `${baseClass} ${isExpanded ? "retro-expanded" : ""} ${isHidden ? "retro-hidden-behind-expanded" : ""}`;
+  }
+
+  function renderDetailedExpandButton(name) {
+    const isExpanded = expandedDetailedQuadrant === name;
+
+    return (
+      <button
+        type="button"
+        className="retro-expand-button"
+        aria-label={isExpanded ? "Collapse section" : "Expand section"}
+        onClick={() => setExpandedDetailedQuadrant(isExpanded ? null : name)}
+      >
+        {isExpanded ? "−" : "+"}
+      </button>
+    );
+  }
+
   function renderSimpleVersion() {
     const executionStatus = getExecutionStatus();
     const tradePlan = getTradePlan();
     const txHash = getExecutionTxHash();
-    const latestRealTrade = tradeHistory.find((record) => {
-      const execution = record?.execution_result || record?.event?.execution_result || record?.result;
+    const latestRealTrade = tradeHistory.find((entry) => {
+      const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result;
       return execution?.success === true || execution?.executed === true;
     });
+    const selectedStrategy = result?.selected_strategy || "not optimized yet";
+    const marketRegime = result ? getMarketRegime() : "waiting for CoinMarketCap data";
+    const confidenceLabel = agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "not scored yet";
+    const riskStatus = agentResult?.risk_control?.status || "not checked yet";
+    const portfolioValue = formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0);
+    const executionSource = executionMode === "paper_trading"
+      ? "Paper Trading Engine"
+      : executionMode === "live_trading"
+      ? "TWAK → PancakeSwap"
+      : "Decision Simulation";
 
     return (
-      <div className="simple-page">
-        <main className="simple-terminal">
-          <header className="simple-header">
-            <div>
-              <p className="simple-kicker">BNB HACK // AI TRADING AGENT EDITION</p>
-              <h1>STRATEGY FORGE<span className="blink">_</span></h1>
-              <p>Autonomous crypto trading agent for CMC market intelligence, TWAK execution, PancakeSwap routing, and BNB Smart Chain proof.</p>
+      <div className="retro-page">
+        <div className={`simple-square ${expandedSimpleQuadrant ? "simple-has-expanded" : ""}`}>
+          <section className={getSimpleQuadrantClass("intro", "simple-quadrant simple-q-intro")}>
+            <div className="simple-quadrant-header">
+              <span>I AM STRATEGYFORGE</span>
+              {renderSimpleExpandButton("intro")}
             </div>
-            <div className="simple-status-stack">
-              <span>{getExecutionModeLabel()}</span>
-              <span>{autonomousMode ? "AGENT RUNNING" : "AGENT STOPPED"}</span>
-              <span>{walletAddress ? "WALLET CONNECTED" : "WALLET NOT CONNECTED"}</span>
-            </div>
-          </header>
+            <div className="simple-quadrant-body">
+              <div className="simple-brand-block">
+                <p className="simple-kicker">BNB HACK // AI TRADING AGENT EDITION</p>
+                <h1 className="simple-square-title">
+                  STRATEGY FORGE<span className="blink">_</span>
+                </h1>
+                <p className="simple-speech-text">
+                  I am an autonomous crypto trading agent. I read CoinMarketCap market intelligence,
+                  compare strategy options, check risk, and only then decide whether I should wait,
+                  simulate, paper trade, or execute through TWAK → PancakeSwap → BNB Smart Chain.
+                </p>
+              </div>
 
-          <section className="simple-grid">
-            <article className="simple-card simple-primary-card">
-              <div className="simple-card-title">1 / MARKET + STRATEGY</div>
+              <div className="simple-status-grid">
+                <div className="simple-status-box">
+                  <span>MODE</span>
+                  <strong>{getExecutionModeLabel()}</strong>
+                </div>
+                <div className="simple-status-box">
+                  <span>STATUS</span>
+                  <strong>{autonomousMode ? "I AM RUNNING" : "I AM STOPPED"}</strong>
+                </div>
+                <div className="simple-status-box simple-status-box-full">
+                  <span>WALLET</span>
+                  <strong>{walletAddress ? "YOUR WALLET IS CONNECTED" : "YOUR WALLET IS NOT CONNECTED"}</strong>
+                </div>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY JOB</strong>
+                <p>
+                  I explain myself logically. First I read the market. Then I choose a strategy.
+                  Then I check my guardrails. Only after that do I act or wait.
+                </p>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY FULL ROUTE</strong>
+                <p>
+                  COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={getSimpleQuadrantClass("market", "simple-quadrant simple-q-market")}>
+            <div className="simple-quadrant-header">
+              <span>I READ THE MARKET</span>
+              {renderSimpleExpandButton("market")}
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                Right now I am watching the selected market, checking the current regime, and looking at the strategy I would use if conditions line up.
+              </p>
+
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
               <div className="simple-metric-row"><span>TIMEFRAME</span><strong>{result?.timeframe || timeframe}</strong></div>
-              <div className="simple-metric-row"><span>MARKET REGIME</span><strong>{result ? getMarketRegime() : "WAITING FOR CMC DATA"}</strong></div>
-              <div className="simple-metric-row"><span>SELECTED STRATEGY</span><strong>{result?.selected_strategy || "NOT OPTIMIZED YET"}</strong></div>
+              <div className="simple-metric-row"><span>MARKET REGIME</span><strong>{marketRegime}</strong></div>
+              <div className="simple-metric-row"><span>SELECTED STRATEGY</span><strong>{selectedStrategy}</strong></div>
+              <div className="simple-metric-row"><span>AUTO STATUS</span><strong>{autoOptimized ? "optimizer selected a setup" : "optimizer not run yet"}</strong></div>
               <div className="simple-metric-row"><span>CMC SKILL</span><strong>{getCmcTopSkill()}</strong></div>
-              <div className="simple-metric-row"><span>CONFIDENCE</span><strong>{agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</strong></div>
-              <p className="simple-note">CMC data feeds the market read. The strategy engine selects the setup. The agent only acts after confidence and risk checks agree.</p>
-            </article>
+              <div className="simple-metric-row"><span>CONFIDENCE</span><strong>{confidenceLabel}</strong></div>
 
-            <article className="simple-card">
-              <div className="simple-card-title">2 / AUTONOMOUS CONTROLS</div>
-              <div className="simple-button-grid">
+              <div className="simple-message-box">
+                <strong>WHAT I AM THINKING</strong>
+                <p>
+                  My first question is simple: is this market clear enough, strong enough, and safe enough for me to continue toward execution?
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={getSimpleQuadrantClass("controls", "simple-quadrant simple-q-controls")}>
+            <div className="simple-quadrant-header">
+              <span>WE PREPARE THE TRADE</span>
+              {renderSimpleExpandButton("controls")}
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                This is where you tell me what to watch and how to behave. I also show the guardrails that stop me from forcing a bad trade.
+              </p>
+
+              <div className="simple-action-grid">
                 <button onClick={optimizeStrategy} disabled={loading} style={getButtonStyle("optimize")}>
-                  {loading && loadingMode === "optimize" ? "OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
+                  {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
                 </button>
                 <button onClick={connectWallet} disabled={loading} style={getButtonStyle("wallet")}>
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
                 <button onClick={runAgentCycle} disabled={loading} style={getButtonStyle("run")}>
-                  {autonomousMode ? "AGENT RUNNING" : "> RUN AGENT <"}
+                  {autonomousMode ? "I AM RUNNING" : "> RUN AGENT <"}
                 </button>
                 <button onClick={stopAutonomousMode} disabled={loading} style={getButtonStyle("stop")}>
-                  {agentStopConfirmed && !autonomousMode ? "AGENT STOPPED" : "> STOP AGENT <"}
+                  {agentStopConfirmed && !autonomousMode ? "I AM STOPPED" : "> STOP AGENT <"}
                 </button>
               </div>
 
@@ -1019,65 +1135,71 @@ async function loadTradeHistory() {
                   <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => setTradeSize(Number(e.target.value))} />
                 </div>
               </div>
-            </article>
 
-            <article className="simple-card">
-              <div className="simple-card-title">3 / RISK GUARDRAILS</div>
-              <div className="simple-metric-row"><span>RISK STATUS</span><strong>{agentResult?.risk_control?.status || "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>RISK STATUS</span><strong>{riskStatus}</strong></div>
               <div className="simple-metric-row"><span>CURRENT DRAWDOWN</span><strong>{agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</strong></div>
               <div className="simple-metric-row"><span>MAX DRAWDOWN LIMIT</span><strong>{agentResult?.risk_control?.max_drawdown_limit_pct !== undefined ? `${agentResult.risk_control.max_drawdown_limit_pct}%` : "N/A"}</strong></div>
-              <div className="simple-metric-row"><span>PORTFOLIO VALUE</span><strong>{formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0)}</strong></div>
+              <div className="simple-metric-row"><span>PORTFOLIO VALUE</span><strong>{portfolioValue}</strong></div>
               <div className="simple-metric-row"><span>DAILY QUALIFICATION</span><strong>{agentResult?.daily_qualification?.status || "N/A"}</strong></div>
               <div className="simple-metric-row"><span>TRADES TODAY</span><strong>{agentResult?.daily_qualification ? `${agentResult.daily_qualification.trades_today ?? "N/A"} / ${agentResult.daily_qualification.target_trades_per_day ?? "N/A"}` : "N/A"}</strong></div>
-              <p className="simple-note">Competition-safe controls stay visible: drawdown cap, daily trade requirement, portfolio value, and execution mode.</p>
-            </article>
+            </div>
+          </section>
 
-            <article className="simple-card simple-proof-card">
-              <div className="simple-card-title">4 / EXECUTION PROOF</div>
-              <div className="simple-metric-row"><span>ACTION</span><strong>{executionStatus.action}</strong></div>
-              <div className="simple-metric-row"><span>TRADE EXECUTED</span><strong>{executionStatus.executed}</strong></div>
+          <section className={getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")}>
+            <div className="simple-quadrant-header">
+              <span>ACT OR I WAIT</span>
+              {renderSimpleExpandButton("proof")}
+            </div>
+            <div className="simple-quadrant-body">
+              <p className="simple-speech-text">
+                This is my final answer. If I wait, I explain why. If I act, I show the route, the status, and the proof.
+              </p>
+
+              <div className="simple-metric-row"><span>MY ACTION</span><strong>{executionStatus.action}</strong></div>
+              <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
+              <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
               <div className="simple-metric-row"><span>TX STATUS</span><strong>{getExecutionTxStatus()}</strong></div>
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
               <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{getExecutionRouteLabel()}</strong></div>
-              <div className="simple-metric-row"><span>SOURCE</span><strong>{executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</strong></div>
+              <div className="simple-metric-row"><span>SOURCE</span><strong>{executionSource}</strong></div>
               <div className="simple-metric-row"><span>CHAIN</span><strong>BNB SMART CHAIN / BSC</strong></div>
               <div className="simple-metric-row"><span>REGISTRATION</span><strong>{getRegistrationLabel()}</strong></div>
               <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
               <div className="simple-metric-row"><span>TX HASH</span><strong>{txHash || "N/A"}</strong></div>
+              {tradePlan && (
+                <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
+              )}
+
+              <div className="simple-message-box">
+                <strong>MY LAST EXPLANATION</strong>
+                <p>{agentResult?.reason || autonomousStatus?.last_reason || executionStatus.reason}</p>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>MY LAST REAL TRADE</strong>
+                <p>{latestRealTrade ? `${formatDateTime(latestRealTrade.timestamp)} // ${latestRealTrade.decision || latestRealTrade.event || "TRADE LOGGED"}` : "I have not loaded a real trade yet."}</p>
+              </div>
+
               {txHash && (
                 <a className="simple-proof-link" href={`https://bscscan.com/tx/${txHash}`} target="_blank" rel="noreferrer">
                   OPEN BSCSCAN PROOF
                 </a>
               )}
-            </article>
-          </section>
-
-          <section className="simple-bottom-strip">
-            <div>
-              <strong>ARCHITECTURE</strong>
-              <span>COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</span>
-            </div>
-            <div>
-              <strong>LAST REASON</strong>
-              <span>{agentResult?.reason || autonomousStatus?.last_reason || executionStatus.reason}</span>
-            </div>
-            <div>
-              <strong>LAST REAL TRADE</strong>
-              <span>{latestRealTrade ? `${formatDateTime(latestRealTrade.timestamp)} // ${latestRealTrade.decision || latestRealTrade.event || "TRADE LOGGED"}` : "NO REAL TRADE LOADED"}</span>
             </div>
           </section>
-        </main>
+        </div>
       </div>
     );
   }
 
   const renderDetailedVersion = () => (
     <div className="retro-page">
-      <div className="retro-square">
-        <section className="retro-quadrant retro-who">
+      <div className={`retro-square ${expandedDetailedQuadrant ? "retro-has-expanded" : ""}`}>
+        <section className={getDetailedQuadrantClass("who", "retro-quadrant retro-who")}>
           <div className="retro-quadrant-header">
-            <span>WHO?</span>
+            <span>WHO AM I?</span>
             <span>SF v0.1.0</span>
+            {renderDetailedExpandButton("who")}
           </div>
 
           <div className="retro-quadrant-body">
@@ -1143,10 +1265,10 @@ async function loadTradeHistory() {
           </div>
         </section>
 
-        <section className="retro-quadrant retro-what">
+        <section className={getDetailedQuadrantClass("what", "retro-quadrant retro-what")}>
           <div className="retro-quadrant-header">
-            <span>WHAT?</span>
-            <span>WHAT IT DOES</span>
+            <span>WHAT DO I DO?</span>
+            {renderDetailedExpandButton("what")}
           </div>
 
           <div className="retro-quadrant-body">
@@ -1288,10 +1410,11 @@ async function loadTradeHistory() {
           </div>
         </section>
 
-        <section className="retro-quadrant retro-when">
+        <section className={getDetailedQuadrantClass("when", "retro-quadrant retro-when")}>
           <div className="retro-quadrant-header">
             <span>WHEN?</span>
             <span>OPERATOR FLOW</span>
+            {renderDetailedExpandButton("when")}
           </div>
 
           <div className="retro-quadrant-body">
@@ -1465,10 +1588,10 @@ async function loadTradeHistory() {
           </div>
         </section>
 
-        <section className="retro-quadrant retro-how">
+        <section className={getDetailedQuadrantClass("how", "retro-quadrant retro-how")}>
           <div className="retro-quadrant-header">
-            <span>HOW? + PROOF</span>
-            <span>LOGIC / EVIDENCE / RESULTS</span>
+            <span>HOW? LOGIC + PROOF</span>
+            {renderDetailedExpandButton("how")}
           </div>
 
           <div className="retro-quadrant-body">
@@ -1500,91 +1623,24 @@ async function loadTradeHistory() {
               })()}
             </details>
 
-            {getTradePlan() && (
-              <details className="retro-window" open>
-                <summary>LAST EXECUTION / PROOF OF TRADE</summary>
-                <div className="metrics strategy-library-box last-execution-panel">
-                  <p><strong>LAST EXECUTION</strong></p>
-                  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-                  <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
-                  <p>SIDE................ {getTradeSide()}</p>
-                  <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
-                  <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
-                  <p>TX STATUS........... {getExecutionTxStatus()}</p>
-                  <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
-                  {getExecutionTxHash() && (
-                    <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
-                  )}
-                  <p>CHAIN............... BSC</p>
-                  <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
-                </div>
-              </details>
-            )}
-
-            {agentResult?.confidence_score !== undefined && (
-              <details className="retro-window" open>
-                <summary>TRADE CONFIDENCE / WHY</summary>
-                <div className="metrics strategy-library-box">
-                  <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
-                  <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
-                  <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
-                  <br />
-                  <p><strong>CONFIDENCE BREAKDOWN</strong></p>
-                  <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
-                  <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
-                  <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
-                  <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
-                  <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
-                  <br />
-                  <p>
-                    INTERPRETATION.......{" "}
-                    {agentResult.confidence_score < 60
-                      ? "WAIT / HOLD"
-                      : agentResult.confidence_score < 75
-                      ? "WEAK TRADE"
-                      : agentResult.confidence_score < 90
-                      ? "STRONG TRADE"
-                      : "HIGH CONVICTION"}
-                  </p>
-                  <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
-                </div>
-
-                {agentResult?.why?.length > 0 && (
-                  <div className="metrics strategy-library-box">
-                    <p><strong>WHY THE AGENT DECIDED</strong></p>
-                    {agentResult.why.map((reason, index) => (
-                      <p key={index}>- {reason}</p>
-                    ))}
-                  </div>
-                )}
-              </details>
-            )}
-
-            {agentResult?.risk_control && (
-              <details className="retro-window">
-                <summary>RISK CONTROL</summary>
-                <div className="metrics strategy-library-box">
-                  <p><strong>RISK CONTROL</strong></p>
-                  <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
-                  <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
-                  <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
-                  <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
-                  <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
-                  <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
-                  <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
-                </div>
-              </details>
-            )}
-
-            {tradeHistory.length > 0 && (
-              <details className="retro-window">
-                <summary>LIVE AGENT ACTIVITY</summary>
-                <div className="metrics">
-                  <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn" style={{ marginBottom: "24px" }}>
-                    {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+            <details className="retro-window trade-log-window" open>
+              <summary>LIVE AGENT ACTIVITY</summary>
+              <div className="metrics trade-log-panel">
+                <div className="trade-log-controls">
+                  <button onClick={loadTradeHistory} className="copy-btn">
+                    {"> REFRESH TRADE LOGS <"}
                   </button>
 
-                  {tradeHistory
+                  <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn">
+                    {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+                  </button>
+                </div>
+
+                {tradeHistory.length === 0 && (
+                  <p className="trade-log-empty">NO TRADE LOGS LOADED YET. RUN THE AGENT OR LOAD TRADE HISTORY TO SHOW EXECUTION ACTIVITY HERE.</p>
+                )}
+
+                {tradeHistory.length > 0 && tradeHistory
                     .filter((trade) => {
                       const status = String(trade.status || "").toLowerCase();
                       const executionResult = trade.execution_result || trade.result || {};
@@ -1670,9 +1726,120 @@ async function loadTradeHistory() {
                         </div>
                       );
                     })}
+              </div>
+            </details>
+
+            <details className="retro-window trade-history-window" open>
+              <summary>STRATEGY BACKTEST HISTORY</summary>
+              {!result && (
+                <div className="metrics">
+                  <p className="trade-log-empty">NO STRATEGY BACKTEST HISTORY LOADED YET. RUN AUTO-OPTIMIZE OR GENERATE STRATEGY TO FILL THIS TABLE.</p>
+                </div>
+              )}
+
+              {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
+                <div className="metrics">
+                  <p className="trade-log-empty">STRATEGY LOADED, BUT NO RECENT BACKTEST TRADES WERE RETURNED.</p>
+                </div>
+              )}
+
+              {result?.backtest?.recent_trades?.length > 0 && (
+                <div className="trade-table">
+                  <div className="trade-row trade-header">
+                    <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
+                  </div>
+                  {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
+                    <div className="trade-row" key={index}>
+                      <span>{trade.entry_time}</span>
+                      <span>{trade.exit_time}</span>
+                      <span>{trade.entry_price}</span>
+                      <span>{trade.exit_price}</span>
+                      <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
+                      <span>{trade.pnl_pct}%</span>
+                      <span>{trade.duration}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </details>
+
+            {getTradePlan() && (
+              <details className="retro-window" open>
+                <summary>LAST EXECUTION / PROOF OF TRADE</summary>
+                <div className="metrics strategy-library-box last-execution-panel">
+                  <p><strong>LAST EXECUTION</strong></p>
+                  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
+                  <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
+                  <p>SIDE................ {getTradeSide()}</p>
+                  <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
+                  <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
+                  <p>TX STATUS........... {getExecutionTxStatus()}</p>
+                  <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
+                  {getExecutionTxHash() && (
+                    <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
+                  )}
+                  <p>CHAIN............... BSC</p>
+                  <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
                 </div>
               </details>
             )}
+
+            {agentResult?.confidence_score !== undefined && (
+              <details className="retro-window" open>
+                <summary>TRADE CONFIDENCE / WHY</summary>
+                <div className="metrics strategy-library-box">
+                  <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
+                  <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
+                  <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
+                  <br />
+                  <p><strong>CONFIDENCE BREAKDOWN</strong></p>
+                  <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
+                  <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
+                  <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
+                  <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
+                  <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+                  <br />
+                  <p>
+                    INTERPRETATION.......{" "}
+                    {agentResult.confidence_score < 60
+                      ? "WAIT / HOLD"
+                      : agentResult.confidence_score < 75
+                      ? "WEAK TRADE"
+                      : agentResult.confidence_score < 90
+                      ? "STRONG TRADE"
+                      : "HIGH CONVICTION"}
+                  </p>
+                  <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
+                </div>
+
+                {agentResult?.why?.length > 0 && (
+                  <div className="metrics strategy-library-box">
+                    <p><strong>WHY THE AGENT DECIDED</strong></p>
+                    {agentResult.why.map((reason, index) => (
+                      <p key={index}>- {reason}</p>
+                    ))}
+                  </div>
+                )}
+              </details>
+            )}
+
+            {agentResult?.risk_control && (
+              <details className="retro-window">
+                <summary>RISK CONTROL</summary>
+                <div className="metrics strategy-library-box">
+                  <p><strong>RISK CONTROL</strong></p>
+                  <p>CURRENT VALUE....... {formatMoney(agentResult.risk_control.current_portfolio_value_usd || 0)}</p>
+                  <p>BASELINE VALUE...... {formatMoney(agentResult.risk_control.baseline_portfolio_value_usd || 0)}</p>
+                  <p>PEAK VALUE.......... {formatMoney(agentResult.risk_control.peak_portfolio_value_usd || 0)}</p>
+                  <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
+                  <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
+                  <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
+                  <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
+                </div>
+              </details>
+            )}
+
+
 
             {result && (
               <details className="retro-window" open>
@@ -1740,15 +1907,39 @@ async function loadTradeHistory() {
                     <summary>EQUITY CURVE</summary>
                     <div className="chart-box">
                       <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={getEquityCurveData()} margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
-                          <XAxis dataKey="trade" label={{ value: "TRADES", position: "insideBottom", offset: -15 }} />
-                          <YAxis domain={["auto", "auto"]} />
+                        <LineChart data={getEquityCurveData()} margin={{ top: 8, right: 16, left: 4, bottom: 28 }}>
+                          <XAxis
+                            dataKey="trade"
+                            tick={{ fontSize: 8, fill: "#9cff8f" }}
+                            tickLine={{ stroke: "#9cff8f" }}
+                            axisLine={{ stroke: "#9cff8f" }}
+                            label={{
+                              value: "TRADES",
+                              position: "insideBottom",
+                              offset: -4,
+                              style: { fontSize: 9, fill: "#9cff8f", letterSpacing: 1 }
+                            }}
+                          />
+                          <YAxis
+                            domain={["auto", "auto"]}
+                            width={44}
+                            tick={{ fontSize: 8, fill: "#9cff8f" }}
+                            tickLine={{ stroke: "#9cff8f" }}
+                            axisLine={{ stroke: "#9cff8f" }}
+                          />
                           <Tooltip
                             labelFormatter={(label) => `Trade ${label}`}
                             formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
-                            contentStyle={{ backgroundColor: "#001a08", border: "1px solid #00ff41", color: "#00ff41" }}
-                            labelStyle={{ color: "#00ff41" }}
-                            itemStyle={{ color: "#00ff41" }}
+                            contentStyle={{
+                              backgroundColor: "#001a08",
+                              border: "1px solid #00ff41",
+                              color: "#00ff41",
+                              fontSize: "8px",
+                              lineHeight: "1.25",
+                              padding: "4px 6px"
+                            }}
+                            labelStyle={{ color: "#00ff41", fontSize: "8px", marginBottom: "2px" }}
+                            itemStyle={{ color: "#00ff41", fontSize: "8px", padding: 0 }}
                           />
                           <Line type="monotone" dataKey="equity" dot={false} stroke="#ffffff" strokeWidth={2} />
                         </LineChart>
@@ -1835,25 +2026,7 @@ async function loadTradeHistory() {
                   </div>
                 </details>
 
-                <details className="retro-sub-window">
-                  <summary>STRATEGY BACKTEST HISTORY</summary>
-                  <div className="trade-table">
-                    <div className="trade-row trade-header">
-                      <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
-                    </div>
-                    {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
-                      <div className="trade-row" key={index}>
-                        <span>{trade.entry_time}</span>
-                        <span>{trade.exit_time}</span>
-                        <span>{trade.entry_price}</span>
-                        <span>{trade.exit_price}</span>
-                        <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
-                        <span>{trade.pnl_pct}%</span>
-                        <span>{trade.duration}</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
+
 
                 <details className="retro-sub-window">
                   <summary>METRICS / AGENT LOGIC EXPLAINED</summary>

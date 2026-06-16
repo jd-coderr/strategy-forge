@@ -1074,7 +1074,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("controls", "simple-quadrant simple-q-controls")}>
             <div className="simple-quadrant-header">
-              <span>PREPARE THE TRADE</span>
+              <span>WE PREPARE THE TRADE</span>
               {renderSimpleExpandButton("controls")}
             </div>
             <div className="simple-quadrant-body">
@@ -1163,7 +1163,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")}>
             <div className="simple-quadrant-header">
-              <span>I ACT OR I WAIT</span>
+              <span>ACT OR I WAIT</span>
               {renderSimpleExpandButton("proof")}
             </div>
             <div className="simple-quadrant-body">
@@ -1239,9 +1239,10 @@ async function loadTradeHistory() {
               </div>
 
               <div className="metrics retro-mini-window">
-                <p><strong>Roundhouse kick dumb trades.</strong></p>
-                   <p>Backtest the signal. Lock the risk. Automate the move.</p>
-                <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
+                <p><strong>SLOGAN</strong></p>
+                <p>Roundhouse kick dumb trades.</p>
+                <p>Backtest the signal. Lock the risk. Automate the move.</p>
+                <p>Conceptually: I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
               </div>
             </div>
 

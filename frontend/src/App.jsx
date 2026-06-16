@@ -1699,15 +1699,18 @@ async function loadTradeHistory() {
               </details>
             )}
 
-            {tradeHistory.length > 0 && (
-              <details className="retro-window">
-                <summary>LIVE AGENT ACTIVITY</summary>
-                <div className="metrics">
-                  <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn" style={{ marginBottom: "24px" }}>
-                    {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
-                  </button>
+            <details className="retro-window">
+              <summary>LIVE AGENT ACTIVITY / TRADE LOG</summary>
+              <div className="metrics trade-log-panel">
+                <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn" style={{ marginBottom: "14px" }}>
+                  {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+                </button>
 
-                  {tradeHistory
+                {tradeHistory.length === 0 && (
+                  <p className="trade-log-empty">NO TRADE LOGS LOADED YET. RUN THE AGENT OR LOAD TRADE HISTORY TO SHOW EXECUTION ACTIVITY HERE.</p>
+                )}
+
+                {tradeHistory.length > 0 && tradeHistory
                     .filter((trade) => {
                       const status = String(trade.status || "").toLowerCase();
                       const executionResult = trade.execution_result || trade.result || {};
@@ -1793,9 +1796,8 @@ async function loadTradeHistory() {
                         </div>
                       );
                     })}
-                </div>
-              </details>
-            )}
+              </div>
+            </details>
 
             {result && (
               <details className="retro-window" open>

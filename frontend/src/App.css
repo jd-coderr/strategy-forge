@@ -1802,3 +1802,38 @@ h2 {
   min-height: 0;
   overflow-y: auto;
 }
+
+/* Compact Detailed Version autonomous status readout */
+.autonomous-status-box {
+  font-size: clamp(6.5px, 0.72vmin, 9px) !important;
+  line-height: 1.12 !important;
+  letter-spacing: 0.3px;
+}
+
+.autonomous-status-box p {
+  margin: 2px 0 !important;
+  font-size: clamp(6.5px, 0.72vmin, 9px) !important;
+  line-height: 1.12 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trade-log-panel {
+  font-size: clamp(7px, 0.82vmin, 10px) !important;
+  line-height: 1.22 !important;
+}
+
+.trade-log-panel .copy-btn {
+  min-height: clamp(24px, 3.1vmin, 34px) !important;
+  font-size: clamp(7px, 0.85vmin, 10px) !important;
+  padding: 5px 8px !important;
+}
+
+.trade-log-empty {
+  color: #9cff8f;
+  opacity: 0.8;
+  border: 1px dashed rgba(156, 255, 143, 0.45);
+  padding: 8px;
+  margin: 0;
+  text-align: center;
+}

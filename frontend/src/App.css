@@ -191,7 +191,7 @@ label {
   white-space: nowrap;
 }
 
-.retro-quadrant-header span:last-child {
+.retro-quadrant-header span:last-child:not(:first-child) {
   color: #9cff8f;
   font-size: clamp(8px, 1.05vmin, 12px);
   letter-spacing: clamp(0px, 0.25vmin, 2px);
@@ -869,10 +869,11 @@ h2 {
 }
 
 .simple-status-stack span {
-  border: 1px solid rgba(156, 255, 143, 0.75);
-  background: rgba(156, 255, 143, 0.06);
-  padding: 6px 8px;
-  text-align: center;
+  border: none;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.48);
+  background: transparent;
+  padding: 5px 0;
+  text-align: left;
   color: #ffffff;
   font-weight: bold;
   font-size: clamp(8px, 1.05vmin, 13px);
@@ -1324,9 +1325,14 @@ h2 {
 }
 
 .simple-status-box {
-  border: 1px solid rgba(156, 255, 143, 0.75);
-  background: rgba(156, 255, 143, 0.06);
-  padding: 8px;
+  border: none;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.48);
+  background: transparent;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .simple-status-box-full {
@@ -1337,7 +1343,9 @@ h2 {
   display: block;
   color: #9cff8f;
   font-size: clamp(7px, 0.9vmin, 11px);
-  margin-bottom: 4px;
+  letter-spacing: 1px;
+  margin: 0;
+  opacity: 0.9;
 }
 
 .simple-status-box strong {
@@ -1345,6 +1353,8 @@ h2 {
   color: #ffffff;
   font-size: clamp(8px, 1vmin, 12px);
   line-height: 1.25;
+  text-align: right;
+  font-weight: bold;
 }
 
 .simple-message-box {
@@ -1695,4 +1705,27 @@ h2 {
   .simple-narrative-strip {
     display: none;
   }
+}
+
+/* Status readouts should look like terminal information, not buttons */
+.simple-status-grid {
+  border-top: 1px dotted rgba(156, 255, 143, 0.45);
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.45);
+  padding: 4px 0;
+}
+
+.simple-status-box,
+.simple-status-stack span {
+  border-left: 0 !important;
+  border-right: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.45) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+.simple-status-box:last-child,
+.simple-status-stack span:last-child {
+  border-bottom: 0 !important;
 }

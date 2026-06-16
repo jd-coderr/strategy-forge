@@ -1008,7 +1008,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("market", "simple-quadrant simple-q-market")}>
             <div className="simple-quadrant-header">
-              <span>1 / I READ THE MARKET</span>
+              <span>I READ THE MARKET</span>
               {renderSimpleExpandButton("market")}
             </div>
             <div className="simple-quadrant-body">
@@ -1035,7 +1035,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("controls", "simple-quadrant simple-q-controls")}>
             <div className="simple-quadrant-header">
-              <span>2 / I PREPARE THE TRADE</span>
+              <span>WE PREPARE THE TRADE</span>
               {renderSimpleExpandButton("controls")}
             </div>
             <div className="simple-quadrant-body">
@@ -1124,7 +1124,7 @@ async function loadTradeHistory() {
 
           <section className={getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")}>
             <div className="simple-quadrant-header">
-              <span>3 / I ACT OR I WAIT</span>
+              <span>ACT OR I WAIT</span>
               {renderSimpleExpandButton("proof")}
             </div>
             <div className="simple-quadrant-body">
@@ -1174,7 +1174,7 @@ async function loadTradeHistory() {
       <div className="retro-square">
         <section className="retro-quadrant retro-who">
           <div className="retro-quadrant-header">
-            <span>WHO?</span>
+            <span>WHO AM I?</span>
             <span>SF v0.1.0</span>
           </div>
 
@@ -1243,8 +1243,7 @@ async function loadTradeHistory() {
 
         <section className="retro-quadrant retro-what">
           <div className="retro-quadrant-header">
-            <span>WHAT?</span>
-            <span>WHAT IT DOES</span>
+            <span>WHAT DO I DO?</span>
           </div>
 
           <div className="retro-quadrant-body">
@@ -1565,8 +1564,7 @@ async function loadTradeHistory() {
 
         <section className="retro-quadrant retro-how">
           <div className="retro-quadrant-header">
-            <span>HOW? + PROOF</span>
-            <span>LOGIC / EVIDENCE / RESULTS</span>
+            <span>HOW? LOGIC + PROOF</span>
           </div>
 
           <div className="retro-quadrant-body">

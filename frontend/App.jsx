@@ -230,7 +230,7 @@ async function loadAutonomousStatus() {
 }
 
 useEffect(() => {
-  document.title = "StrategyForge";
+  document.title = "I Know Quant Fu";
 
   loadAutonomousStatus();
   checkRegistration();
@@ -981,15 +981,17 @@ async function loadTradeHistory() {
         <div className={`simple-square ${expandedSimpleQuadrant ? "simple-has-expanded" : ""}`}>
           <section className={getSimpleQuadrantClass("intro", "simple-quadrant simple-q-intro")}>
             <div className="simple-quadrant-header">
-              <span>I AM STRATEGYFORGE</span>
+              <span>I KNOW QUANT FU</span>
               {renderSimpleExpandButton("intro")}
             </div>
             <div className="simple-quadrant-body">
               <div className="simple-brand-block">
                 <p className="simple-kicker">BNB HACK // AI TRADING AGENT EDITION</p>
                 <h1 className="simple-square-title">
-                  STRATEGY FORGE<span className="blink">_</span>
+                  I KNOW QUANT FU<span className="blink">_</span>
                 </h1>
+                <p className="simple-brand-slogan">Roundhouse kick dumb trades.</p>
+                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
                 <p className="simple-speech-text">
                   I am an autonomous crypto trading agent. I read CoinMarketCap market intelligence,
                   compare strategy options, check risk, and only then decide whether I should wait,
@@ -1198,41 +1200,42 @@ async function loadTradeHistory() {
         <section className={getDetailedQuadrantClass("who", "retro-quadrant retro-who")}>
           <div className="retro-quadrant-header">
             <span>WHO AM I?</span>
-            <span>SF v0.1.0</span>
+            <span>IKQF v0.1.0</span>
             {renderDetailedExpandButton("who")}
           </div>
 
           <div className="retro-quadrant-body">
             <div className="retro-brand-card">
               <div className="topbar retro-topbar">
-                <span>SF v0.1.0</span>
-                <span>BERGMANN TRADING PRESENTS</span>
+                <span>IKQF v0.1.0</span>
+                <span>I KNOW QUANT FU PRESENTS</span>
                 <span>AI ONLINE</span>
               </div>
 
               <h1 className="title retro-title">
-                STRATEGY FORGE<span className="blink">_</span>
+                I KNOW QUANT FU<span className="blink">_</span>
               </h1>
 
-              <p className="subtitle retro-subtitle">AI-POWERED TRADING STRATEGY GENERATOR</p>
+              <p className="subtitle retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
 
               <div className="hero-description retro-hero-description">
-                StrategyForge is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
+                I Know Quant Fu is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
                 Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
                 and Binance Smart Chain infrastructure.
               </div>
 
               <div className="metrics retro-mini-window">
                 <p><strong>SLOGAN</strong></p>
-                <p>READ THE MARKET. TEST THE EDGE. EXECUTE WITH PROOF.</p>
-                <p>Conceptually: StrategyForge turns noisy crypto market data into explainable autonomous trading decisions.</p>
+                <p>Roundhouse kick dumb trades.</p>
+                <p>Backtest the signal. Lock the risk. Automate the move.</p>
+                <p>Conceptually: I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
               </div>
             </div>
 
             <details className="retro-window" open>
               <summary>IDENTITY / PURPOSE</summary>
               <div className="metrics">
-                <p>NAME............... STRATEGY FORGE</p>
+                <p>NAME............... I KNOW QUANT FU</p>
                 <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
                 <p>DATA SOURCE........ COINMARKETCAP AGENT HUB</p>
                 <p>EXECUTION LAYER.... TRUST WALLET AGENT KIT</p>
@@ -1273,9 +1276,9 @@ async function loadTradeHistory() {
 
           <div className="retro-quadrant-body">
             <details className="retro-window" open>
-              <summary>WHAT STRATEGYFORGE DOES</summary>
+              <summary>WHAT I KNOW QUANT FU DOES</summary>
               <div className="metrics">
-                <p>StrategyForge continuously analyzes market conditions, compares strategy performance, backtests multiple approaches, evaluates portfolio risk, generates explainable AI trade decisions, and can operate in Decision Simulation, Paper Trading, or Live Trading Mode.</p>
+                <p>I Know Quant Fu continuously analyzes market conditions, compares strategy performance, backtests multiple approaches, evaluates portfolio risk, generates explainable AI trade decisions, and can operate in Decision Simulation, Paper Trading, or Live Trading Mode.</p>
                 <p>Every decision passes through market regime analysis, confidence scoring, strategy validation, drawdown protection, portfolio risk controls, and execution safety checks before a trade is approved.</p>
               </div>
             </details>
@@ -1623,6 +1626,154 @@ async function loadTradeHistory() {
               })()}
             </details>
 
+            <details className="retro-window trade-log-window" open>
+              <summary>LIVE AGENT ACTIVITY</summary>
+              <div className="metrics trade-log-panel">
+                <div className="trade-log-controls">
+                  <button onClick={loadTradeHistory} className="copy-btn">
+                    {"> REFRESH TRADE LOGS <"}
+                  </button>
+
+                  <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn">
+                    {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
+                  </button>
+                </div>
+
+                {tradeHistory.length === 0 && (
+                  <p className="trade-log-empty">NO TRADE LOGS LOADED YET. RUN THE AGENT OR LOAD TRADE HISTORY TO SHOW EXECUTION ACTIVITY HERE.</p>
+                )}
+
+                {tradeHistory.length > 0 && tradeHistory
+                    .filter((trade) => {
+                      const status = String(trade.status || "").toLowerCase();
+                      const executionResult = trade.execution_result || trade.result || {};
+                      const tradePlan = trade.trade_plan || {};
+                      const isRealTrade =
+                        status === "success" ||
+                        status === "failed" ||
+                        status === "blocked" ||
+                        executionResult.success === true ||
+                        executionResult.executed === true ||
+                        tradePlan.from_token ||
+                        tradePlan.to_token ||
+                        trade.from_token ||
+                        trade.to_token;
+
+                      if (status === "portfolio_check") return false;
+                      if (showOnlyRealTrades && !isRealTrade) return false;
+                      return true;
+                    })
+                    .slice()
+                    .reverse()
+                    .map((trade, index) => {
+                      const executionResult = trade.execution_result || trade.result || {};
+                      const tradePlan = trade.trade_plan || {};
+                      const isRealTrade =
+                        trade.status === "success" ||
+                        trade.status === "failed" ||
+                        trade.status === "blocked" ||
+                        executionResult.success === true ||
+                        executionResult.executed === true ||
+                        tradePlan.from_token ||
+                        tradePlan.to_token ||
+                        trade.from_token ||
+                        trade.to_token;
+                      const timestamp = formatDateTime(trade.timestamp);
+                      const txText = [
+                        executionResult.tx_hash,
+                        executionResult.transaction_hash,
+                        executionResult.transactionHash,
+                        executionResult.hash,
+                        executionResult.stdout,
+                        executionResult.stderr,
+                        executionResult.message,
+                      ].filter(Boolean).join(" ");
+                      const txMatch = txText.match(/0x[a-fA-F0-9]{64}/);
+                      const txHash = txMatch ? txMatch[0] : null;
+                      const executionRoute =
+                        tradePlan.from_token || trade.from_token
+                          ? `${tradePlan.from_token || trade.from_token} → ${tradePlan.to_token || trade.to_token}`
+                          : null;
+                      const tradeSizeValue = trade.amount || trade.trade_plan?.amount || "N/A";
+
+                      return (
+                        <div key={index} className="retro-log-entry">
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>{timestamp}</p>
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>EVENT: {(trade.status || "UNKNOWN").replaceAll("_", " ").toUpperCase()}</p>
+                          <p style={{ color: "#9cff8f" }}>TYPE: {isRealTrade ? "REAL TRADE / EXECUTION" : "DECISION ONLY"}</p>
+                          {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
+                          {trade.risk_control?.current_drawdown_pct !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%</p>}
+                          {trade.daily_qualification && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DAILY QUALIFICATION: {trade.daily_qualification.trades_today} / {trade.daily_qualification.target_trades_per_day} — {trade.daily_qualification.status}</p>}
+                          {trade.why?.length > 0 && (
+                            <div style={{ color: isRealTrade ? "#9cff8f" : "#808080", marginTop: "8px" }}>
+                              <p>WHY:</p>
+                              {trade.why.slice(0, 5).map((reason, reasonIndex) => (
+                                <p key={reasonIndex}>- {reason}</p>
+                              ))}
+                            </div>
+                          )}
+                          {trade.decision && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DECISION: {trade.decision}</p>}
+                          {(trade.coin || executionRoute) && (
+                            <>
+                              <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>SIGNAL ASSET: {trade.coin || "N/A"}</p>
+                              <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>EXECUTION ROUTE: {executionRoute || "N/A"}</p>
+                            </>
+                          )}
+                          {txHash && (
+                            <>
+                              <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TX HASH: {txHash}</p>
+                              <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>BSCSCAN: https://bscscan.com/tx/{txHash}</p>
+                            </>
+                          )}
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE SIZE: {tradeSizeValue}</p>
+                        </div>
+                      );
+                    })}
+              </div>
+            </details>
+
+            <details className="retro-window trade-history-window" open>
+              <summary>STRATEGY BACKTEST HISTORY</summary>
+              {!result && (
+                <div className="metrics">
+                  <p className="trade-log-empty">NO STRATEGY BACKTEST HISTORY LOADED YET. RUN AUTO-OPTIMIZE OR GENERATE STRATEGY TO FILL THIS TABLE.</p>
+                </div>
+              )}
+
+              {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
+                <div className="metrics">
+                  <p className="trade-log-empty">STRATEGY LOADED, BUT NO RECENT BACKTEST TRADES WERE RETURNED.</p>
+                </div>
+              )}
+
+              {result?.backtest?.recent_trades?.length > 0 && (
+                <>
+                  <div className="table-scroll-hint" aria-label="This table scrolls left to right">
+                    <span>{"<"}</span>
+                    <span>THIS TABLE SCROLLS LEFT TO RIGHT</span>
+                    <span>{">"}</span>
+                  </div>
+
+                  <div className="trade-table">
+                  <div className="trade-row trade-header">
+                    <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
+                  </div>
+                  {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
+                    <div className="trade-row" key={index}>
+                      <span>{trade.entry_time}</span>
+                      <span>{trade.exit_time}</span>
+                      <span>{trade.entry_price}</span>
+                      <span>{trade.exit_price}</span>
+                      <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
+                      <span>{trade.pnl_pct}%</span>
+                      <span>{trade.duration}</span>
+                    </div>
+                  ))}
+                </div>
+                </>
+              )}
+            </details>
+
             {getTradePlan() && (
               <details className="retro-window" open>
                 <summary>LAST EXECUTION / PROOF OF TRADE</summary>
@@ -1699,103 +1850,7 @@ async function loadTradeHistory() {
               </details>
             )}
 
-            {tradeHistory.length > 0 && (
-              <details className="retro-window">
-                <summary>LIVE AGENT ACTIVITY</summary>
-                <div className="metrics">
-                  <button onClick={() => setShowOnlyRealTrades(!showOnlyRealTrades)} className="copy-btn" style={{ marginBottom: "24px" }}>
-                    {showOnlyRealTrades ? "> SHOW ALL AGENT ACTIVITY <" : "> SHOW REAL TRADES ONLY <"}
-                  </button>
 
-                  {tradeHistory
-                    .filter((trade) => {
-                      const status = String(trade.status || "").toLowerCase();
-                      const executionResult = trade.execution_result || trade.result || {};
-                      const tradePlan = trade.trade_plan || {};
-                      const isRealTrade =
-                        status === "success" ||
-                        status === "failed" ||
-                        status === "blocked" ||
-                        executionResult.success === true ||
-                        executionResult.executed === true ||
-                        tradePlan.from_token ||
-                        tradePlan.to_token ||
-                        trade.from_token ||
-                        trade.to_token;
-
-                      if (status === "portfolio_check") return false;
-                      if (showOnlyRealTrades && !isRealTrade) return false;
-                      return true;
-                    })
-                    .slice()
-                    .reverse()
-                    .map((trade, index) => {
-                      const executionResult = trade.execution_result || trade.result || {};
-                      const tradePlan = trade.trade_plan || {};
-                      const isRealTrade =
-                        trade.status === "success" ||
-                        trade.status === "failed" ||
-                        trade.status === "blocked" ||
-                        executionResult.success === true ||
-                        executionResult.executed === true ||
-                        tradePlan.from_token ||
-                        tradePlan.to_token ||
-                        trade.from_token ||
-                        trade.to_token;
-                      const timestamp = formatDateTime(trade.timestamp);
-                      const txText = [
-                        executionResult.tx_hash,
-                        executionResult.transaction_hash,
-                        executionResult.transactionHash,
-                        executionResult.hash,
-                        executionResult.stdout,
-                        executionResult.stderr,
-                        executionResult.message,
-                      ].filter(Boolean).join(" ");
-                      const txMatch = txText.match(/0x[a-fA-F0-9]{64}/);
-                      const txHash = txMatch ? txMatch[0] : null;
-                      const executionRoute =
-                        tradePlan.from_token || trade.from_token
-                          ? `${tradePlan.from_token || trade.from_token} → ${tradePlan.to_token || trade.to_token}`
-                          : null;
-                      const tradeSizeValue = trade.amount || trade.trade_plan?.amount || "N/A";
-
-                      return (
-                        <div key={index} className="retro-log-entry">
-                          <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>{timestamp}</p>
-                          <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>EVENT: {(trade.status || "UNKNOWN").replaceAll("_", " ").toUpperCase()}</p>
-                          <p style={{ color: "#00ff41" }}>TYPE: {isRealTrade ? "REAL TRADE / EXECUTION" : "DECISION ONLY"}</p>
-                          {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
-                          {trade.risk_control?.current_drawdown_pct !== undefined && <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%</p>}
-                          {trade.daily_qualification && <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>DAILY QUALIFICATION: {trade.daily_qualification.trades_today} / {trade.daily_qualification.target_trades_per_day} — {trade.daily_qualification.status}</p>}
-                          {trade.why?.length > 0 && (
-                            <div style={{ color: isRealTrade ? "#00ff41" : "#808080", marginTop: "8px" }}>
-                              <p>WHY:</p>
-                              {trade.why.slice(0, 5).map((reason, reasonIndex) => (
-                                <p key={reasonIndex}>- {reason}</p>
-                              ))}
-                            </div>
-                          )}
-                          {trade.decision && <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>DECISION: {trade.decision}</p>}
-                          {(trade.coin || executionRoute) && (
-                            <>
-                              <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>SIGNAL ASSET: {trade.coin || "N/A"}</p>
-                              <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>EXECUTION ROUTE: {executionRoute || "N/A"}</p>
-                            </>
-                          )}
-                          {txHash && (
-                            <>
-                              <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>TX HASH: {txHash}</p>
-                              <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>BSCSCAN: https://bscscan.com/tx/{txHash}</p>
-                            </>
-                          )}
-                          <p style={{ color: isRealTrade ? "#00ff41" : "#808080" }}>TRADE SIZE: {tradeSizeValue}</p>
-                        </div>
-                      );
-                    })}
-                </div>
-              </details>
-            )}
 
             {result && (
               <details className="retro-window" open>
@@ -1859,19 +1914,45 @@ async function loadTradeHistory() {
                 </details>
 
                 {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
-                  <details className="retro-sub-window">
+                  <details className="retro-sub-window equity-curve-window">
                     <summary>EQUITY CURVE</summary>
                     <div className="chart-box">
                       <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={getEquityCurveData()} margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
-                          <XAxis dataKey="trade" label={{ value: "TRADES", position: "insideBottom", offset: -15 }} />
-                          <YAxis domain={["auto", "auto"]} />
+                        <LineChart data={getEquityCurveData()} margin={{ top: 8, right: 16, left: 4, bottom: 46 }}>
+                          <XAxis
+                            dataKey="trade"
+                            height={46}
+                            tick={{ fontSize: 8, fill: "#9cff8f" }}
+                            tickMargin={12}
+                            tickLine={{ stroke: "#9cff8f" }}
+                            axisLine={{ stroke: "#9cff8f" }}
+                            label={{
+                              value: "TRADES",
+                              position: "insideBottom",
+                              offset: -20,
+                              style: { fontSize: 9, fill: "#9cff8f", letterSpacing: 1 }
+                            }}
+                          />
+                          <YAxis
+                            domain={["auto", "auto"]}
+                            width={44}
+                            tick={{ fontSize: 8, fill: "#9cff8f" }}
+                            tickLine={{ stroke: "#9cff8f" }}
+                            axisLine={{ stroke: "#9cff8f" }}
+                          />
                           <Tooltip
                             labelFormatter={(label) => `Trade ${label}`}
                             formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
-                            contentStyle={{ backgroundColor: "#001a08", border: "1px solid #00ff41", color: "#00ff41" }}
-                            labelStyle={{ color: "#00ff41" }}
-                            itemStyle={{ color: "#00ff41" }}
+                            contentStyle={{
+                              backgroundColor: "#001a08",
+                              border: "1px solid #9cff8f",
+                              color: "#9cff8f",
+                              fontSize: "8px",
+                              lineHeight: "1.25",
+                              padding: "4px 6px"
+                            }}
+                            labelStyle={{ color: "#9cff8f", fontSize: "8px", marginBottom: "2px" }}
+                            itemStyle={{ color: "#9cff8f", fontSize: "8px", padding: 0 }}
                           />
                           <Line type="monotone" dataKey="equity" dot={false} stroke="#ffffff" strokeWidth={2} />
                         </LineChart>
@@ -1894,7 +1975,14 @@ async function loadTradeHistory() {
                   </div>
 
                   {result.optimization?.all_results && (
-                    <div className="optimizer-table">
+                    <>
+                      <div className="table-scroll-hint" aria-label="This table scrolls left to right">
+                        <span>{"<"}</span>
+                        <span>THIS TABLE SCROLLS LEFT TO RIGHT</span>
+                        <span>{">"}</span>
+                      </div>
+
+                      <div className="optimizer-table">
                       <div className="optimizer-row optimizer-header">
                         <span>RANK</span><span>TIMEFRAME</span><span>RISK</span><span>STRATEGY</span><span>RETURN</span><span>SHARPE</span><span>CALMAR</span><span>PF</span><span>MAX DD</span><span>SCORE</span>
                       </div>
@@ -1907,7 +1995,8 @@ async function loadTradeHistory() {
                             <span>#{index + 1}</span><span>{item.timeframe}</span><span>{item.risk.toUpperCase()}</span><span>{item.selected_strategy}</span><span>{item.backtest.net_return}</span><span>{item.backtest.sharpe_ratio}</span><span>{item.backtest.calmar_ratio}</span><span>{item.backtest.profit_factor}</span><span>{item.backtest.max_drawdown}</span><span>{item.risk_adjusted_score}</span>
                           </div>
                         ))}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </details>
 
@@ -1958,31 +2047,13 @@ async function loadTradeHistory() {
                   </div>
                 </details>
 
-                <details className="retro-sub-window">
-                  <summary>STRATEGY BACKTEST HISTORY</summary>
-                  <div className="trade-table">
-                    <div className="trade-row trade-header">
-                      <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
-                    </div>
-                    {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
-                      <div className="trade-row" key={index}>
-                        <span>{trade.entry_time}</span>
-                        <span>{trade.exit_time}</span>
-                        <span>{trade.entry_price}</span>
-                        <span>{trade.exit_price}</span>
-                        <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
-                        <span>{trade.pnl_pct}%</span>
-                        <span>{trade.duration}</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
+
 
                 <details className="retro-sub-window">
                   <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
                   <div className="metrics">
-                    <p><strong>WHAT STRATEGYFORGE DOES</strong></p>
-                    <p>StrategyForge combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement into a single autonomous trading platform.</p>
+                    <p><strong>WHAT I KNOW QUANT FU DOES</strong></p>
+                    <p>I Know Quant Fu combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement into a single autonomous trading platform.</p>
                     <p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
                     <br />
                     <p><strong>EXECUTION MODES</strong></p>

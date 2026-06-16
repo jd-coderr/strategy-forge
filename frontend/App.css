@@ -1318,6 +1318,24 @@ h2 {
   text-shadow: 0 0 4px #ffffff, 0 0 10px #9cff8f;
 }
 
+.simple-brand-slogan {
+  margin: 0 0 4px;
+  color: #fff2bf;
+  font-weight: bold;
+  font-size: clamp(8px, 1.15vmin, 14px);
+  line-height: 1.2;
+  letter-spacing: clamp(1px, 0.28vmin, 2px);
+  text-transform: uppercase;
+}
+
+.simple-brand-subline {
+  margin: 0 0 8px;
+  color: #9cff8f;
+  font-size: clamp(7px, 0.98vmin, 12px);
+  line-height: 1.25;
+  letter-spacing: clamp(0px, 0.18vmin, 1.5px);
+}
+
 .simple-speech-text,
 .simple-message-box p {
   margin: 0;
@@ -1801,4 +1819,143 @@ h2 {
 .retro-square.retro-has-expanded .retro-quadrant.retro-expanded .retro-quadrant-body {
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Compact Detailed Version autonomous status readout */
+.autonomous-status-box {
+  font-size: clamp(6.5px, 0.72vmin, 9px) !important;
+  line-height: 1.12 !important;
+  letter-spacing: 0.3px;
+}
+
+.autonomous-status-box p {
+  margin: 2px 0 !important;
+  font-size: clamp(6.5px, 0.72vmin, 9px) !important;
+  line-height: 1.12 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trade-log-panel {
+  font-size: clamp(7px, 0.82vmin, 10px) !important;
+  line-height: 1.22 !important;
+}
+
+.trade-log-panel .copy-btn {
+  min-height: clamp(24px, 3.1vmin, 34px) !important;
+  font-size: clamp(7px, 0.85vmin, 10px) !important;
+  padding: 5px 8px !important;
+}
+
+.trade-log-empty {
+  color: #9cff8f;
+  opacity: 0.8;
+  border: 1px dashed rgba(156, 255, 143, 0.45);
+  padding: 8px;
+  margin: 0;
+  text-align: center;
+}
+
+
+/* Trade log and trade history visibility */
+.trade-log-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(6px, 1vmin, 12px);
+  margin-bottom: 14px;
+}
+
+.trade-log-empty {
+  color: #fff2bf;
+  text-align: center;
+  border: 1px dashed rgba(255, 242, 191, 0.65);
+  padding: 8px;
+  text-shadow: none;
+}
+
+.trade-history-window .trade-table,
+.trade-log-window .trade-table {
+  margin-top: 10px;
+}
+
+@media (max-width: 680px), (max-height: 680px) {
+  .trade-log-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Compact Detailed Version equity curve labels and tooltip */
+.chart-box .recharts-text,
+.chart-box .recharts-cartesian-axis-tick-value {
+  font-size: 8px !important;
+  line-height: 1 !important;
+  text-shadow: 0 0 4px rgba(156, 255, 143, 0.7);
+}
+
+.chart-box .recharts-label {
+  font-size: 9px !important;
+  letter-spacing: 1px !important;
+}
+
+.chart-box .recharts-tooltip-wrapper,
+.chart-box .recharts-tooltip-wrapper * {
+  font-size: 8px !important;
+  line-height: 1.25 !important;
+}
+
+/* Extra click spacing below Detailed Version equity curve */
+.equity-curve-window {
+  margin-bottom: clamp(18px, 3vmin, 34px) !important;
+}
+
+.equity-curve-window .chart-box {
+  margin-bottom: clamp(14px, 2.4vmin, 28px) !important;
+}
+
+.equity-curve-window + .retro-sub-window {
+  margin-top: clamp(10px, 1.8vmin, 22px) !important;
+}
+
+
+/* Horizontal table scroll hint for compact square panels */
+.table-scroll-hint {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(6px, 1vmin, 14px);
+  margin: 10px 0 6px;
+  padding: 5px 8px;
+  border: 1px dashed rgba(156, 255, 143, 0.7);
+  color: #9cff8f;
+  background: rgba(156, 255, 143, 0.045);
+  text-align: center;
+  font-size: clamp(7px, 0.9vmin, 10px);
+  letter-spacing: clamp(0.5px, 0.18vmin, 1.6px);
+  text-shadow: 0 0 6px rgba(156, 255, 143, 0.75);
+}
+
+.table-scroll-hint span:first-child,
+.table-scroll-hint span:last-child {
+  color: #ffffff;
+  font-size: clamp(10px, 1.35vmin, 16px);
+  line-height: 1;
+  text-shadow: 0 0 7px rgba(156, 255, 143, 0.9);
+}
+
+/* Keep Live Agent Activity on the same green system color as the rest of the site */
+.trade-log-panel .retro-log-entry,
+.trade-log-panel .retro-log-entry p,
+.trade-log-panel .retro-log-entry div {
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.7);
+}
+
+
+/* Push Equity Curve X-axis trade numbers further below the axis line */
+.equity-curve-window .recharts-xAxis .recharts-cartesian-axis-tick-value {
+  transform: translateY(4px);
+}
+
+.equity-curve-window .recharts-label {
+  transform: translateY(6px);
 }

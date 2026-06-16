@@ -177,7 +177,7 @@ label {
   min-height: clamp(24px, 4.4vmin, 42px);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   padding: 6px 10px;
   border-bottom: 1px solid #9cff8f;
@@ -193,12 +193,16 @@ label {
 
 .retro-quadrant-header > span:first-of-type {
   color: #ffffff;
+  margin-right: auto;
 }
 
 .retro-quadrant-header > span:nth-of-type(2) {
   color: #9cff8f;
   font-size: clamp(8px, 1.05vmin, 12px);
   letter-spacing: clamp(0px, 0.25vmin, 2px);
+  margin-left: 8px;
+  margin-right: 2px;
+  text-align: right;
 }
 
 .retro-quadrant-body {

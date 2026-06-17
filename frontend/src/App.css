@@ -873,7 +873,9 @@ h2 {
 
 .version-menu-option {
   margin-top: 8px !important;
-  min-height: 38px;
+  min-height: 44px;
+  font-size: clamp(12px, 1.45vmin, 17px);
+  letter-spacing: 1px;
 }
 
 .version-menu-option.active {

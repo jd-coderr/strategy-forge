@@ -277,7 +277,7 @@ async function loadAutonomousStatus() {
 }
 
 useEffect(() => {
-  document.title = "I Know Quant Fu";
+  document.title = "I AM";
 
   loadAutonomousStatus();
   checkRegistration();
@@ -1057,7 +1057,7 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <div className="simple-brand-block">
-                <p className="simple-kicker">BNB HACK // AI TRADING AGENT EDITION</p>
+                <p className="simple-kicker">AN AI TRADING AGENT</p>
                 <h1 className="simple-square-title">
                   I KNOW QUANT FU<span className="blink">_</span>
                 </h1>
@@ -1282,10 +1282,8 @@ async function loadTradeHistory() {
           <div className="retro-quadrant-body">
             <div className="retro-brand-card">
               <div className="topbar retro-topbar">
-                <span>IKQF v0.1.0</span>
-                <span>I KNOW QUANT FU PRESENTS</span>
-                <span>AI ONLINE</span>
-              </div>
+                <span>IKQF v0.1.0 - AI ONLINE</span>
+                                  </div>
 
               <h1 className="title retro-title">
                 I KNOW QUANT FU<span className="blink">_</span>
@@ -1300,10 +1298,9 @@ async function loadTradeHistory() {
               </div>
 
               <div className="metrics retro-mini-window">
-                <p><strong>SLOGAN</strong></p>
-                <p>Roundhouse kick dumb trades.</p>
-                <p>Backtest the signal. Lock the risk. Automate the move.</p>
-                <p>Conceptually: I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
+                <p><strong>Roundhouse kick dumb trades.</strong></p>
+                                <p>Backtest the signal. Lock the risk. Automate the move.</p>
+                <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
               </div>
             </div>
 

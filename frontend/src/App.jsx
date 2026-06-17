@@ -52,10 +52,6 @@ function App() {
   const liveAgentActivityRef = useRef(null);
 
   function focusAgentActivitySections() {
-    if (viewMode === "simple") {
-      setExpandedSimpleQuadrant("proof");
-    }
-
     if (viewMode === "detailed") {
       setExpandedDetailedQuadrant(null);
     }
@@ -1390,7 +1386,7 @@ async function loadTradeHistory() {
               ref={agentStatusRef}
               className="retro-window"
             >
-              <summary className={autonomousMode ? "detailed-agent-heading-glow" : ""}>AGENT STATUS</summary>
+              <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>AGENT STATUS</span></summary>
               <div className="metrics strategy-library-box">
                 <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
@@ -1714,7 +1710,7 @@ async function loadTradeHistory() {
               className="retro-window trade-log-window"
               open
             >
-              <summary className={autonomousMode ? "detailed-agent-heading-glow" : ""}>LIVE AGENT ACTIVITY</summary>
+              <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>LIVE AGENT ACTIVITY</span></summary>
               <div className="metrics trade-log-panel">
                 <div className="trade-log-controls">
                   <button onClick={loadTradeHistory} className="copy-btn">

@@ -711,17 +711,15 @@ h2 {
   animation-duration: 14.4s;
 }
 
-.retro-window > summary.detailed-agent-heading-glow,
-.retro-sub-window > summary.detailed-agent-heading-glow,
-details > summary.detailed-agent-heading-glow {
-  display: block;
-  width: 100%;
+.detailed-agent-text-glow {
+  display: inline-block;
   color: #ffffff !important;
-  background: rgba(156, 255, 143, 0.22) !important;
-  border-bottom: 1px solid #ffffff !important;
+  padding: 2px 6px;
+  border: 1px solid #ffffff;
+  background: rgba(156, 255, 143, 0.12);
   box-shadow:
     0 0 18px rgba(156, 255, 143, 0.72),
-    inset 0 0 18px rgba(156, 255, 143, 0.16);
+    inset 0 0 14px rgba(156, 255, 143, 0.14);
   text-shadow:
     0 0 4px #ffffff,
     0 0 10px #9cff8f;

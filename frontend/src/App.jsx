@@ -1047,6 +1047,9 @@ async function loadTradeHistory() {
       : executionMode === "live_trading"
       ? "TWAK → PancakeSwap"
       : "Decision Simulation";
+    const simpleTxStatus = tradePlan ? getExecutionTxStatus() : "WAITING FOR APPROVED TRADE";
+    const simpleExecutionRoute = tradePlan ? getExecutionRouteLabel() : "ROUTE APPEARS AFTER TRADE PLAN";
+    const simpleTxHash = txHash || "ONLY AFTER LIVE ON-CHAIN EXECUTION";
 
     return (
       <div className="retro-page">
@@ -1232,17 +1235,18 @@ async function loadTradeHistory() {
                 This is my final answer. If I wait, I explain why. If I act, I show the route, the status, and the proof.
               </p>
 
+              <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "CURRENTLY RUNNING" : "CURRENTLY STOPPED"}</strong></div>
               <div className="simple-metric-row"><span>MY ACTION</span><strong>{executionStatus.action}</strong></div>
               <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
               <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
-              <div className="simple-metric-row"><span>TX STATUS</span><strong>{getExecutionTxStatus()}</strong></div>
+              <div className="simple-metric-row"><span>TX STATUS</span><strong>{simpleTxStatus}</strong></div>
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
-              <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{getExecutionRouteLabel()}</strong></div>
+              <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
               <div className="simple-metric-row"><span>SOURCE</span><strong>{executionSource}</strong></div>
               <div className="simple-metric-row"><span>CHAIN</span><strong>BNB SMART CHAIN / BSC</strong></div>
               <div className="simple-metric-row"><span>REGISTRATION</span><strong>{getRegistrationLabel()}</strong></div>
               <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
-              <div className="simple-metric-row"><span>TX HASH</span><strong>{txHash || "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>TX HASH</span><strong>{simpleTxHash}</strong></div>
               {tradePlan && (
                 <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
               )}
@@ -1384,10 +1388,11 @@ async function loadTradeHistory() {
 
             <details
               ref={agentStatusRef}
-              className={`retro-window ${autonomousMode ? "agent-active-glow" : ""}`}
+              className="retro-window"
             >
-              <summary>AGENT STATUS</summary>
+              <summary className={autonomousMode ? "detailed-agent-heading-glow" : ""}>AGENT STATUS</summary>
               <div className="metrics strategy-library-box">
+                <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
                 <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
                 <p>
@@ -1418,7 +1423,6 @@ async function loadTradeHistory() {
                 <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
                 <p>DAILY TRADE STATUS.. {agentResult?.daily_qualification?.status || "N/A"}</p>
                 <p>TRADES TODAY........ {agentResult?.daily_qualification?.trades_today ?? "N/A"} / {agentResult?.daily_qualification?.target_trades_per_day ?? "N/A"}</p>
-                <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
               </div>
             </details>
 
@@ -1707,10 +1711,10 @@ async function loadTradeHistory() {
 
             <details
               ref={liveAgentActivityRef}
-              className={`retro-window trade-log-window ${autonomousMode ? "agent-active-glow" : ""}`}
+              className="retro-window trade-log-window"
               open
             >
-              <summary>LIVE AGENT ACTIVITY</summary>
+              <summary className={autonomousMode ? "detailed-agent-heading-glow" : ""}>LIVE AGENT ACTIVITY</summary>
               <div className="metrics trade-log-panel">
                 <div className="trade-log-controls">
                   <button onClick={loadTradeHistory} className="copy-btn">

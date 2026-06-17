@@ -695,7 +695,7 @@ h2 {
   box-shadow:
     0 0 18px rgba(156, 255, 143, 0.72),
     inset 0 0 18px rgba(156, 255, 143, 0.16);
-  animation: agentActiveGlow 1.6s infinite ease-in-out;
+  animation: agentActiveGlow 14.4s infinite ease-in-out;
 }
 
 .agent-active-glow > summary,
@@ -705,6 +705,34 @@ h2 {
   text-shadow:
     0 0 4px #ffffff,
     0 0 10px #9cff8f;
+}
+
+.simple-q-proof.agent-active-glow {
+  animation-duration: 14.4s;
+}
+
+.retro-window > summary.detailed-agent-heading-glow,
+.retro-sub-window > summary.detailed-agent-heading-glow,
+details > summary.detailed-agent-heading-glow {
+  display: block;
+  width: 100%;
+  color: #ffffff !important;
+  background: rgba(156, 255, 143, 0.22) !important;
+  border-bottom: 1px solid #ffffff !important;
+  box-shadow:
+    0 0 18px rgba(156, 255, 143, 0.72),
+    inset 0 0 18px rgba(156, 255, 143, 0.16);
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 10px #9cff8f;
+  animation: agentActiveGlow 14.4s infinite ease-in-out;
+}
+
+.simple-agent-current-state strong {
+  color: #fff2bf;
+  text-shadow:
+    0 0 3px #ffffff,
+    0 0 8px #9cff8f;
 }
 
 @keyframes agentActiveGlow {

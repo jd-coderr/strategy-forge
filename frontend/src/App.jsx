@@ -16,7 +16,7 @@ function App() {
   const [autonomousStatus, setAutonomousStatus] = useState(null);
   const [autonomousInterval, setAutonomousInterval] = useState(5);
   const [cmcSkillHub, setCmcSkillHub] = useState(null);
-  const [coin, setCoin] = useState("BNB");
+  const [coin, setCoin] = useState("ETH");
   const [timeframe, setTimeframe] = useState("4H");
   const [risk, setRisk] = useState("medium");
   const [tradeSize, setTradeSize] = useState(0.001);
@@ -1158,10 +1158,7 @@ async function loadTradeHistory() {
                 <div>
                   <label>ASSET</label>
                   <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
-                    <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
-                    <option value="BNB">BNB (BNB)</option>
-                    <option value="SOL">Solana (SOL)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
                     <option value="LINK">Chainlink (LINK)</option>
@@ -1176,6 +1173,11 @@ async function loadTradeHistory() {
                     <option value="LTC">Litecoin (LTC)</option>
                     <option value="DOT">Polkadot (DOT)</option>
                     <option value="SHIB">Shiba Inu (SHIB)</option>
+                    <option value="FIL">Filecoin (FIL)</option>
+                    <option value="FET">Fetch.ai (FET)</option>
+                    <option value="PENDLE">Pendle (PENDLE)</option>
+                    <option value="FLOKI">Floki (FLOKI)</option>
+                    <option value="1INCH">1inch (1INCH)</option>
                   </select>
                 </div>
                 <div>
@@ -1538,10 +1540,7 @@ async function loadTradeHistory() {
                 <div>
                   <label>ASSET</label>
                   <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
-                    <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
-                    <option value="BNB">BNB (BNB)</option>
-                    <option value="SOL">Solana (SOL)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
                     <option value="LINK">Chainlink (LINK)</option>
@@ -1556,6 +1555,11 @@ async function loadTradeHistory() {
                     <option value="LTC">Litecoin (LTC)</option>
                     <option value="DOT">Polkadot (DOT)</option>
                     <option value="SHIB">Shiba Inu (SHIB)</option>
+                    <option value="FIL">Filecoin (FIL)</option>
+                    <option value="FET">Fetch.ai (FET)</option>
+                    <option value="PENDLE">Pendle (PENDLE)</option>
+                    <option value="FLOKI">Floki (FLOKI)</option>
+                    <option value="1INCH">1inch (1INCH)</option>
                   </select>
                 </div>
 
@@ -2305,24 +2309,26 @@ async function loadTradeHistory() {
           <div>
             <label>ASSET</label>
             <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)}>
-              <option value="BTC">Bitcoin (BTC)</option>
-              <option value="ETH">Ethereum (ETH)</option>
-              <option value="BNB">BNB (BNB)</option>
-              <option value="SOL">Solana (SOL)</option>
-              <option value="XRP">XRP (XRP)</option>
-              <option value="DOGE">Dogecoin (DOGE)</option>
-              <option value="LINK">Chainlink (LINK)</option>
-              <option value="ADA">Cardano (ADA)</option>
-              <option value="AVAX">Avalanche (AVAX)</option>
-              <option value="UNI">Uniswap (UNI)</option>
-              <option value="INJ">Injective (INJ)</option>
-              <option value="CAKE">PancakeSwap (CAKE)</option>
-              <option value="TWT">Trust Wallet Token (TWT)</option>
-              <option value="AAVE">Aave (AAVE)</option>
-              <option value="ATOM">Cosmos (ATOM)</option>
-              <option value="LTC">Litecoin (LTC)</option>
-              <option value="DOT">Polkadot (DOT)</option>
-              <option value="SHIB">Shiba Inu (SHIB)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="XRP">XRP (XRP)</option>
+                    <option value="DOGE">Dogecoin (DOGE)</option>
+                    <option value="LINK">Chainlink (LINK)</option>
+                    <option value="ADA">Cardano (ADA)</option>
+                    <option value="AVAX">Avalanche (AVAX)</option>
+                    <option value="UNI">Uniswap (UNI)</option>
+                    <option value="INJ">Injective (INJ)</option>
+                    <option value="CAKE">PancakeSwap (CAKE)</option>
+                    <option value="TWT">Trust Wallet Token (TWT)</option>
+                    <option value="AAVE">Aave (AAVE)</option>
+                    <option value="ATOM">Cosmos (ATOM)</option>
+                    <option value="LTC">Litecoin (LTC)</option>
+                    <option value="DOT">Polkadot (DOT)</option>
+                    <option value="SHIB">Shiba Inu (SHIB)</option>
+                    <option value="FIL">Filecoin (FIL)</option>
+                    <option value="FET">Fetch.ai (FET)</option>
+                    <option value="PENDLE">Pendle (PENDLE)</option>
+                    <option value="FLOKI">Floki (FLOKI)</option>
+                    <option value="1INCH">1inch (1INCH)</option>
             </select>
           </div>
 

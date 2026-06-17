@@ -1409,8 +1409,8 @@ h2 {
 .simple-brand-subline {
   margin: 0 0 8px;
   color: #9cff8f;
-  font-size: clamp(7px, 0.98vmin, 12px);
-  line-height: 1.25;
+  font-size: clamp(8px, 1.04vmin, 13px);
+  line-height: 1.38;
   letter-spacing: clamp(0px, 0.18vmin, 1.5px);
 }
 

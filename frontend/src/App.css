@@ -695,7 +695,7 @@ h2 {
   box-shadow:
     0 0 18px rgba(156, 255, 143, 0.72),
     inset 0 0 18px rgba(156, 255, 143, 0.16);
-  animation: agentActiveGlow 14.4s infinite ease-in-out;
+  animation: agentActiveGlow 4.8s infinite ease-in-out;
 }
 
 .agent-active-glow > summary,
@@ -708,7 +708,7 @@ h2 {
 }
 
 .simple-q-proof.agent-active-glow {
-  animation-duration: 14.4s;
+  animation-duration: 4.8s;
 }
 
 .detailed-agent-text-glow {
@@ -722,7 +722,7 @@ h2 {
     0 0 4px #ffffff,
     0 0 10px #9cff8f,
     0 0 18px rgba(156, 255, 143, 0.82);
-  animation: detailedAgentTextGlow 14.4s infinite ease-in-out;
+  animation: detailedAgentTextGlow 4.8s infinite ease-in-out;
 }
 
 .simple-agent-current-state strong {
@@ -1433,7 +1433,7 @@ h2 {
   padding: 5px 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
 }
 
@@ -1455,7 +1455,7 @@ h2 {
   color: #ffffff;
   font-size: clamp(8px, 1vmin, 12px);
   line-height: 1.25;
-  text-align: right;
+  text-align: left;
   font-weight: bold;
 }
 
@@ -1832,6 +1832,16 @@ h2 {
   border-bottom: 0 !important;
 }
 
+
+
+/* Keep Simple Version status values lined up directly after their labels */
+.simple-status-box {
+  justify-content: flex-start !important;
+}
+
+.simple-status-box strong {
+  text-align: left !important;
+}
 
 /* Detailed Version quadrant expand / minimize behavior */
 .retro-expand-button {
@@ -2750,3 +2760,12 @@ h2 {
   }
 }
 
+
+/* Final Simple Version status alignment override */
+.simple-status-box {
+  justify-content: flex-start !important;
+}
+
+.simple-status-box strong {
+  text-align: left !important;
+}

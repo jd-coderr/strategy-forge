@@ -625,18 +625,22 @@ h2 {
 }
 
 .loading-dots {
-  display: inline-flex;
-  width: 24px;
+  display: inline-block;
+  width: auto;
+  min-width: 2em;
   height: 1em;
-  align-items: center;
-  justify-content: flex-start;
+  margin-left: 4px;
   line-height: 1;
-  vertical-align: middle;
+  white-space: nowrap;
+  letter-spacing: 0 !important;
+  vertical-align: baseline;
 }
 
 .loading-dots::after {
   content: "...";
   display: inline-block;
+  white-space: nowrap;
+  letter-spacing: 0 !important;
   line-height: 1;
   animation: dotBlink 1.2s infinite;
 }
@@ -2538,6 +2542,11 @@ h2 {
   justify-content: flex-start;
   line-height: 1;
   vertical-align: middle;
+}
+
+button .loading-dots {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .full-terminal .progress-bar {

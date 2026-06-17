@@ -1395,7 +1395,7 @@ async function loadTradeHistory() {
               <div className="metrics strategy-library-box">
                 <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-                <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
+                <p>CONNECTED WALLET........ {walletAddress || "N/A"}</p>
                 <p>
                   NETWORK.............{" "}
                   {walletChainId === "0x38"

@@ -2871,3 +2871,12 @@ h2 {
   font-size: clamp(10px, 1.25vmin, 15px) !important;
   line-height: 1.2 !important;
 }
+
+/* Simple Version: bigger brand subline */
+.simple-square .simple-brand-subline {
+  font-size: clamp(10px, 1.35vmin, 16px) !important;
+  line-height: 1.3 !important;
+  letter-spacing: clamp(0.5px, 0.25vmin, 2px) !important;
+  font-weight: bold !important;
+  margin-bottom: 10px !important;
+}

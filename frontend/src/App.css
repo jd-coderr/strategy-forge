@@ -2148,12 +2148,11 @@ h2 {
   font-size: 14px;
   line-height: 1.8;
   font-weight: bold;
-  background: #b22222;
-  color: #ffffff;
-  border: 2px solid #ffffff;
+  background: #2a1a0f;
+  color: #fff2bf;
+  border: 1px solid #ffffff;
   text-shadow: none;
-  box-shadow:
-    0 0 10px rgba(255,255,255,0.5);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.08);
 }
 
 .full-terminal .panel {

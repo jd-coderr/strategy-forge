@@ -470,6 +470,7 @@ h2 {
   max-width: none;
   min-height: clamp(32px, 4.3vmin, 52px);
   margin: 0 !important;
+font-size: clamp(10px, 1.25vmin, 16px);
 }
 
 .agent-control-panel label,

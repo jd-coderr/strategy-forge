@@ -2769,3 +2769,51 @@ h2 {
 .simple-status-box strong {
   text-align: left !important;
 }
+
+/* Bigger readable text for Simple + Detailed versions only.
+   Keeps brand titles, quadrant headings, buttons, form inputs, and form labels unchanged. */
+.simple-square .simple-quadrant-body .simple-speech-text,
+.simple-square .simple-quadrant-body .simple-message-box p,
+.simple-square .simple-quadrant-body .simple-message-box strong,
+.simple-square .simple-quadrant-body .simple-metric-row,
+.simple-square .simple-quadrant-body .simple-note,
+.simple-square .simple-quadrant-body .simple-status-box span,
+.simple-square .simple-quadrant-body .simple-status-box strong,
+.simple-square .simple-quadrant-body .retro-log-entry,
+.simple-square .simple-quadrant-body .retro-log-entry p,
+.simple-square .simple-quadrant-body .retro-log-entry div {
+  font-size: clamp(9px, 1.22vmin, 15px) !important;
+  line-height: 1.42 !important;
+}
+
+.simple-square .simple-brand-slogan {
+  font-size: clamp(9px, 1.3vmin, 16px) !important;
+}
+
+.simple-square .simple-brand-subline {
+  font-size: clamp(8px, 1.14vmin, 14px) !important;
+}
+
+.retro-square .retro-quadrant-body .panel,
+.retro-square .retro-quadrant-body .metrics,
+.retro-square .retro-quadrant-body .reason,
+.retro-square .retro-quadrant-body .box,
+.retro-square .retro-quadrant-body .loading-box,
+.retro-square .retro-quadrant-body .hero-description,
+.retro-square .retro-quadrant-body .retro-hero-description,
+.retro-square .retro-quadrant-body p,
+.retro-square .retro-quadrant-body li,
+.retro-square .retro-quadrant-body .retro-log-entry,
+.retro-square .retro-quadrant-body .retro-log-entry p,
+.retro-square .retro-quadrant-body .retro-log-entry div,
+.retro-square .retro-quadrant-body .agent-flow-visual div,
+.retro-square .retro-quadrant-body .loading-line {
+  font-size: clamp(9px, 1.22vmin, 15px) !important;
+  line-height: 1.42 !important;
+}
+
+.retro-square .retro-quadrant-body .trade-row span,
+.retro-square .retro-quadrant-body .optimizer-row span {
+  font-size: clamp(8px, 1.06vmin, 13px) !important;
+  line-height: 1.28 !important;
+}

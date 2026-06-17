@@ -470,7 +470,12 @@ h2 {
   max-width: none;
   min-height: clamp(32px, 4.3vmin, 52px);
   margin: 0 !important;
-font-size: clamp(9px, 1.25vmin, 16px);
+}
+
+/* Detailed Version: button text only, do not affect dropdowns/inputs */
+.retro-square .agent-control-panel button.copy-btn,
+.retro-square .button-row button.copy-btn {
+  font-size: clamp(9.5px, 1.25vmin, 16px);
 }
 
 .agent-control-panel label,

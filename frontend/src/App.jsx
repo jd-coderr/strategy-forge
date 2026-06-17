@@ -216,8 +216,8 @@ function App() {
 
     return activeButton === name || isPersistentActive
       ? {
-          background: "rgba(0, 255, 65, 0.16)",
-          boxShadow: "0 0 18px rgba(0, 255, 65, 0.85)",
+          background: "rgba(156, 255, 143, 0.16)",
+          boxShadow: "0 0 18px rgba(156, 255, 143, 0.85)",
           borderColor: "#ffffff",
         }
       : {};
@@ -3115,7 +3115,7 @@ const isRealTrade =
         style={{
           marginBottom: "20px",
           paddingBottom: "20px",
-          borderBottom: "1px solid rgba(0,255,65,0.25)",
+          borderBottom: "1px solid rgba(156,255,143,0.25)",
         }}
       >
         <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>

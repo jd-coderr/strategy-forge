@@ -690,6 +690,38 @@ h2 {
   }
 }
 
+.agent-active-glow {
+  border-color: #ffffff !important;
+  box-shadow:
+    0 0 18px rgba(156, 255, 143, 0.72),
+    inset 0 0 18px rgba(156, 255, 143, 0.16);
+  animation: agentActiveGlow 1.6s infinite ease-in-out;
+}
+
+.agent-active-glow > summary,
+.agent-active-glow .simple-quadrant-header {
+  color: #ffffff;
+  background: rgba(156, 255, 143, 0.22);
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 10px #9cff8f;
+}
+
+@keyframes agentActiveGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px rgba(156, 255, 143, 0.52),
+      inset 0 0 14px rgba(156, 255, 143, 0.12);
+  }
+
+  50% {
+    box-shadow:
+      0 0 26px rgba(156, 255, 143, 0.92),
+      inset 0 0 24px rgba(156, 255, 143, 0.22);
+  }
+}
+
 @media (max-width: 680px), (max-height: 680px) {
   .retro-page {
     padding: 4px;

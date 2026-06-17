@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LineChart,
   Line,
@@ -47,6 +47,56 @@ function App() {
   const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
   const [expandedSimpleQuadrant, setExpandedSimpleQuadrant] = useState(null);
   const [expandedDetailedQuadrant, setExpandedDetailedQuadrant] = useState(null);
+  const simpleProofRef = useRef(null);
+  const agentStatusRef = useRef(null);
+  const liveAgentActivityRef = useRef(null);
+
+  function focusAgentActivitySections() {
+    if (viewMode === "simple") {
+      setExpandedSimpleQuadrant("proof");
+    }
+
+    if (viewMode === "detailed") {
+      setExpandedDetailedQuadrant(null);
+    }
+
+    const focusAfterRender = () => {
+      if (viewMode === "simple") {
+        const proofPanel = simpleProofRef.current;
+
+        if (proofPanel) {
+          const proofBody = proofPanel.querySelector(".simple-quadrant-body");
+
+          if (proofBody) {
+            proofBody.scrollTop = 0;
+          }
+
+          proofPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      if (viewMode === "detailed") {
+        const statusPanel = agentStatusRef.current;
+        const activityPanel = liveAgentActivityRef.current;
+
+        if (statusPanel) {
+          statusPanel.open = true;
+          statusPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        if (activityPanel) {
+          activityPanel.open = true;
+          activityPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    };
+
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      window.requestAnimationFrame(focusAfterRender);
+    } else {
+      setTimeout(focusAfterRender, 0);
+    }
+  }
 
   function formatMoney(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";
@@ -157,6 +207,7 @@ function App() {
 
 async function startAutonomousMode() {
   pulseButton("run");
+  focusAgentActivitySections();
 
   try {
     const response = await fetch(`${API_BASE}/autonomous/start`, {
@@ -243,6 +294,12 @@ useEffect(() => {
 
   return () => clearInterval(timer);
 }, []);
+
+useEffect(() => {
+  if (autonomousMode) {
+    focusAgentActivitySections();
+  }
+}, [autonomousMode, viewMode]);
 
   function parsePercent(value) {
     return parseFloat(String(value).replace("%", ""));
@@ -715,6 +772,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
 async function runAgentCycle() {
   pulseButton("run");
+  focusAgentActivitySections();
 
   try {
     const response = await fetch(`${API_BASE}/agent-cycle`, {
@@ -1161,7 +1219,10 @@ async function loadTradeHistory() {
             </div>
           </section>
 
-          <section className={getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")}>
+          <section
+            ref={simpleProofRef}
+            className={`${getSimpleQuadrantClass("proof", "simple-quadrant simple-q-proof")} ${autonomousMode ? "agent-active-glow" : ""}`}
+          >
             <div className="simple-quadrant-header">
               <span>I ACT OR I WAIT</span>
               {renderSimpleExpandButton("proof")}
@@ -1321,7 +1382,10 @@ async function loadTradeHistory() {
               </div>
             </details>
 
-            <details className="retro-window">
+            <details
+              ref={agentStatusRef}
+              className={`retro-window ${autonomousMode ? "agent-active-glow" : ""}`}
+            >
               <summary>AGENT STATUS</summary>
               <div className="metrics strategy-library-box">
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
@@ -1641,7 +1705,11 @@ async function loadTradeHistory() {
               })()}
             </details>
 
-            <details className="retro-window trade-log-window" open>
+            <details
+              ref={liveAgentActivityRef}
+              className={`retro-window trade-log-window ${autonomousMode ? "agent-active-glow" : ""}`}
+              open
+            >
               <summary>LIVE AGENT ACTIVITY</summary>
               <div className="metrics trade-log-panel">
                 <div className="trade-log-controls">

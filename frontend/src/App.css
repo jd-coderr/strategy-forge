@@ -707,6 +707,18 @@ h2 {
     0 0 10px #9cff8f;
 }
 
+
+.simple-q-proof.agent-active-glow {
+  animation-duration: 4.8s;
+}
+
+.simple-agent-current-state strong {
+  color: #fff2bf;
+  text-shadow:
+    0 0 3px #ffffff,
+    0 0 8px #9cff8f;
+}
+
 @keyframes agentActiveGlow {
   0%,
   100% {

@@ -281,6 +281,7 @@ useEffect(() => {
 
   loadAutonomousStatus();
   checkRegistration();
+  loadPortfolio();
   loadTradeHistory();
   loadPaperPortfolio();
   
@@ -796,6 +797,7 @@ async function runAgentCycle() {
       await loadPaperPortfolio();
     }
 
+    await loadPortfolio();
     await loadTradeHistory();
 
     if (!autonomousMode) {
@@ -813,6 +815,10 @@ async function runAgentCycle() {
     try {
       const response = await fetch(`${API_BASE}/portfolio`);
       const data = await response.json();
+
+      if (data?.agent_address) {
+        setTwakAgentAddress(data.agent_address);
+      }
 
     const rawPortfolio =
       data?.result?.portfolio ||

@@ -1,6 +1,6 @@
 from position_sizing import calculate_trade_size
 from cmc_skill_hub import find_cmc_skill
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from twak_executor import run_twak_swap, run_twak_portfolio
 from pathlib import Path
@@ -15,6 +15,8 @@ import json
 import threading
 import time
 import shutil
+import os
+import secrets
 
 app = FastAPI()
 
@@ -34,6 +36,64 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+ADMIN_HEADER_NAME = "X-IKQF-ADMIN-KEY"
+
+
+def get_admin_key():
+    return os.getenv("IKQF_ADMIN_KEY") or os.getenv("ADMIN_KEY")
+
+
+def require_operator_key(x_ikqf_admin_key: str | None = Header(default=None, alias=ADMIN_HEADER_NAME)):
+    """Protect endpoints that can start/stop the live agent or trigger execution.
+
+    The real key must live only in Railway environment variables.
+    Do not hardcode it in GitHub or in the React frontend.
+    """
+    configured_key = get_admin_key()
+
+    if not configured_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Operator key is not configured. Set IKQF_ADMIN_KEY in Railway variables.",
+        )
+
+    supplied_key = str(x_ikqf_admin_key or "")
+
+    if not secrets.compare_digest(supplied_key, configured_key):
+        raise HTTPException(
+            status_code=401,
+            detail="Operator mode locked. Invalid or missing admin key.",
+        )
+
+    return True
+
+
+@app.get("/operator/status")
+def operator_status():
+    return {
+        "success": True,
+        "operator_auth_required": True,
+        "operator_key_configured": bool(get_admin_key()),
+        "public_mode": "read_only",
+        "protected_actions": [
+            "agent-cycle",
+            "autonomous-start",
+            "autonomous-stop",
+            "execute-trade",
+            "paper-portfolio-reset",
+        ],
+    }
+
+
+@app.post("/operator/unlock")
+def operator_unlock(_operator_ok: bool = Depends(require_operator_key)):
+    return {
+        "success": True,
+        "operator_unlocked": True,
+        "message": "Operator controls unlocked for this browser session.",
+    }
 
 BASE_DIR = Path(__file__).resolve().parent
 STRATEGIES_DIR = BASE_DIR / "strategies"
@@ -990,7 +1050,7 @@ def debug_strategies():
 
 
 @app.post("/agent-cycle")
-def agent_cycle(request: AgentCycleRequest):
+def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require_operator_key)):
     cmc_signal = get_cmc_signal(request.coin)
     execution_mode = str(getattr(request, "execution_mode", "decision_simulation") or "decision_simulation").lower()
     live_execution_enabled = execution_mode == "live_trading" or request.live_execution is True
@@ -1315,7 +1375,7 @@ def agent_cycle(request: AgentCycleRequest):
 
 
 @app.post("/execute-trade")
-def execute_trade(request: ExecuteTradeRequest):
+def execute_trade(request: ExecuteTradeRequest, _operator_ok: bool = Depends(require_operator_key)):
     allowed, safety_message = validate_trade_request(
         amount=request.amount,
         from_token=request.from_token,
@@ -1405,7 +1465,7 @@ def update_autonomous_state_from_result(result):
 def autonomous_loop():
     while AUTONOMOUS_STATE["running"]:
         try:
-            result = agent_cycle(AUTONOMOUS_CONFIG)
+            result = agent_cycle(AUTONOMOUS_CONFIG, True)
             update_autonomous_state_from_result(result)
         except Exception as error:
             AUTONOMOUS_STATE["last_reason"] = f"Autonomous cycle error: {str(error)}"
@@ -1413,7 +1473,7 @@ def autonomous_loop():
         time.sleep(AUTONOMOUS_STATE["interval_minutes"] * 60)
 
 @app.post("/autonomous/start")
-def autonomous_start(request: AutonomousRequest):
+def autonomous_start(request: AutonomousRequest, _operator_ok: bool = Depends(require_operator_key)):
     global AUTONOMOUS_THREAD
     global AUTONOMOUS_CONFIG
 
@@ -1457,7 +1517,7 @@ def autonomous_start(request: AutonomousRequest):
     }
     
 @app.post("/autonomous/stop")
-def autonomous_stop():
+def autonomous_stop(_operator_ok: bool = Depends(require_operator_key)):
     AUTONOMOUS_STATE["running"] = False
     AUTONOMOUS_STATE["next_run"] = None
     AUTONOMOUS_STATE["last_decision"] = None
@@ -1497,7 +1557,7 @@ def paper_portfolio(price_usd: float | None = None):
 
 
 @app.post("/paper-portfolio/reset")
-def paper_portfolio_reset(request: PaperResetRequest):
+def paper_portfolio_reset(request: PaperResetRequest, _operator_ok: bool = Depends(require_operator_key)):
     return {
         "success": True,
         "mode": "paper_trading",

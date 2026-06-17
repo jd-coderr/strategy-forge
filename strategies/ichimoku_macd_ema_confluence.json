@@ -1,0 +1,45 @@
+{
+  "name": "Ichimoku MACD EMA Confluence",
+  "type": "trend_confluence",
+  "entry": {
+    "condition": "Bullish confluence signal: EMA fast is above EMA slow, MACD line is above MACD signal, cooldown has passed, and Ichimoku bullish structure is confirmed unless loose mode is used.",
+    "default_threshold": "EMA 50 > EMA 200 + MACD 12/26/9 bullish; loose mode allows EMA + MACD only."
+  },
+  "confirmation": {
+    "condition": "Strict confirmation requires close above the Ichimoku cloud, Tenkan above Kijun, close above Kijun, and optional RSI, histogram, cloud direction, volume, ADX, EMA200, and candle filters.",
+    "default_threshold": "RSI > 50 when enabled; volume > 20-period average x 1.2 when enabled; ADX > 25 when enabled."
+  },
+  "take_profit": {
+    "condition": "Default fixed-percent take profit after a bullish confluence entry, with optional ATR-based reward target when ATR mode is enabled.",
+    "default_threshold": "1.0% fixed TP or ATR TP 3.0x."
+  },
+  "stop_loss": {
+    "condition": "Default fixed-percent stop loss after entry, with optional ATR-based stop when ATR mode is enabled. Opposite signal closes/reverses virtual trade logic in the original indicator.",
+    "default_threshold": "1.0% fixed SL or ATR SL 1.5x."
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "cooldown_bars_default": 0,
+    "preferred_timeframes": [
+      "5M",
+      "15M",
+      "1H"
+    ],
+    "fast_timeframes": [
+      "1M",
+      "5M"
+    ],
+    "high_confidence_filters": [
+      "Strict Ichimoku mode enabled",
+      "RSI trend filter enabled",
+      "MACD histogram strengthening enabled",
+      "Volume above average enabled",
+      "ADX trend filter enabled",
+      "Close vs EMA200 enabled",
+      "Candle confirmation enabled"
+    ],
+    "avoid_chop": true
+  }
+}

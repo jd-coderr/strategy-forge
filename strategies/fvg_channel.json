@@ -1,0 +1,29 @@
+{
+  "name": "FVG Channel",
+  "type": "mean_reversion_channel",
+  "entry": {
+    "condition": "Bull Signal when price remains below the smoothed lower FVG boundary for at least 5 bars, the 50-bar signal cooldown has passed, and volume confirmation passes if enabled. Super Bull when the wick pushes beyond the lower boundary by the configured super threshold.",
+    "default_threshold": "Lower FVG boundary touch/reversion; Super threshold 15% wick extension"
+  },
+  "confirmation": {
+    "condition": "FVG channel is built from unmitigated bullish and bearish fair value gaps, smoothed over 20 bars, with optional volume confirmation using volume greater than average volume times multiplier.",
+    "default_threshold": "Smoothing length 20; volume lookback 20; volume multiplier 1.0 when enabled"
+  },
+  "take_profit": {
+    "condition": "Normal signals use fixed percentage take profit or optional Fibonacci channel target. Super signals use larger take profit.",
+    "default_threshold": "Normal TP 1.0%; Super TP 2.0%; optional Fib 0.236 / 0.5 / 0.786"
+  },
+  "stop_loss": {
+    "condition": "Stop loss is placed against the entry direction using the normal or super stop setting.",
+    "default_threshold": "Normal SL 1.0%; Super SL 2.0%"
+  },
+  "risk_governor": {
+    "max_open_trades": 1,
+    "risk_per_trade": "1%",
+    "stop_after_consecutive_losses": 2,
+    "cooldown_bars": 50,
+    "best_timeframes": "1M, 5M, 15M",
+    "volume_filter_available": true,
+    "high_confidence_signals": "Super Bull and Super Bear"
+  }
+}

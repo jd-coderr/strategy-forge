@@ -2894,3 +2894,29 @@ h2 {
 .simple-square .simple-status-box:nth-last-child(-n + 2) {
   border-bottom: none !important;
 }
+
+html,
+body,
+#root {
+  color-scheme: dark !important;
+}
+
+select,
+select:focus,
+select:active {
+  color-scheme: dark !important;
+  background-color: #020502 !important;
+  color: #9cff8f !important;
+}
+
+select option,
+select optgroup {
+  background-color: #020502 !important;
+  color: #9cff8f !important;
+  text-shadow: none !important;
+}
+
+select option:checked {
+  background-color: rgba(156, 255, 143, 0.24) !important;
+  color: #ffffff !important;
+}

@@ -264,9 +264,12 @@ async function loadAutonomousStatus() {
       setAgentStopConfirmed(false);
     }
 
-    if (data.interval_minutes) {
-      setAutonomousInterval(data.interval_minutes);
-}
+    // Do not let the backend's stopped/default interval overwrite the user's dropdown choice.
+    // The backend status endpoint returns its stored interval, often 5, every poll.
+    // Only sync it back into the UI while autonomous mode is actually running.
+    if (data.running === true && data.interval_minutes) {
+      setAutonomousInterval(Number(data.interval_minutes));
+    }
 
     if (data.last_result) {
       setAgentResult(data.last_result);

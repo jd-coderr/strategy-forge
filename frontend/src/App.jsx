@@ -1762,7 +1762,6 @@ async function loadTradeHistory() {
                 <div>
                   <label>TIMEFRAME</label>
                   <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
-                    <option value="1M">1M</option>
                     <option value="5M">5M</option>
                     <option value="15M">15M</option>
                     <option value="1H">1H</option>
@@ -2601,7 +2600,6 @@ async function loadTradeHistory() {
           <div>
             <label>TIMEFRAME</label>
             <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
-              <option value="1M">1M</option>
               <option value="5M">5M</option>
               <option value="15M">15M</option>
               <option value="1H">1H</option>

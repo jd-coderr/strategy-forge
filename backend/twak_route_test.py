@@ -19,7 +19,7 @@ print("SECRET LENGTH =", len(HMAC_SECRET) if HMAC_SECRET else 0)
 
 BNB_NATIVE = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 USDT_BSC = "0x55d398326f99059fF775485246999027B3197955"
-FROM_ADDRESS = "0xd076C7C098a2A1f02d5954e6731E7d5929f3Ec6a"
+FROM_ADDRESS = os.getenv("AGENT_WALLET_ADDRESS", "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")
 
 
 def sign_request(method, path, query, access_id, nonce, date, secret):

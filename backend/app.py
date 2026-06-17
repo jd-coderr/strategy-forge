@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from backtest import run_backtest
 from cmc_data import get_cmc_signal
-from twak_config import get_twak_status
+from twak_config import get_twak_status, get_configured_agent_address
 from trade_safety import validate_trade_request, mark_live_trade_executed
 from trade_logger import log_trade, read_trade_log
 from datetime import datetime, timezone, timedelta
@@ -1053,7 +1053,7 @@ def agent_cycle(request: AgentCycleRequest):
         }
     else:
         paper_status = None
-        portfolio_result = run_twak_portfolio()
+        portfolio_result = run_twak_portfolio(address=get_configured_agent_address())
 
     raw_portfolio_items = portfolio_result.get("portfolio") or []
     portfolio_items = []
@@ -1508,16 +1508,19 @@ def paper_portfolio_reset(request: PaperResetRequest):
 
 @app.get("/portfolio")
 def portfolio():
-    result = run_twak_portfolio()
+    agent_address = get_configured_agent_address()
+    result = run_twak_portfolio(address=agent_address)
 
     event = log_trade({
         "status": "portfolio_check",
+        "agent_address": agent_address,
         "result": result,
     })
 
     return {
         "success": result["success"],
         "execution_layer": "TWAK CLI",
+        "agent_address": agent_address,
         "result": result,
         "event": event,
     }

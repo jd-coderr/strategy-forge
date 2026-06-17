@@ -1359,7 +1359,7 @@ async function loadTradeHistory() {
                   </select>
                 </div>
                 <div>
-                  <label>INTERVAL</label>
+                  <label>CHECK INTERVAL</label>
                   <select
   value={autonomousInterval}
   disabled={autonomousMode}
@@ -1733,10 +1733,12 @@ async function loadTradeHistory() {
                 <div>
                   <label>TIMEFRAME</label>
                   <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
-                    <option>15M</option>
-                    <option>1H</option>
-                    <option>4H</option>
-                    <option>1D</option>
+                    <option value="1M">1M</option>
+                    <option value="5M">5M</option>
+                    <option value="15M">15M</option>
+                    <option value="1H">1H</option>
+                    <option value="4H">4H</option>
+                    <option value="1D">1D</option>
                   </select>
                 </div>
 
@@ -2126,6 +2128,10 @@ async function loadTradeHistory() {
                   <p>MAX DRAWDOWN........ {result.backtest.max_drawdown}</p>
                   <p>WIN RATE............ {result.backtest.win_rate}</p>
                   <p>PROFIT FACTOR....... {result.backtest.profit_factor}</p>
+                  <p>TRADE STYLE......... {result.backtest.trade_style || result.backtest.activity_profile?.trade_style || "N/A"}</p>
+                  <p>SIGNALS / DAY....... {result.backtest.signals_per_day || result.backtest.activity_profile?.signals_per_day || "N/A"}</p>
+                  <p>ACTIVE DAYS......... {result.backtest.active_days_pct || result.backtest.activity_profile?.active_days_pct || "N/A"}</p>
+                  <p>MAX QUIET GAP....... {result.backtest.longest_quiet_gap || result.backtest.activity_profile?.longest_quiet_gap || "N/A"}</p>
                   <p>EXPECTANCY.......... {result.backtest.expectancy}</p>
                   <p>EDGE................ {parsePercent(result.backtest.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</p>
                   <p>BUY & HOLD.......... {parsePercent(result.backtest.strategy_vs_buy_hold) > 0 ? "OUTPERFORMED" : "UNDERPERFORMED"}</p>
@@ -2170,6 +2176,23 @@ async function loadTradeHistory() {
                     <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
                     <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
                     <p>EXECUTION MODE...... {getExecutionModeLabel()}</p>
+                  </div>
+                </details>
+
+                <details className="retro-sub-window">
+                  <summary>STRATEGY ACTIVITY PROFILE</summary>
+                  <div className="metrics strategy-library-box">
+                    <p><strong>HOW OFTEN DOES THIS STRATEGY TRADE?</strong></p>
+                    <p>STYLE............... {result.backtest.trade_style || result.backtest.activity_profile?.trade_style || "N/A"}</p>
+                    <p>STATUS.............. {result.backtest.activity_status || result.backtest.activity_profile?.activity_status || "N/A"}</p>
+                    <p>SIGNALS / DAY....... {result.backtest.signals_per_day || result.backtest.activity_profile?.signals_per_day || "N/A"}</p>
+                    <p>ACTIVE DAYS......... {result.backtest.active_days_pct || result.backtest.activity_profile?.active_days_pct || "N/A"}</p>
+                    <p>AVG WAIT............ {result.backtest.avg_hours_between_signals || result.backtest.activity_profile?.avg_hours_between_signals || "N/A"}</p>
+                    <p>MAX QUIET GAP....... {result.backtest.longest_quiet_gap || result.backtest.activity_profile?.longest_quiet_gap || "N/A"}</p>
+                    <p>QUIET GAP STATUS.... {result.backtest.quiet_gap_status || result.backtest.activity_profile?.quiet_gap_status || "N/A"}</p>
+                    <p>SAMPLE CONFIDENCE... {result.backtest.sample_confidence || result.backtest.activity_profile?.sample_confidence || "N/A"}</p>
+                    <br />
+                    <p>{result.backtest.activity_profile?.explanation || "Signal cadence appears here after the strategy is backtested."}</p>
                   </div>
                 </details>
 
@@ -2260,6 +2283,34 @@ async function loadTradeHistory() {
                   )}
                 </details>
 
+                {result.optimization?.all_results && (
+                  <details className="retro-sub-window">
+                    <summary>SIGNAL FREQUENCY ANALYSIS</summary>
+                    <div className="metrics strategy-library-box">
+                      <p><strong>WHICH STRATEGIES ARE MOST ACTIVE?</strong></p>
+                      <p>This compares strategy cadence by asset, timeframe, and risk model so the user can see whether a setup is active intraday, patient, rare, or inactive.</p>
+                    </div>
+                    {result.optimization.all_results
+                      ?.slice()
+                      .sort((a, b) => Number(b.backtest?.signals_per_day_value || 0) - Number(a.backtest?.signals_per_day_value || 0))
+                      .slice(0, 8)
+                      .map((item, index) => (
+                        <div className="metrics strategy-library-box" key={index}>
+                          <p><strong>#{index + 1} {item.selected_strategy}</strong></p>
+                          <p>TIMEFRAME.......... {item.timeframe}</p>
+                          <p>RISK............... {String(item.risk).toUpperCase()}</p>
+                          <p>STYLE.............. {item.backtest?.trade_style || "N/A"}</p>
+                          <p>SIGNALS / DAY...... {item.backtest?.signals_per_day || "N/A"}</p>
+                          <p>ACTIVE DAYS........ {item.backtest?.active_days_pct || "N/A"}</p>
+                          <p>AVG WAIT........... {item.backtest?.avg_hours_between_signals || "N/A"}</p>
+                          <p>MAX QUIET GAP...... {item.backtest?.longest_quiet_gap || "N/A"}</p>
+                          <p>WIN RATE........... {item.backtest?.win_rate || "N/A"}</p>
+                          <p>MAX DRAWDOWN....... {item.backtest?.max_drawdown || "N/A"}</p>
+                        </div>
+                      ))}
+                  </details>
+                )}
+
                 <details className="retro-sub-window">
                   <summary>TRADING STRATEGY</summary>
                   <div className="reason">
@@ -2286,6 +2337,11 @@ async function loadTradeHistory() {
                   <div className="metrics">
                     <p>TEST PERIOD......... {result.backtest.backtest_period}</p>
                     <p>CANDLES TESTED...... {result.backtest.candles_tested}</p>
+                    <p>TRADE STYLE......... {result.backtest.trade_style || "N/A"}</p>
+                    <p>SIGNALS / DAY....... {result.backtest.signals_per_day || "N/A"}</p>
+                    <p>ACTIVE DAYS......... {result.backtest.active_days_pct || "N/A"}</p>
+                    <p>AVG WAIT............ {result.backtest.avg_hours_between_signals || "N/A"}</p>
+                    <p>MAX QUIET GAP....... {result.backtest.longest_quiet_gap || "N/A"}</p>
                     <p>TRADES.............. {result.backtest.trades}</p>
                     <p>WINS................ {result.backtest.wins}</p>
                     <p>LOSSES.............. {result.backtest.losses}</p>
@@ -2516,10 +2572,12 @@ async function loadTradeHistory() {
           <div>
             <label>TIMEFRAME</label>
             <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
-              <option>15M</option>
-              <option>1H</option>
-              <option>4H</option>
-              <option>1D</option>
+              <option value="1M">1M</option>
+              <option value="5M">5M</option>
+              <option value="15M">15M</option>
+              <option value="1H">1H</option>
+              <option value="4H">4H</option>
+              <option value="1D">1D</option>
             </select>
           </div>
 
@@ -3351,6 +3409,11 @@ const isRealTrade =
             <div className="metrics">
               <p>TEST PERIOD......... {result.backtest.backtest_period}</p>
               <p>CANDLES TESTED...... {result.backtest.candles_tested}</p>
+              <p>TRADE STYLE......... {result.backtest.trade_style || "N/A"}</p>
+              <p>SIGNALS / DAY....... {result.backtest.signals_per_day || "N/A"}</p>
+              <p>ACTIVE DAYS......... {result.backtest.active_days_pct || "N/A"}</p>
+              <p>AVG WAIT............ {result.backtest.avg_hours_between_signals || "N/A"}</p>
+              <p>MAX QUIET GAP....... {result.backtest.longest_quiet_gap || "N/A"}</p>
               <p>TRADES.............. {result.backtest.trades}</p>
               <p>WINS................ {result.backtest.wins}</p>
               <p>LOSSES.............. {result.backtest.losses}</p>

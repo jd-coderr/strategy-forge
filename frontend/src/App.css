@@ -1937,9 +1937,9 @@ h2 {
 }
 
 .trade-log-panel .copy-btn {
-  min-height: clamp(24px, 3.1vmin, 34px) !important;
-  font-size: clamp(7px, 0.85vmin, 10px) !important;
-  padding: 5px 8px !important;
+  min-height: clamp(28px, 3.6vmin, 42px) !important;
+  font-size: clamp(9px, 1.05vmin, 13px) !important;
+  padding: 7px 10px !important;
 }
 
 .trade-log-empty {

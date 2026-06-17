@@ -12,15 +12,27 @@ import "./App.css";
 const API_BASE = import.meta.env.VITE_API_URL || "https://strategy-forge-production-a3f6.up.railway.app";
 
 function App() {
+  function getSavedSetting(key, fallback) {
+    if (typeof window === "undefined") return fallback;
+
+    const saved = window.localStorage.getItem(key);
+    return saved !== null && saved !== "" ? saved : fallback;
+  }
+
+  function getSavedNumberSetting(key, fallback) {
+    const saved = Number(getSavedSetting(key, fallback));
+    return Number.isFinite(saved) ? saved : fallback;
+  }
+
   const [autonomousMode, setAutonomousMode] = useState(false);
   const [autonomousStatus, setAutonomousStatus] = useState(null);
-  const [autonomousInterval, setAutonomousInterval] = useState(5);
+  const [autonomousInterval, setAutonomousInterval] = useState(() => getSavedNumberSetting("ikqf_autonomous_interval", 5));
   const [cmcSkillHub, setCmcSkillHub] = useState(null);
-  const [coin, setCoin] = useState("ETH");
-  const [timeframe, setTimeframe] = useState("4H");
-  const [risk, setRisk] = useState("medium");
-  const [tradeSize, setTradeSize] = useState(0.001);
-  const [initialCapital, setInitialCapital] = useState(10000);
+  const [coin, setCoin] = useState(() => getSavedSetting("ikqf_coin", "ETH"));
+  const [timeframe, setTimeframe] = useState(() => getSavedSetting("ikqf_timeframe", "5M"));
+  const [risk, setRisk] = useState(() => getSavedSetting("ikqf_risk", "medium"));
+  const [tradeSize, setTradeSize] = useState(() => getSavedNumberSetting("ikqf_trade_size", 0.001));
+  const [initialCapital, setInitialCapital] = useState(() => getSavedNumberSetting("ikqf_initial_capital", 10000));
   const [result, setResult] = useState(null);
   const [agentResult, setAgentResult] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
@@ -29,7 +41,7 @@ function App() {
   const [showOnlyRealTrades, setShowOnlyRealTrades] = useState(false);
   const [startingPortfolioValue, setStartingPortfolioValue] = useState(null);
   const [liveExecution, setLiveExecution] = useState(false);
-  const [executionMode, setExecutionMode] = useState("decision_simulation");
+  const [executionMode, setExecutionMode] = useState(() => getSavedSetting("ikqf_execution_mode", "decision_simulation"));
   const [paperPortfolio, setPaperPortfolio] = useState(null);
   const [paperStartingBalance, setPaperStartingBalance] = useState(1000);
   const [loading, setLoading] = useState(false);
@@ -390,10 +402,26 @@ async function loadAutonomousStatus() {
     }
 
     // Do not let the backend's stopped/default interval overwrite the user's dropdown choice.
-    // The backend status endpoint returns its stored interval, often 5, every poll.
     // Only sync it back into the UI while autonomous mode is actually running.
     if (data.running === true && data.interval_minutes) {
       setAutonomousInterval(Number(data.interval_minutes));
+    }
+
+    // If the backend is already running, the UI must show the active backend setup,
+    // not the React default dropdown value after a page refresh.
+    const activeConfig = data.active_config || data.config || data.last_result?.active_config || null;
+
+    if (data.running === true && activeConfig) {
+      if (activeConfig.coin) setCoin(activeConfig.coin);
+      if (activeConfig.timeframe) setTimeframe(activeConfig.timeframe);
+      if (activeConfig.risk) setRisk(activeConfig.risk);
+      if (activeConfig.trade_size !== undefined && activeConfig.trade_size !== null) {
+        setTradeSize(Number(activeConfig.trade_size));
+      }
+      if (activeConfig.initial_capital !== undefined && activeConfig.initial_capital !== null) {
+        setInitialCapital(Number(activeConfig.initial_capital));
+      }
+      if (activeConfig.execution_mode) setExecutionMode(activeConfig.execution_mode);
     }
 
     if (data.last_result) {
@@ -419,6 +447,18 @@ useEffect(() => {
 
   return () => clearInterval(timer);
 }, []);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem("ikqf_coin", coin);
+  window.localStorage.setItem("ikqf_timeframe", timeframe);
+  window.localStorage.setItem("ikqf_risk", risk);
+  window.localStorage.setItem("ikqf_trade_size", String(tradeSize));
+  window.localStorage.setItem("ikqf_initial_capital", String(initialCapital));
+  window.localStorage.setItem("ikqf_execution_mode", executionMode);
+  window.localStorage.setItem("ikqf_autonomous_interval", String(autonomousInterval));
+}, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval]);
 
 useEffect(() => {
   if (autonomousMode) {

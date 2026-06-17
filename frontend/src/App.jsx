@@ -430,6 +430,68 @@ useEffect(() => {
     return parseFloat(String(value).replace("%", ""));
   }
 
+  function parseMetricNumber(value, fallback = 0) {
+    if (value === null || value === undefined) return fallback;
+
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    const cleaned = String(value)
+      .replace(/[$,%]/g, "")
+      .replace(/days|day|hours|hour|trades|trade/gi, "")
+      .replace(/,/g, "")
+      .trim();
+
+    const number = Number(cleaned);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function getFrequencyRankedResults() {
+    const rawResults =
+      result?.optimization?.frequency_ranked_results ||
+      result?.optimization?.all_results ||
+      [];
+
+    const winRateFloor = 30;
+
+    return rawResults
+      .slice()
+      .sort((a, b) => {
+        const aWinRate = parseMetricNumber(a.backtest?.win_rate, 0);
+        const bWinRate = parseMetricNumber(b.backtest?.win_rate, 0);
+        const aPassesWinFloor = aWinRate >= winRateFloor;
+        const bPassesWinFloor = bWinRate >= winRateFloor;
+
+        if (aPassesWinFloor !== bPassesWinFloor) {
+          return bPassesWinFloor - aPassesWinFloor;
+        }
+
+        const aProfitFactor = parseMetricNumber(a.backtest?.profit_factor, 0);
+        const bProfitFactor = parseMetricNumber(b.backtest?.profit_factor, 0);
+        if (aProfitFactor !== bProfitFactor) {
+          return bProfitFactor - aProfitFactor;
+        }
+
+        const aDrawdown = parseMetricNumber(a.backtest?.max_drawdown, 999);
+        const bDrawdown = parseMetricNumber(b.backtest?.max_drawdown, 999);
+        if (aDrawdown !== bDrawdown) {
+          return aDrawdown - bDrawdown;
+        }
+
+        const aSignals = parseMetricNumber(
+          a.backtest?.signals_per_day_value ?? a.backtest?.signals_per_day,
+          0
+        );
+        const bSignals = parseMetricNumber(
+          b.backtest?.signals_per_day_value ?? b.backtest?.signals_per_day,
+          0
+        );
+
+        return bSignals - aSignals;
+      });
+  }
+
   function getMarketRegime() {
     const fearValue = Number(result?.cmc_signal?.fear_greed?.value ?? 50);
 
@@ -884,7 +946,8 @@ Best eligible risk-adjusted score among all tested combinations.
           mode: data.mode,
           tested_combinations: data.tested_combinations,
           eligible_combinations: data.eligible_combinations,
-          all_results: data.all_results
+          all_results: data.all_results,
+          frequency_ranked_results: data.frequency_ranked_results
         }
       });
     } catch (error) {
@@ -2315,12 +2378,11 @@ async function loadTradeHistory() {
                   <details className="retro-sub-window">
                     <summary>SIGNAL FREQUENCY ANALYSIS</summary>
                     <div className="metrics strategy-library-box">
-                      <p><strong>WHICH STRATEGIES ARE MOST ACTIVE?</strong></p>
-                      <p>This compares strategy cadence by asset, timeframe, and risk model so the user can see whether a setup is active intraday, patient, rare, or inactive.</p>
+                      <p><strong>WHICH STRATEGIES ARE BOTH ACTIVE AND WORTH USING?</strong></p>
+                      <p>Ranking rule: win rate must clear the floor first, then the table ranks by profit factor, lower drawdown, and finally signals per day.</p>
+                      <p>WIN RATE FLOOR..... 30%</p>
                     </div>
-                    {result.optimization.all_results
-                      ?.slice()
-                      .sort((a, b) => Number(b.backtest?.signals_per_day_value || 0) - Number(a.backtest?.signals_per_day_value || 0))
+                    {getFrequencyRankedResults()
                       .slice(0, 8)
                       .map((item, index) => (
                         <div className="metrics strategy-library-box" key={index}>
@@ -2332,7 +2394,9 @@ async function loadTradeHistory() {
                           <p>ACTIVE DAYS........ {item.backtest?.active_days_pct || "N/A"}</p>
                           <p>AVG WAIT........... {item.backtest?.avg_hours_between_signals || "N/A"}</p>
                           <p>MAX QUIET GAP...... {item.backtest?.longest_quiet_gap || "N/A"}</p>
+                          <p>WIN FLOOR.......... {parseMetricNumber(item.backtest?.win_rate, 0) >= 30 ? "PASS" : "FAIL"}</p>
                           <p>WIN RATE........... {item.backtest?.win_rate || "N/A"}</p>
+                          <p>PROFIT FACTOR...... {item.backtest?.profit_factor || "N/A"}</p>
                           <p>MAX DRAWDOWN....... {item.backtest?.max_drawdown || "N/A"}</p>
                         </div>
                       ))}

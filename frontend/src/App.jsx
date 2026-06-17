@@ -2213,7 +2213,7 @@ async function loadTradeHistory() {
       <main className="full-terminal">
       <div className="topbar">
         <span>IKQF v0.1.0</span>
-        <span>I KNOW QUANT FU PRESENTS</span>
+        <span>STRATEGY MATRIX LOADED</span>
         <span>AI ONLINE</span>
       </div>
 

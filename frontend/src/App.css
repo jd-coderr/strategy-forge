@@ -2864,3 +2864,21 @@ select option:hover {
   background: rgba(156, 255, 143, 0.18);
   color: #ffffff;
 }
+
+/* Detailed Version: make the $ smaller */
+.retro-page .capital-input span,
+.retro-square .capital-input span {
+  font-size: clamp(8px, 0.9vmin, 10px);
+  left: 8px;
+}
+
+/* Full Size Version: make the $ bigger */
+.full-terminal .capital-input span {
+  font-size: 18px;
+  left: 14px;
+}
+
+/* Full Size Version: give the input text more room from the $ */
+.full-terminal .capital-input input {
+  padding-left: 34px;
+}

@@ -2921,10 +2921,10 @@ select option:checked {
   color: #ffffff !important;
 }
 
-/* Detailed Version: make $ smaller */
+/* Detailed Version: slightly bigger $ */
 .retro-square .capital-input span,
 .retro-page .capital-input span {
-  font-size: clamp(8px, 0.9vmin, 10px) !important;
+  font-size: clamp(9px, 1.05vmin, 12px) !important;
   left: 8px !important;
 }
 

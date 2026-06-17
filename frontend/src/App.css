@@ -2828,3 +2828,25 @@ h2 {
   margin-left: auto !important;
   margin-right: auto !important;
 }
+
+/* Detailed Version: give Equity Curve breathing room and keep the TRADES axis label inside the chart */
+.retro-square .equity-curve-window {
+  margin-bottom: clamp(16px, 2.4vmin, 26px) !important;
+  padding-bottom: clamp(8px, 1.4vmin, 16px) !important;
+}
+
+.retro-square .equity-curve-window .chart-box {
+  height: 310px !important;
+  min-height: 310px !important;
+  padding-bottom: 28px !important;
+  margin-bottom: clamp(16px, 2.4vmin, 26px) !important;
+  overflow: visible !important;
+}
+
+.retro-square .equity-curve-window + .retro-sub-window {
+  margin-top: clamp(16px, 2.2vmin, 24px) !important;
+}
+
+.retro-square .equity-curve-window .recharts-label {
+  dominant-baseline: central;
+}

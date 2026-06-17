@@ -133,12 +133,31 @@ function App() {
   }
 
   function getEquityCurveData() {
+    const curvePoints = result?.backtest?.equity_curve_points;
+
+    if (Array.isArray(curvePoints) && curvePoints.length > 0) {
+      return curvePoints.map((point, index) => ({
+        trade: Number(point.trade ?? index),
+        equity: Number(point.equity ?? 0),
+        date: point.date || point.exit_time || point.timestamp || null,
+      }));
+    }
+
     if (!result?.backtest?.equity_curve) return [];
 
-    return result.backtest.equity_curve.map((value, index) => ({
-      trade: index,
-      equity: value
-    }));
+    const recentTrades = result?.backtest?.recent_trades || [];
+
+    return result.backtest.equity_curve.map((value, index) => {
+      const relatedTrade = index > 0 ? recentTrades[index - 1] : null;
+
+      return {
+        trade: index,
+        equity: Number(value),
+        date: index === 0
+          ? result?.backtest?.backtest_start || null
+          : relatedTrade?.exit_time || relatedTrade?.exit_timestamp || null,
+      };
+    });
   }
 
   function getOverallRating() {
@@ -170,6 +189,15 @@ function App() {
     if (Number.isNaN(date.getTime())) return "N/A";
 
     return date.toLocaleString("de-DE");
+  }
+
+  function formatEquityTooltipLabel(label, payload) {
+    const point = payload?.[0]?.payload;
+    const tradeLabel = `Trade ${point?.trade ?? label}`;
+
+    if (!point?.date) return tradeLabel;
+
+    return `${tradeLabel} // ${point.date}`;
   }
 
   function getExecutionModeLabel() {
@@ -1359,7 +1387,7 @@ async function loadTradeHistory() {
                   </select>
                 </div>
                 <div>
-                  <label>CHECK INTERVAL</label>
+                  <label>INTERVAL</label>
                   <select
   value={autonomousInterval}
   disabled={autonomousMode}
@@ -2200,19 +2228,19 @@ async function loadTradeHistory() {
                   <details className="retro-sub-window equity-curve-window">
                     <summary>EQUITY CURVE</summary>
                     <div className="chart-box">
-                      <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={getEquityCurveData()} margin={{ top: 8, right: 16, left: 4, bottom: 46 }}>
+                      <ResponsiveContainer width="100%" height={270}>
+                        <LineChart data={getEquityCurveData()} margin={{ top: 8, right: 16, left: 4, bottom: 62 }}>
                           <XAxis
                             dataKey="trade"
-                            height={46}
+                            height={60}
                             tick={{ fontSize: 8, fill: "#9cff8f" }}
-                            tickMargin={12}
+                            tickMargin={8}
                             tickLine={{ stroke: "#9cff8f" }}
                             axisLine={{ stroke: "#9cff8f" }}
                             label={{
                               value: "TRADES",
                               position: "insideBottom",
-                              offset: -20,
+                              offset: 6,
                               style: { fontSize: 9, fill: "#9cff8f", letterSpacing: 1 }
                             }}
                           />
@@ -2224,7 +2252,7 @@ async function loadTradeHistory() {
                             axisLine={{ stroke: "#9cff8f" }}
                           />
                           <Tooltip
-                            labelFormatter={(label) => `Trade ${label}`}
+                            labelFormatter={formatEquityTooltipLabel}
                             formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
                             contentStyle={{
                               backgroundColor: "#001a08",
@@ -3239,12 +3267,12 @@ const isRealTrade =
                       label={{
                         value: "TRADES",
                         position: "insideBottom",
-                        offset: -15
+                        offset: 6
                       }}
                     />
                     <YAxis domain={["auto", "auto"]} />
                     <Tooltip
-                      labelFormatter={(label) => `Trade ${label}`}
+                      labelFormatter={formatEquityTooltipLabel}
                       formatter={(value) => [`$${Number(value).toFixed(2)}`, "Equity"]}
                       contentStyle={{
                         backgroundColor: "#001a08",

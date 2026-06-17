@@ -2073,9 +2073,9 @@ h2 {
   margin: 0 !important;
   padding: 0 !important;
   background: #000 !important;
-  color: #00ff41;
+  color: #9cff8f;
   font-family: "Courier New", monospace;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow: 0 0 6px #9cff8f;
 }
 
 .full-terminal {
@@ -2084,12 +2084,12 @@ h2 {
   min-height: 95vh;
   margin: 20px auto;
   padding: 24px;
-  border: 3px double #00ff41;
+  border: 3px double #9cff8f;
   background: radial-gradient(circle at center, #031403 0%, #000 70%);
-  color: #00ff41;
+  color: #9cff8f;
   font-size: 16px;
   line-height: normal;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow: 0 0 6px #9cff8f;
   box-shadow: none;
 }
 
@@ -2213,8 +2213,8 @@ h2 {
   width: 100%;
   max-width: 100%;
   background: rgba(0, 0, 0, 0.98);
-  color: #00ff41;
-  border: 2px solid #00ff41;
+  color: #9cff8f;
+  border: 2px solid #9cff8f;
   padding: 14px;
   font-family: "Courier New", monospace;
   font-size: 18px;
@@ -2248,7 +2248,7 @@ h2 {
   -moz-appearance: none;
   padding-left: 20px;
   padding-right: 65px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2300ff41' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%239cff8f' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 20px center;
   background-size: 32px;

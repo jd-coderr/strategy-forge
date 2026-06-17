@@ -1413,11 +1413,12 @@ h2 {
 }
 
 .simple-brand-subline {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: #9cff8f;
-  font-size: clamp(7px, 0.98vmin, 12px);
-  line-height: 1.25;
-  letter-spacing: clamp(0px, 0.18vmin, 1.5px);
+  font-size: clamp(10px, 1.35vmin, 16px);
+  line-height: 1.3;
+  letter-spacing: clamp(0.5px, 0.25vmin, 2px);
+  font-weight: bold;
 }
 
 .simple-speech-text,
@@ -2855,4 +2856,18 @@ h2 {
 
 .retro-square .equity-curve-window .recharts-label {
   dominant-baseline: central;
+}
+/* Simple Version: make control labels and dropdown text readable again */
+.simple-square .simple-control-grid label {
+  margin-bottom: 4px !important;
+  font-size: clamp(9px, 1.15vmin, 13px) !important;
+  line-height: 1.15 !important;
+}
+
+.simple-square .simple-control-grid input,
+.simple-square .simple-control-grid select {
+  min-height: clamp(32px, 4vmin, 46px) !important;
+  padding: 8px 10px !important;
+  font-size: clamp(10px, 1.25vmin, 15px) !important;
+  line-height: 1.2 !important;
 }

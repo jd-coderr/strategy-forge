@@ -18,7 +18,6 @@ def normalize_symbol(coin: str):
 
 def timeframe_to_binance(timeframe: str):
     mapping = {
-        "1M": "1m",
         "5M": "5m",
         "15M": "15m",
         "1H": "1h",

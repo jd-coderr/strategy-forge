@@ -121,6 +121,22 @@ AUTONOMOUS_THREAD = None
 AUTONOMOUS_CONFIG = None
 
 
+def get_autonomous_config_snapshot():
+    if AUTONOMOUS_CONFIG is None:
+        return None
+
+    return {
+        "coin": AUTONOMOUS_CONFIG.coin,
+        "timeframe": AUTONOMOUS_CONFIG.timeframe,
+        "risk": AUTONOMOUS_CONFIG.risk,
+        "initial_capital": AUTONOMOUS_CONFIG.initial_capital,
+        "live_execution": AUTONOMOUS_CONFIG.live_execution,
+        "execution_mode": AUTONOMOUS_CONFIG.execution_mode,
+        "trade_size": AUTONOMOUS_CONFIG.trade_size,
+        "selected_strategy": AUTONOMOUS_CONFIG.selected_strategy,
+    }
+
+
 RISK_STATE = {
     "baseline_portfolio_value_usd": None,
     "peak_portfolio_value_usd": None,
@@ -1568,6 +1584,7 @@ def autonomous_start(request: AutonomousRequest, _operator_ok: bool = Depends(re
         "interval_minutes": request.interval_minutes,
         "trade_size": request.trade_size,
         "execution_mode": request.execution_mode,
+        "active_config": get_autonomous_config_snapshot(),
         "next_run": AUTONOMOUS_STATE["next_run"],
         "message": "Autonomous backend loop started.",
     }
@@ -1592,6 +1609,7 @@ def autonomous_status():
     return {
         "success": True,
         "mode": "autonomous",
+        "active_config": get_autonomous_config_snapshot(),
         **AUTONOMOUS_STATE,
     }
 

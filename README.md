@@ -1,4 +1,4 @@
-# I Know Quant Fu
+# I Know Quant Fu - https://www.iknowquantfu.com
 
 ## Autonomous Crypto Trading Agent for the BNB Hack: AI Trading Agent Edition
 

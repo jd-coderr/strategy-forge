@@ -610,6 +610,14 @@ def run_backtest(
     max_drawdown = 0
     max_drawdown_initial_capital = 0
     equity_curve = [equity]
+    equity_curve_points = [
+        {
+            "trade": 0,
+            "equity": round(equity, 2),
+            "date": df["open_time"].iloc[0].strftime("%Y-%m-%d %H:%M"),
+            "timestamp": df["open_time"].iloc[0].isoformat(),
+        }
+    ]
     buy_hold_curve = [initial_capital]
 
     for index in range(2, len(df)):
@@ -656,6 +664,12 @@ def run_backtest(
 
                 equity = equity * (1 + pnl_pct / 100)
                 equity_curve.append(equity)
+                equity_curve_points.append({
+                    "trade": len(equity_curve) - 1,
+                    "equity": round(equity, 2),
+                    "date": row["open_time"].strftime("%Y-%m-%d %H:%M"),
+                    "timestamp": row["open_time"].isoformat(),
+                })
                 peak_equity = max(peak_equity, equity)
 
                 buy_hold_equity = initial_capital * (close / df["close"].iloc[0])
@@ -820,6 +834,7 @@ def run_backtest(
         "initial_capital": f"${initial_capital:,.2f}",
         "final_equity": f"${equity:,.2f}",
         "equity_curve": [round(x, 2) for x in equity_curve],
+        "equity_curve_points": equity_curve_points,
         "buy_hold_curve": buy_hold_curve,
         "recent_trades": trades[-20:]
     }

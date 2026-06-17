@@ -2823,9 +2823,7 @@ h2 {
 /* Center the Simple Version main title */
 .simple-brand-block .simple-square-title {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: block;
   text-align: center !important;
   margin-left: auto !important;
   margin-right: auto !important;

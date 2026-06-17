@@ -2011,7 +2011,10 @@ async function loadTradeHistory() {
                     <span>{">"}</span>
                   </div>
 
-                  <div className="trade-table">
+                  <div
+                    className="trade-table strategy-backtest-scroll-table"
+                    style={{ maxHeight: "220px", overflowY: "auto", overflowX: "auto" }}
+                  >
                   <div className="trade-row trade-header">
                     <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
                   </div>

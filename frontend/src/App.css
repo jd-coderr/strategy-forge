@@ -2897,3 +2897,33 @@ select option:hover {
   font-size: clamp(8px, 1.04vmin, 13px) !important;
   line-height: 1.38 !important;
 }
+
+/* Detailed version: stop Strategy Backtest History from eating the whole panel */
+.retro-window .strategy-scroll-table,
+.retro-window .backtest-table-wrap,
+.retro-window .history-table-wrap {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* Make opened details not grow endlessly inside the fixed square */
+.retro-quadrant-body .retro-window[open] {
+  flex-shrink: 0;
+}
+
+/* Keep the detailed quadrant body scrollable when a details section is open */
+.retro-quadrant-body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Make tables usable without blocking the rest of the sections */
+.retro-window table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.retro-window tbody {
+  max-height: 190px;
+}

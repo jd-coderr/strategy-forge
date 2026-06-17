@@ -2819,3 +2819,14 @@ h2 {
   font-size: clamp(8px, 1.06vmin, 13px) !important;
   line-height: 1.28 !important;
 }
+
+/* Center the Simple Version main title */
+.simple-brand-block .simple-square-title {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}

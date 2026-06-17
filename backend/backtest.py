@@ -18,6 +18,8 @@ def normalize_symbol(coin: str):
 
 def timeframe_to_binance(timeframe: str):
     mapping = {
+        "1M": "1m",
+        "5M": "5m",
         "15M": "15m",
         "1H": "1h",
         "4H": "4h",
@@ -25,6 +27,27 @@ def timeframe_to_binance(timeframe: str):
     }
 
     return mapping.get(timeframe.upper(), "4h")
+
+
+def timeframe_to_minutes(timeframe: str):
+    mapping = {
+        "1M": 1,
+        "5M": 5,
+        "15M": 15,
+        "1H": 60,
+        "4H": 240,
+        "1D": 1440,
+    }
+
+    return mapping.get(timeframe.upper(), 240)
+
+
+def get_backtest_limit(timeframe: str):
+    """
+    Pull a larger sample where possible so Signal Frequency Analysis is useful.
+    Binance's common REST limit is 1000 candles, so we stay inside that.
+    """
+    return 1000
 
 
 def get_risk_settings(risk: str):
@@ -81,6 +104,8 @@ def calculate_rsi(series, length=13):
 
 
 def build_indicators(df):
+    df = df.copy()
+
     df["typical_price"] = (df["high"] + df["low"]) / 2
     df["pv"] = df["typical_price"] * df["volume"]
     df["cum_pv"] = df["pv"].cumsum()
@@ -99,6 +124,156 @@ def build_indicators(df):
     df["stoch_fast"] = ((df["close"] - low_14) / (high_14 - low_14)) * 100
     df["stoch_medium"] = df["stoch_fast"].rolling(5).mean()
     df["stoch_slow"] = df["stoch_fast"].rolling(14).mean()
+
+    # EMA / MACD / Ichimoku values used by the Ichimoku MACD EMA Confluence strategy.
+    df["ema_fast"] = df["close"].ewm(span=50, adjust=False).mean()
+    df["ema_slow"] = df["close"].ewm(span=200, adjust=False).mean()
+    ema_12 = df["close"].ewm(span=12, adjust=False).mean()
+    ema_26 = df["close"].ewm(span=26, adjust=False).mean()
+    df["macd_line"] = ema_12 - ema_26
+    df["macd_signal"] = df["macd_line"].ewm(span=9, adjust=False).mean()
+    df["macd_hist"] = df["macd_line"] - df["macd_signal"]
+
+    conversion_length = 9
+    base_length = 26
+    span_b_length = 52
+    displacement = 26
+    df["ichi_conversion"] = (
+        df["high"].rolling(conversion_length).max() +
+        df["low"].rolling(conversion_length).min()
+    ) / 2.0
+    df["ichi_base"] = (
+        df["high"].rolling(base_length).max() +
+        df["low"].rolling(base_length).min()
+    ) / 2.0
+    df["ichi_span_a"] = (df["ichi_conversion"] + df["ichi_base"]) / 2.0
+    df["ichi_span_b"] = (
+        df["high"].rolling(span_b_length).max() +
+        df["low"].rolling(span_b_length).min()
+    ) / 2.0
+    df["cloud_top"] = pd.concat(
+        [df["ichi_span_a"].shift(displacement), df["ichi_span_b"].shift(displacement)],
+        axis=1,
+    ).max(axis=1)
+    df["cloud_bottom"] = pd.concat(
+        [df["ichi_span_a"].shift(displacement), df["ichi_span_b"].shift(displacement)],
+        axis=1,
+    ).min(axis=1)
+
+    # FVG Channel approximation from the TradingView Pine logic.
+    smooth_len = 20
+    bull_fvgs = []
+    bear_fvgs = []
+    avg_bull = []
+    avg_bear = []
+
+    highs = df["high"].tolist()
+    lows = df["low"].tolist()
+    closes = df["close"].tolist()
+
+    for index in range(len(df)):
+        if index >= 2:
+            if lows[index] > highs[index - 2] and closes[index - 1] > highs[index - 2]:
+                bull_fvgs.append(highs[index - 2])
+
+            if highs[index] < lows[index - 2] and closes[index - 1] < lows[index - 2]:
+                bear_fvgs.append(lows[index - 2])
+
+        close = closes[index]
+        bull_fvgs = [level for level in bull_fvgs if close >= level]
+        bear_fvgs = [level for level in bear_fvgs if close <= level]
+
+        avg_bull.append(sum(bull_fvgs) / len(bull_fvgs) if bull_fvgs else None)
+        avg_bear.append(sum(bear_fvgs) / len(bear_fvgs) if bear_fvgs else None)
+
+    df["fvg_avg_bull"] = pd.Series(avg_bull, index=df.index)
+    df["fvg_avg_bear"] = pd.Series(avg_bear, index=df.index)
+    price_sma = df["close"].rolling(smooth_len).mean()
+    bull_boundary_raw = df["fvg_avg_bull"].where(df["fvg_avg_bull"].notna(), price_sma)
+    bear_boundary_raw = df["fvg_avg_bear"].where(df["fvg_avg_bear"].notna(), price_sma)
+    df["fvg_upper_boundary"] = bear_boundary_raw.rolling(smooth_len).mean().rolling(smooth_len).mean()
+    df["fvg_lower_boundary"] = bull_boundary_raw.rolling(smooth_len).mean().rolling(smooth_len).mean()
+    df["fvg_upper_boundary"] = df["fvg_upper_boundary"].fillna(price_sma).fillna(df["close"])
+    df["fvg_lower_boundary"] = df["fvg_lower_boundary"].fillna(price_sma).fillna(df["close"])
+
+    fvg_bull_signals = []
+    fvg_bear_signals = []
+    bars_since_close_ge_lower = None
+    bars_since_close_le_upper = None
+    last_bull_bar = -10_000
+    last_bear_bar = -10_000
+
+    for index, row in df.iterrows():
+        position = len(fvg_bull_signals)
+        close = row["close"]
+        lower = row["fvg_lower_boundary"]
+        upper = row["fvg_upper_boundary"]
+
+        if close >= lower:
+            bars_since_close_ge_lower = 0
+        elif bars_since_close_ge_lower is not None:
+            bars_since_close_ge_lower += 1
+
+        if close <= upper:
+            bars_since_close_le_upper = 0
+        elif bars_since_close_le_upper is not None:
+            bars_since_close_le_upper += 1
+
+        bull_signal = (
+            bars_since_close_ge_lower is not None and
+            bars_since_close_ge_lower >= 5 and
+            (position - last_bull_bar) > 50
+        )
+        bear_signal = (
+            bars_since_close_le_upper is not None and
+            bars_since_close_le_upper >= 5 and
+            (position - last_bear_bar) > 50
+        )
+
+        if bull_signal:
+            last_bull_bar = position
+        if bear_signal:
+            last_bear_bar = position
+
+        fvg_bull_signals.append(bool(bull_signal))
+        fvg_bear_signals.append(bool(bear_signal))
+
+    df["fvg_bull_signal"] = fvg_bull_signals
+    df["fvg_bear_signal"] = fvg_bear_signals
+
+    # Ichimoku MACD EMA Confluence signal state. Loose mode is the Pine default,
+    # so the baseline signal is EMA direction + MACD direction, with state-change gating.
+    trend_bull_signals = []
+    trend_bear_signals = []
+    last_signal = 0
+    last_signal_bar = 0
+    cooldown_bars = 0
+
+    for index, row in df.reset_index(drop=True).iterrows():
+        bullish_confluence = (
+            row["macd_line"] > row["macd_signal"] and
+            row["ema_fast"] > row["ema_slow"]
+        )
+        bearish_confluence = (
+            row["macd_line"] < row["macd_signal"] and
+            row["ema_fast"] < row["ema_slow"]
+        )
+
+        bull_signal = bullish_confluence and last_signal != 1 and (index - last_signal_bar > cooldown_bars)
+        bear_signal = bearish_confluence and last_signal != -1 and (index - last_signal_bar > cooldown_bars)
+
+        if bull_signal:
+            last_signal = 1
+            last_signal_bar = index
+        elif bear_signal:
+            last_signal = -1
+            last_signal_bar = index
+
+        trend_bull_signals.append(bool(bull_signal))
+        trend_bear_signals.append(bool(bear_signal))
+
+    df["trend_bull_signal"] = trend_bull_signals
+    df["trend_bear_signal"] = trend_bear_signals
 
     df = df.bfill().ffill()
 
@@ -153,6 +328,24 @@ def get_signal(strategy_type, df, index, settings):
             return "long"
 
         if sell_signal:
+            return "short"
+
+        return None
+
+    if strategy_type == "mean_reversion_channel":
+        if bool(row.get("fvg_bull_signal", False)):
+            return "long"
+
+        if bool(row.get("fvg_bear_signal", False)):
+            return "short"
+
+        return None
+
+    if strategy_type == "trend_confluence":
+        if bool(row.get("trend_bull_signal", False)):
+            return "long"
+
+        if bool(row.get("trend_bear_signal", False)):
             return "short"
 
         return None
@@ -213,6 +406,124 @@ def calculate_sortino_ratio(trade_returns):
 
     return series.mean() / downside_deviation
 
+def calculate_activity_profile(trades, backtest_start, backtest_end):
+    start = pd.to_datetime(backtest_start)
+    end = pd.to_datetime(backtest_end)
+
+    if pd.isna(start) or pd.isna(end) or end <= start:
+        period_days = 0.0
+    else:
+        period_days = (end - start).total_seconds() / 86400
+
+    total_trades = len(trades)
+    safe_period_days = max(period_days, 1 / 24)
+    signals_per_day_value = total_trades / safe_period_days if safe_period_days > 0 else 0.0
+
+    entry_times = []
+    for trade in trades:
+        value = trade.get("entry_timestamp") or trade.get("entry_time")
+        timestamp = pd.to_datetime(value, errors="coerce")
+        if not pd.isna(timestamp):
+            entry_times.append(timestamp)
+
+    entry_times = sorted(entry_times)
+    active_trade_days = {timestamp.date() for timestamp in entry_times}
+
+    if period_days <= 0:
+        total_calendar_days = 1
+    else:
+        total_calendar_days = max(1, len(pd.date_range(start.date(), end.date(), freq="D")))
+
+    active_days_pct_value = (len(active_trade_days) / total_calendar_days) * 100 if total_calendar_days > 0 else 0.0
+
+    if len(entry_times) >= 2:
+        gaps_between = [
+            (entry_times[index] - entry_times[index - 1]).total_seconds() / 3600
+            for index in range(1, len(entry_times))
+        ]
+        avg_hours_between_signals_value = sum(gaps_between) / len(gaps_between)
+    else:
+        avg_hours_between_signals_value = None
+
+    quiet_gaps = []
+    if entry_times:
+        quiet_gaps.append((entry_times[0] - start).total_seconds() / 3600)
+        quiet_gaps.extend(
+            (entry_times[index] - entry_times[index - 1]).total_seconds() / 3600
+            for index in range(1, len(entry_times))
+        )
+        quiet_gaps.append((end - entry_times[-1]).total_seconds() / 3600)
+    else:
+        quiet_gaps.append(max(0.0, (end - start).total_seconds() / 3600))
+
+    longest_quiet_gap_hours_value = max(quiet_gaps) if quiet_gaps else 0.0
+    longest_quiet_gap_days_value = longest_quiet_gap_hours_value / 24
+
+    if signals_per_day_value >= 5:
+        trade_style = "HIGH FREQUENCY"
+        activity_status = "VERY ACTIVE"
+    elif signals_per_day_value >= 1:
+        trade_style = "ACTIVE INTRADAY"
+        activity_status = "ACTIVE"
+    elif signals_per_day_value >= 0.5:
+        trade_style = "MODERATE INTRADAY"
+        activity_status = "MODERATE"
+    elif signals_per_day_value >= 0.1:
+        trade_style = "PATIENT / SWING"
+        activity_status = "LOW FREQUENCY"
+    elif signals_per_day_value > 0:
+        trade_style = "RARE / CONFIRMATION"
+        activity_status = "RARE"
+    else:
+        trade_style = "INACTIVE IN SAMPLE"
+        activity_status = "NO SIGNALS"
+
+    if longest_quiet_gap_days_value <= 1:
+        quiet_gap_status = "CONSISTENT"
+    elif longest_quiet_gap_days_value <= 3:
+        quiet_gap_status = "INTERMITTENT"
+    else:
+        quiet_gap_status = "SPARSE"
+
+    if period_days >= 14:
+        sample_confidence = "HIGH"
+    elif period_days >= 7:
+        sample_confidence = "MEDIUM"
+    else:
+        sample_confidence = "LOW"
+
+    return {
+        "activity_status": activity_status,
+        "trade_style": trade_style,
+        "signals_per_day": f"{signals_per_day_value:.2f}",
+        "signals_per_day_value": round(signals_per_day_value, 4),
+        "active_days_pct": f"{active_days_pct_value:.2f}%",
+        "active_days_pct_value": round(active_days_pct_value, 2),
+        "active_trade_days": len(active_trade_days),
+        "total_calendar_days": total_calendar_days,
+        "avg_hours_between_signals": (
+            f"{avg_hours_between_signals_value:.2f} hours"
+            if avg_hours_between_signals_value is not None
+            else "N/A"
+        ),
+        "avg_hours_between_signals_value": (
+            round(avg_hours_between_signals_value, 4)
+            if avg_hours_between_signals_value is not None
+            else None
+        ),
+        "longest_quiet_gap": f"{longest_quiet_gap_days_value:.2f} days",
+        "longest_quiet_gap_days": round(longest_quiet_gap_days_value, 4),
+        "quiet_gap_status": quiet_gap_status,
+        "sample_days": round(period_days, 2),
+        "sample_confidence": sample_confidence,
+        "explanation": (
+            f"This setup behaved like {trade_style.lower()} over the tested sample, "
+            f"with {signals_per_day_value:.2f} signals per day and a longest quiet gap of "
+            f"{longest_quiet_gap_days_value:.2f} days."
+        ),
+    }
+
+
 def get_current_signal_summary(strategy_type, df, settings):
     last_index = len(df) - 1
     signal = get_signal(strategy_type, df, last_index, settings)
@@ -253,7 +564,7 @@ def run_backtest(
     df = fetch_binance_klines(
         symbol=symbol,
         interval=interval,
-        limit=500
+        limit=get_backtest_limit(timeframe)
     )
 
     df = build_indicators(df)
@@ -321,15 +632,25 @@ def run_backtest(
                 win = row["deviation"] <= settings["take_profit_level"]
                 loss = row["deviation"] >= entry_dev + settings["stop_extension"]
             else:
-                if trade_dir == "long":
-                    win = close >= entry_price * (1 + settings["win_pnl"] / 100)
-                    loss = close <= entry_price * (1 + settings["loss_pnl"] / 100)
+                if strategy_type in ("mean_reversion_channel", "trend_confluence"):
+                    win_target_pct = 1.0
+                    loss_target_pct = -1.0
                 else:
-                    win = close <= entry_price * (1 - settings["win_pnl"] / 100)
-                    loss = close >= entry_price * (1 - settings["loss_pnl"] / 100)
+                    win_target_pct = settings["win_pnl"]
+                    loss_target_pct = settings["loss_pnl"]
+
+                if trade_dir == "long":
+                    win = close >= entry_price * (1 + win_target_pct / 100)
+                    loss = close <= entry_price * (1 + loss_target_pct / 100)
+                else:
+                    win = close <= entry_price * (1 - win_target_pct / 100)
+                    loss = close >= entry_price * (1 - loss_target_pct / 100)
 
             if win or loss:
-                raw_pnl_pct = settings["win_pnl"] if win else settings["loss_pnl"]
+                if strategy_type in ("mean_reversion_channel", "trend_confluence"):
+                    raw_pnl_pct = 1.0 if win else -1.0
+                else:
+                    raw_pnl_pct = settings["win_pnl"] if win else settings["loss_pnl"]
                 pnl_pct = raw_pnl_pct - total_cost_pct
                 bars_in_trade = index - entry_index
 
@@ -349,7 +670,10 @@ def run_backtest(
 
                 trades.append({
                     "entry_time": entry_time.strftime("%Y-%m-%d %H:%M"),
+                    "entry_timestamp": entry_time.isoformat(),
                     "exit_time": row["open_time"].strftime("%Y-%m-%d %H:%M"),
+                    "exit_timestamp": row["open_time"].isoformat(),
+                    "side": trade_dir,
                     "entry_price": round(entry_price, 4),
                     "exit_price": round(close, 4),
                     "result": "win" if win else "loss",
@@ -427,11 +751,29 @@ def run_backtest(
             current_win_streak = 0
             max_loss_streak = max(max_loss_streak, current_loss_streak)
 
+    activity_profile = calculate_activity_profile(
+        trades=trades,
+        backtest_start=df["open_time"].iloc[0],
+        backtest_end=df["open_time"].iloc[-1],
+    )
+
     return {
         "mode": "real_binance_backtest",
         "symbol": symbol,
         "timeframe": interval,
         "strategy_type": strategy_type,
+        "activity_profile": activity_profile,
+        "activity_status": activity_profile["activity_status"],
+        "trade_style": activity_profile["trade_style"],
+        "signals_per_day": activity_profile["signals_per_day"],
+        "signals_per_day_value": activity_profile["signals_per_day_value"],
+        "active_days_pct": activity_profile["active_days_pct"],
+        "active_days_pct_value": activity_profile["active_days_pct_value"],
+        "avg_hours_between_signals": activity_profile["avg_hours_between_signals"],
+        "longest_quiet_gap": activity_profile["longest_quiet_gap"],
+        "longest_quiet_gap_days": activity_profile["longest_quiet_gap_days"],
+        "quiet_gap_status": activity_profile["quiet_gap_status"],
+        "sample_confidence": activity_profile["sample_confidence"],
         "risk_model": risk.lower(),
         "settings_used": settings,
         "transaction_cost_per_trade": f"{settings['fee_per_trade']:.2f}%",

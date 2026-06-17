@@ -277,7 +277,7 @@ async function loadAutonomousStatus() {
 }
 
 useEffect(() => {
-  document.title = "I AM";
+  document.title = "I KNOW QUANT FU";
 
   loadAutonomousStatus();
   checkRegistration();
@@ -1052,12 +1052,12 @@ async function loadTradeHistory() {
         <div className={`simple-square ${expandedSimpleQuadrant ? "simple-has-expanded" : ""}`}>
           <section className={getSimpleQuadrantClass("intro", "simple-quadrant simple-q-intro")}>
             <div className="simple-quadrant-header">
-              <span>I KNOW QUANT FU</span>
+              <span>I AM AN</span>
               {renderSimpleExpandButton("intro")}
             </div>
             <div className="simple-quadrant-body">
               <div className="simple-brand-block">
-                <p className="simple-kicker">AN AI TRADING AGENT</p>
+                <p className="simple-kicker">AI TRADING AGENT</p>
                 <h1 className="simple-square-title">
                   I KNOW QUANT FU<span className="blink">_</span>
                 </h1>

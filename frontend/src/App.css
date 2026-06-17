@@ -2066,9 +2066,9 @@ h2 {
   margin: 0 !important;
   padding: 0 !important;
   background: #000 !important;
-  color: #00ff41;
+  color: #9cff8f;
   font-family: "Courier New", monospace;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow: 0 0 6px #9cff8f;
 }
 
 .full-terminal {
@@ -2077,12 +2077,12 @@ h2 {
   min-height: 95vh;
   margin: 20px auto;
   padding: 24px;
-  border: 3px double #00ff41;
+  border: 3px double #9cff8f;
   background: radial-gradient(circle at center, #031403 0%, #000 70%);
-  color: #00ff41;
+  color: #9cff8f;
   font-size: 16px;
   line-height: normal;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow: 0 0 6px #9cff8f;
   box-shadow: none;
 }
 
@@ -2092,14 +2092,14 @@ h2 {
   justify-content: space-between;
   gap: 15px;
   flex-wrap: wrap;
-  border-bottom: 2px solid #00ff41;
+  border-bottom: 2px solid #9cff8f;
   padding-bottom: 12px;
   font-weight: bold;
   font-size: 16px;
 }
 
 .full-terminal .footer {
-  border-top: 2px solid #00ff41;
+  border-top: 2px solid #9cff8f;
   border-bottom: none;
   margin-top: 30px;
   padding-top: 12px;
@@ -2115,7 +2115,7 @@ h2 {
   word-break: break-word;
   text-shadow:
     0 0 4px #ffffff,
-    0 0 10px #00ff41;
+    0 0 10px #9cff8f;
 }
 
 .full-terminal .subtitle {
@@ -2123,7 +2123,7 @@ h2 {
   font-size: clamp(14px, 3vw, 20px);
   margin: 0 0 18px;
   letter-spacing: 2px;
-  color: #00ff41;
+  color: #9cff8f;
 }
 
 .full-terminal .full-slogan {
@@ -2136,8 +2136,8 @@ h2 {
   color: #ffffff;
   text-shadow:
     0 0 2px #ffffff,
-    0 0 4px #00ff41,
-    0 0 8px #00ff41;
+    0 0 4px #9cff8f,
+    0 0 8px #9cff8f;
 }
 
 .full-terminal .hero-description {
@@ -2157,13 +2157,13 @@ h2 {
 }
 
 .full-terminal .panel {
-  border: 2px solid #00ff41;
+  border: 2px solid #9cff8f;
   padding: 42px 28px 30px;
   margin-bottom: 34px;
   position: relative;
   width: 100%;
   overflow: visible;
-  background: rgba(0, 255, 65, 0.025);
+  background: rgba(156, 255, 143, 0.025);
 }
 
 .full-terminal .panel-title {
@@ -2176,7 +2176,7 @@ h2 {
   line-height: 28px;
   font-weight: bold;
   z-index: 2;
-  color: #00ff41;
+  color: #9cff8f;
 }
 
 .full-terminal .input-row {
@@ -2206,12 +2206,12 @@ h2 {
   width: 100%;
   max-width: 100%;
   background: rgba(0, 0, 0, 0.98);
-  color: #00ff41;
-  border: 2px solid #00ff41;
+  color: #9cff8f;
+  border: 2px solid #9cff8f;
   padding: 14px;
   font-family: "Courier New", monospace;
   font-size: 18px;
-  text-shadow: 0 0 6px #00ff41;
+  text-shadow: 0 0 6px #9cff8f;
   box-shadow: none;
 }
 
@@ -2223,9 +2223,9 @@ h2 {
 .full-terminal button:hover,
 .full-terminal select:hover,
 .full-terminal summary:hover {
-  background: rgba(0, 255, 65, 0.5);
-  color: #00ff41;
-  text-shadow: 0 0 6px #00ff41;
+  background: rgba(156, 255, 143, 0.5);
+  color: #9cff8f;
+  text-shadow: 0 0 6px #9cff8f;
 }
 
 .full-terminal button:disabled,
@@ -2241,7 +2241,7 @@ h2 {
   -moz-appearance: none;
   padding-left: 20px;
   padding-right: 65px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2300ff41' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%239cff8f' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 20px center;
   background-size: 32px;
@@ -2260,14 +2260,14 @@ h2 {
   font-weight: bold;
   text-shadow:
     0 0 2px #ffffff,
-    0 0 4px #00ff41,
-    0 0 8px #00ff41;
+    0 0 4px #9cff8f,
+    0 0 8px #9cff8f;
 }
 
 .full-terminal .box,
 .full-terminal .reason,
 .full-terminal .metrics {
-  border: 2px solid #00ff41;
+  border: 2px solid #9cff8f;
   padding: 28px;
   min-height: 70px;
   font-size: 18px;
@@ -2375,7 +2375,7 @@ h2 {
   left: 18px;
   top: 50%;
   transform: translateY(-50%);
-  color: #00ff41;
+  color: #9cff8f;
   font-weight: bold;
   z-index: 2;
 }
@@ -2409,9 +2409,9 @@ h2 {
 }
 
 .full-terminal .agent-flow-visual div {
-  border: 1px solid #00ff41;
+  border: 1px solid #9cff8f;
   padding: 12px 10px;
-  background: rgba(0, 255, 65, 0.055);
+  background: rgba(156, 255, 143, 0.055);
   font-weight: bold;
   letter-spacing: 2px;
 }
@@ -2420,7 +2420,7 @@ h2 {
   color: #ffffff;
   text-shadow:
     0 0 2px #ffffff,
-    0 0 6px #00ff41;
+    0 0 6px #9cff8f;
   font-size: 22px;
   line-height: 1;
 }
@@ -2428,16 +2428,16 @@ h2 {
 .full-terminal .chart-box {
   width: 100%;
   height: 280px;
-  border: 1px solid #00ff41;
+  border: 1px solid #9cff8f;
   padding: 12px;
   margin-bottom: 28px;
-  background: rgba(0, 255, 65, 0.04);
+  background: rgba(156, 255, 143, 0.04);
 }
 
 .full-terminal .trade-table,
 .full-terminal .optimizer-table {
   width: 100%;
-  border: 2px solid #00ff41;
+  border: 2px solid #9cff8f;
   margin: 22px 0 40px;
   overflow-x: auto;
 }
@@ -2445,7 +2445,7 @@ h2 {
 .full-terminal .trade-row {
   display: grid;
   grid-template-columns: 1.4fr 1.4fr 1fr 1fr 1fr 0.8fr 1fr;
-  border-bottom: 1px solid #00ff41;
+  border-bottom: 1px solid #9cff8f;
 }
 
 .full-terminal .trade-row:last-child,
@@ -2455,7 +2455,7 @@ h2 {
 
 .full-terminal .trade-row span {
   padding: 14px 8px;
-  border-right: 1px solid #00ff41;
+  border-right: 1px solid #9cff8f;
   overflow-wrap: anywhere;
   text-align: center;
   min-height: 54px;
@@ -2473,11 +2473,11 @@ h2 {
 .full-terminal .trade-header,
 .full-terminal .optimizer-header {
   font-weight: bold;
-  background: rgba(0, 255, 65, 0.12);
+  background: rgba(156, 255, 143, 0.12);
 }
 
 .full-terminal .trade-win {
-  color: #00ff41;
+  color: #9cff8f;
 }
 
 .full-terminal .trade-loss {
@@ -2488,12 +2488,12 @@ h2 {
 .full-terminal .optimizer-row {
   display: grid;
   grid-template-columns: 0.6fr 0.8fr 0.8fr 2.4fr 0.8fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr;
-  border-bottom: 1px solid #00ff41;
+  border-bottom: 1px solid #9cff8f;
 }
 
 .full-terminal .optimizer-row span {
   padding: 8px 3px;
-  border-right: 1px solid #00ff41;
+  border-right: 1px solid #9cff8f;
   text-align: center;
   min-height: 54px;
   display: flex;
@@ -2510,7 +2510,7 @@ h2 {
 }
 
 .full-terminal .loading-box {
-  border: 2px solid #00ff41;
+  border: 2px solid #9cff8f;
   padding: 28px;
   font-size: 18px;
   line-height: 1.6;
@@ -2544,14 +2544,14 @@ h2 {
   width: 100%;
   height: 24px;
   margin-top: 28px;
-  border: 2px solid #00ff41;
+  border: 2px solid #9cff8f;
   overflow: hidden;
 }
 
 .full-terminal .progress-fill {
   height: 100%;
   width: 35%;
-  background: rgba(0, 255, 65, 0.55);
+  background: rgba(156, 255, 143, 0.55);
   animation: progressScan 8s infinite linear;
 }
 
@@ -2603,8 +2603,8 @@ h2 {
   color: #ffffff;
   text-shadow:
     0 0 2px #ffffff,
-    0 0 4px #00ff41,
-    0 0 8px #00ff41;
+    0 0 4px #9cff8f,
+    0 0 8px #9cff8f;
 }
 
 .full-terminal details[open] summary::before {
@@ -2618,9 +2618,9 @@ h2 {
   gap: 14px;
   margin: 16px 0 8px;
   padding: 8px 12px;
-  border: 1px dashed #00ff41;
-  color: #00ff41;
-  background: rgba(0, 255, 65, 0.04);
+  border: 1px dashed #9cff8f;
+  color: #9cff8f;
+  background: rgba(156, 255, 143, 0.04);
   text-align: center;
   font-size: 12px;
   letter-spacing: 2px;
@@ -2635,13 +2635,13 @@ h2 {
 .full-terminal .retro-log-entry {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(0,255,65,0.25);
+  border-bottom: 1px solid rgba(156,255,143,0.25);
 }
 
 .full-terminal .retro-log-entry,
 .full-terminal .retro-log-entry p,
 .full-terminal .retro-log-entry div {
-  color: #00ff41;
+  color: #9cff8f;
 }
 
 
@@ -2652,7 +2652,7 @@ h2 {
   font-size: 18px !important;
   line-height: 1.35 !important;
   letter-spacing: 1px !important;
-  text-shadow: 0 0 6px #00ff41 !important;
+  text-shadow: 0 0 6px #9cff8f !important;
 }
 
 .full-terminal .autonomous-status-box,
@@ -2661,7 +2661,7 @@ h2 {
   line-height: 1.55 !important;
   letter-spacing: 1px !important;
   text-align: center !important;
-  color: #00ff41 !important;
+  color: #9cff8f !important;
 }
 
 .full-terminal .agent-flow-visual {

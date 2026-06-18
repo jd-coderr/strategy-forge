@@ -3073,3 +3073,29 @@ select option:checked {
   font-weight: bold !important;
   text-shadow: none !important;
 }
+
+/* Full Size Version: restore original Full Size slogan/subline size.
+   Only colors/glow are changed to match Simple Version. */
+.full-terminal .full-slogan {
+  text-align: center !important;
+  font-size: clamp(14px, 2.4vw, 18px) !important;
+  margin: 0 0 8px !important;
+  letter-spacing: 2px !important;
+  line-height: 1.6 !important;
+  font-weight: bold !important;
+  color: #fff2bf !important;
+  text-shadow: none !important;
+  text-transform: none !important;
+}
+
+.full-terminal .full-subline-no-glow {
+  text-align: center !important;
+  font-size: clamp(14px, 2.4vw, 18px) !important;
+  margin: 0 0 40px !important;
+  letter-spacing: 2px !important;
+  line-height: 1.6 !important;
+  font-weight: bold !important;
+  color: #9cff8f !important;
+  text-shadow: none !important;
+  text-transform: none !important;
+}

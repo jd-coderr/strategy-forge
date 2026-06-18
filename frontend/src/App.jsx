@@ -214,9 +214,47 @@ function App() {
     return `${tradeLabel} // ${point.date}`;
   }
 
-  function getExecutionModeLabel() {
-    if (executionMode === "live_trading") return "LIVE TRADING";
-    if (executionMode === "paper_trading") return "PAPER TRADING";
+  function getCurrentExecutionMode() {
+    const activeMode = autonomousStatus?.active_config?.execution_mode;
+    const savedMode = autonomousStatus?.saved_agent_setup?.execution_mode;
+
+    // When the backend agent is running, the backend active config is the source of truth.
+    // This prevents old browser state or an old last_result from showing DECISION SIMULATION
+    // while the real agent was started in LIVE TRADING mode.
+    if (autonomousMode && activeMode) return activeMode;
+
+    if (executionMode) return executionMode;
+    if (agentResult?.execution_mode) return agentResult.execution_mode;
+    if (savedMode) return savedMode;
+
+    return "decision_simulation";
+  }
+
+  function getExecutionModeLabel(modeOverride) {
+    const mode = String(modeOverride || getCurrentExecutionMode() || "decision_simulation").toLowerCase();
+
+    if (mode === "live_trading") return "LIVE TRADING";
+    if (mode === "paper_trading") return "PAPER TRADING";
+
+    return "DECISION SIMULATION";
+  }
+
+  function getAgentRuntimeStatusLabel() {
+    if (!autonomousMode) return "STOPPED";
+
+    const mode = String(getCurrentExecutionMode() || "decision_simulation").toLowerCase();
+
+    if (mode === "live_trading") return "LIVE TRADING READY";
+    if (mode === "paper_trading") return "PAPER TRADING READY";
+
+    return "DECISION SIMULATION RUNNING";
+  }
+
+  function getExecutionSourceLabel() {
+    const mode = String(getCurrentExecutionMode() || "decision_simulation").toLowerCase();
+
+    if (mode === "paper_trading") return "PAPER TRADING ENGINE";
+    if (mode === "live_trading") return "TWAK → PANCAKESWAP";
 
     return "DECISION SIMULATION";
   }
@@ -477,6 +515,7 @@ async function startAutonomousMode() {
 
     const data = await response.json();
     setAutonomousStatus(data);
+    setAgentResult(null);
     if (data.saved_agent_setup) {
       applyRemoteAgentSetup(data.saved_agent_setup, false);
     }
@@ -556,6 +595,10 @@ async function loadAutonomousStatus() {
 
     if (data.last_result) {
       setAgentResult(data.last_result);
+    } else if (data.running === true) {
+      // Starting or restarting the backend clears last_result. Clear the browser copy too,
+      // otherwise an old simulation result can remain visible under a live-running agent.
+      setAgentResult(null);
     }
   } catch (err) {
     console.error(err);
@@ -694,7 +737,7 @@ useEffect(() => {
     if (!tradePlan || !executionResult) return false;
     if (executionResult.blocked === true) return false;
     if (executionResult.executed === false) return false;
-    if (executionMode === "decision_simulation") return false;
+    if (getCurrentExecutionMode() === "decision_simulation") return false;
     if (executionResult.success !== true) return false;
 
     return true;
@@ -704,6 +747,7 @@ useEffect(() => {
     const tradePlan = getTradePlan();
     const executionResult = getExecutionResult();
     const action = getExecutionAction();
+    const currentExecutionMode = String(getCurrentExecutionMode() || "decision_simulation").toLowerCase();
 
     if (!agentResult) {
       return {
@@ -745,7 +789,7 @@ useEffect(() => {
       };
     }
 
-    if (executionMode === "decision_simulation" || executionResult.executed === false) {
+    if (currentExecutionMode === "decision_simulation") {
       return {
         action,
         executed: "NO",
@@ -755,11 +799,21 @@ useEffect(() => {
       };
     }
 
+    if (executionResult.executed === false) {
+      return {
+        action,
+        executed: "NO",
+        status: currentExecutionMode === "paper_trading" ? "PAPER MODE / NO FILL" : "LIVE MODE / NO EXECUTION",
+        reason: executionResult.message || tradePlan.reason || "The agent is not in simulation mode, but this cycle did not send an execution.",
+        nextAction: "Continue monitoring until confidence, strategy quality, and risk controls produce an executable trade.",
+      };
+    }
+
     if (executionResult.success === true) {
       return {
         action,
         executed: "YES",
-        status: executionMode === "paper_trading" ? "PAPER TRADE FILLED" : "LIVE EXECUTION CONFIRMED",
+        status: currentExecutionMode === "paper_trading" ? "PAPER TRADE FILLED" : "LIVE EXECUTION CONFIRMED",
         reason: tradePlan.reason || executionResult.message || "Trade execution completed successfully.",
         nextAction: "Monitor PnL, risk status, and the next autonomous check.",
       };
@@ -791,8 +845,11 @@ useEffect(() => {
     if (!tradePlan) return "NO TRADE PLAN";
     if (!executionResult) return "WAITING";
     if (executionResult.blocked) return "BLOCKED";
-    if (executionMode === "decision_simulation" || executionResult.executed === false) return "SIMULATED / NOT SENT";
-    if (executionResult.success && executionMode === "paper_trading") return "PAPER FILLED";
+    const currentExecutionMode = String(getCurrentExecutionMode() || "decision_simulation").toLowerCase();
+
+    if (currentExecutionMode === "decision_simulation") return "SIMULATED / NOT SENT";
+    if (executionResult.executed === false) return currentExecutionMode === "paper_trading" ? "PAPER MODE / NOT FILLED" : "LIVE MODE / NOT SENT";
+    if (executionResult.success && currentExecutionMode === "paper_trading") return "PAPER FILLED";
     if (executionResult.success && tradePlan.quote_only === true) return "QUOTE ONLY";
     if (executionResult.success) return "CONFIRMED";
 
@@ -1182,7 +1239,7 @@ async function runAgentCycle() {
 
     if (data.paper_portfolio) {
       setPaperPortfolio(data.paper_portfolio);
-    } else if (executionMode === "paper_trading") {
+    } else if (getCurrentExecutionMode() === "paper_trading") {
       await loadPaperPortfolio();
     }
 
@@ -1487,11 +1544,7 @@ async function loadTradeHistory() {
     const confidenceLabel = agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "not scored yet";
     const riskStatus = agentResult?.risk_control?.status || "not checked yet";
     const portfolioValue = formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0);
-    const executionSource = executionMode === "paper_trading"
-      ? "Paper Trading Engine"
-      : executionMode === "live_trading"
-      ? "TWAK → PancakeSwap"
-      : "Decision Simulation";
+    const executionSource = getExecutionSourceLabel();
     const simpleTxStatus = tradePlan ? getExecutionTxStatus() : "WAITING FOR APPROVED TRADE";
     const simpleExecutionRoute = tradePlan ? getExecutionRouteLabel() : "ROUTE APPEARS AFTER TRADE PLAN";
     const simpleTxHash = txHash || "ONLY AFTER LIVE ON-CHAIN EXECUTION";
@@ -1855,7 +1908,7 @@ async function loadTradeHistory() {
             >
               <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>AGENT STATUS</span></summary>
               <div className="metrics strategy-library-box">
-                <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
+                <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
                 <p>CONNECTED WALLET........ {walletAddress || "N/A"}</p>
                 <p>USER NETWORK....... {getUserNetworkLabel()}</p>
@@ -1911,7 +1964,7 @@ async function loadTradeHistory() {
               </div>
             </details>
 
-            {executionMode === "paper_trading" && (
+            {getCurrentExecutionMode() === "paper_trading" && (
               <details className="retro-window">
                 <summary>PAPER PORTFOLIO</summary>
                 <div className="metrics autonomous-section">
@@ -2355,7 +2408,7 @@ async function loadTradeHistory() {
                     <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
                   )}
                   <p>CHAIN............... BSC</p>
-                  <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
+                  <p>SOURCE.............. {getExecutionSourceLabel()}</p>
                 </div>
               </details>
             )}
@@ -3017,7 +3070,7 @@ async function loadTradeHistory() {
       <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
     )}
     <p>CHAIN............... BSC</p>
-    <p>SOURCE.............. {executionMode === "paper_trading" ? "PAPER TRADING ENGINE" : executionMode === "live_trading" ? "TWAK → PANCAKESWAP" : "DECISION SIMULATION"}</p>
+    <p>SOURCE.............. {getExecutionSourceLabel()}</p>
   </div>
 )}
 
@@ -3062,7 +3115,7 @@ async function loadTradeHistory() {
   </div>
 )}
 
-        {executionMode === "paper_trading" && (
+        {getCurrentExecutionMode() === "paper_trading" && (
           <div className="panel portfolio-panel">
             <div className="panel-title">PAPER PORTFOLIO</div>
 
@@ -3148,7 +3201,7 @@ async function loadTradeHistory() {
   <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
   <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
   <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
-  <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
+  <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
 </div>
 
 <div className="autonomous-container">

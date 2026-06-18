@@ -56,6 +56,7 @@ function App() {
     return window.sessionStorage.getItem("ikqf_operator_unlocked") === "true";
   });
   const [autoOptimized, setAutoOptimized] = useState(false);
+  const [setupSource, setSetupSource] = useState("");
   const [agentStopConfirmed, setAgentStopConfirmed] = useState(false);
   const [walletAddress, setWalletAddress] = useState(null);
   const [walletChainId, setWalletChainId] = useState(null);
@@ -249,10 +250,10 @@ function App() {
 
     const mode = String(getCurrentExecutionMode() || "decision_simulation").toLowerCase();
 
-    if (mode === "live_trading") return "LIVE TRADING READY";
-    if (mode === "paper_trading") return "PAPER TRADING READY";
+    if (mode === "live_trading") return "LIVE TRADING ACTIVE";
+    if (mode === "paper_trading") return "PAPER TRADING ACTIVE";
 
-    return "DECISION SIMULATION RUNNING";
+    return "SIMULATION ACTIVE";
   }
 
   function getExecutionSourceLabel() {
@@ -410,6 +411,10 @@ function App() {
       setLiveExecution(setup.execution_mode === "live_trading");
     }
 
+    if (setup.source) {
+      setSetupSource(setup.source);
+    }
+
     if (restoreResult && setup.result_snapshot) {
       setResult(setup.result_snapshot);
       setAutoOptimized(Boolean(setup.result_snapshot?.optimization || setup.optimization));
@@ -492,6 +497,7 @@ function App() {
       savePatch.optimization = null;
     }
 
+    setSetupSource(savePatch.source);
     saveAgentSetupToBackend(savePatch);
   }
 
@@ -936,6 +942,191 @@ useEffect(() => {
     }
   }
 
+  function getSimpleMarketRegimeLabel() {
+    const signal = result?.cmc_signal || agentResult?.cmc_signal || autonomousStatus?.last_result?.cmc_signal || null;
+
+    if (!signal) return "MARKET SCAN NOT RUN YET";
+
+    const fearValue = Number(signal?.fear_greed?.value ?? 50);
+
+    if (fearValue <= 25) return "RISK-OFF / EXTREME FEAR";
+    if (fearValue >= 75) return "RISK-ON / HIGH GREED";
+
+    return "NEUTRAL";
+  }
+
+  function getSimpleSelectedStrategyLabel() {
+    const chosenStrategy =
+      result?.selected_strategy ||
+      agentResult?.selected_strategy ||
+      autonomousStatus?.last_result?.selected_strategy ||
+      autonomousStatus?.active_config?.selected_strategy ||
+      autonomousStatus?.saved_agent_setup?.selected_strategy ||
+      null;
+
+    if (chosenStrategy) return chosenStrategy;
+    if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
+    if (loading && loadingMode === "agent") return "AGENT SELECTING BEST STRATEGY";
+    if (setupSource === "manual_selection" || setupSource === "manual_start") {
+      return "MANUAL SETUP ACTIVE — BEST STRATEGY AUTO-SELECTS ON RUN";
+    }
+
+    return "NO STRATEGY SELECTED YET";
+  }
+
+  function getSimpleSetupStatusLabel() {
+    if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
+    if (autoOptimized || result?.optimization || setupSource === "auto_optimization" || setupSource === "auto_optimized_start") {
+      return "OPTIMIZER SELECTED SETUP";
+    }
+    if (setupSource === "manual_selection" || setupSource === "manual_start" || setupSource === "generated_strategy") {
+      return "MANUAL SETUP ACTIVE";
+    }
+
+    return "OPTIMIZER NOT RUN YET";
+  }
+
+  function getSimplePortfolioDrawdownLabel() {
+    const drawdown = agentResult?.risk_control?.current_drawdown_pct;
+
+    if (drawdown === undefined || drawdown === null || drawdown === "") return "N/A";
+
+    return `${drawdown}% FROM TRACKED PORTFOLIO PEAK`;
+  }
+
+  function getSimpleAgentWalletLabel() {
+    const value = String(twakRegistration || "").toUpperCase();
+
+    if (!value) return "CHECK NOT LOADED";
+    if (value === "READY" || value === "READY_FOR_ONCHAIN_REGISTRATION") return "READY";
+    if (value === "NOT_READY") return "NOT CONFIGURED";
+
+    return value.replaceAll("_", " ");
+  }
+
+  function getDetailedStrategyQualityScore() {
+    const directScore = agentResult?.signal_breakdown?.backtest_score;
+
+    if (directScore !== undefined && directScore !== null && directScore !== "") {
+      return directScore;
+    }
+
+    const riskScore = parseMetricNumber(
+      agentResult?.risk_adjusted_score ??
+      agentResult?.backtest?.risk_adjusted_score ??
+      result?.backtest?.risk_adjusted_score,
+      null
+    );
+
+    if (riskScore === null) return "N/A";
+    if (riskScore >= 12) return 25;
+    if (riskScore >= 9) return 20;
+    if (riskScore >= 6) return 15;
+    if (riskScore >= 3) return 8;
+
+    return 0;
+  }
+
+  function getDetailedRiskConditionsScore() {
+    const directScore = agentResult?.signal_breakdown?.drawdown_safety;
+
+    if (directScore !== undefined && directScore !== null && directScore !== "") {
+      return directScore;
+    }
+
+    const status = String(agentResult?.risk_control?.status || "").toUpperCase();
+
+    if (status === "SAFE") return 15;
+    if (status === "WARNING") return 5;
+    if (status) return 0;
+
+    return "N/A";
+  }
+
+  function getDetailedStrategyQualityLabel() {
+    const score = getDetailedStrategyQualityScore();
+
+    if (score === "N/A") return "N/A";
+
+    return `${score} / 25 FROM CURRENT SETUP BACKTEST`;
+  }
+
+  function getDetailedRiskConditionsLabel() {
+    const score = getDetailedRiskConditionsScore();
+
+    if (score === "N/A") return "N/A";
+
+    return `${score} / 15 FROM CURRENT PORTFOLIO RISK`;
+  }
+
+  function getCurrentStopLossPctValue() {
+    const tradePlan = getTradePlan();
+
+    const rawValue =
+      tradePlan?.stop_loss_pct ??
+      tradePlan?.position_size?.stop_loss_pct ??
+      agentResult?.backtest?.avg_loss ??
+      result?.backtest?.avg_loss ??
+      agentResult?.backtest?.largest_loss ??
+      result?.backtest?.largest_loss;
+
+    const parsed = Math.abs(parseMetricNumber(rawValue, NaN));
+
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function getCurrentTakeProfitPctValue() {
+    const tradePlan = getTradePlan();
+
+    const rawValue =
+      tradePlan?.take_profit_pct ??
+      tradePlan?.position_size?.take_profit_pct ??
+      agentResult?.backtest?.avg_win ??
+      result?.backtest?.avg_win ??
+      agentResult?.backtest?.largest_profit ??
+      result?.backtest?.largest_profit;
+
+    const parsed = Math.abs(parseMetricNumber(rawValue, NaN));
+
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function getCurrentStopLossPctLabel() {
+    const stopLossPct = getCurrentStopLossPctValue();
+
+    return stopLossPct === null ? "N/A" : `${stopLossPct.toFixed(2)}%`;
+  }
+
+  function getAveragePossibleLossLabel() {
+    const stopLossPct = getCurrentStopLossPctValue();
+    const price = parseMetricNumber(
+      agentResult?.cmc_signal?.price_usd ?? result?.cmc_signal?.price_usd,
+      NaN
+    );
+    const requestedSize = parseMetricNumber(
+      getTradePlan()?.requested_trade_size ?? getTradePlan()?.amount ?? tradeSize,
+      NaN
+    );
+
+    if (stopLossPct === null || !Number.isFinite(price) || !Number.isFinite(requestedSize) || price <= 0 || requestedSize <= 0) {
+      return "N/A";
+    }
+
+    const estimatedNotional = price * requestedSize;
+    const estimatedLoss = estimatedNotional * ((stopLossPct + 0.1) / 100);
+
+    return `${formatMoney(estimatedLoss)} EST. ON ${formatMoney(estimatedNotional)} SIZE`;
+  }
+
+  function getCurrentRiskRewardRatioLabel() {
+    const stopLossPct = getCurrentStopLossPctValue();
+    const takeProfitPct = getCurrentTakeProfitPctValue();
+
+    if (stopLossPct === null || takeProfitPct === null || stopLossPct <= 0) return "N/A";
+
+    return `1:${(takeProfitPct / stopLossPct).toFixed(2)}`;
+  }
+
   function copyStrategySummary() {
     const text = `
 STRATEGY: ${result.selected_strategy}
@@ -1104,6 +1295,7 @@ Best eligible risk-adjusted score among all tested combinations.
   async function generateStrategy() {
     pulseButton("generate");
     setAutoOptimized(false);
+    setSetupSource("generating_strategy");
     setLoading(true);
     setLoadingMode("generate");
     setResult(null);
@@ -1126,6 +1318,7 @@ Best eligible risk-adjusted score among all tested combinations.
       const data = await response.json();
       setResult(data);
       setAutoOptimized(false);
+      setSetupSource("generated_strategy");
       saveAgentSetupToBackend({
         coin: data.coin || coin,
         timeframe: data.timeframe || timeframe,
@@ -1146,6 +1339,7 @@ Best eligible risk-adjusted score among all tested combinations.
   async function optimizeStrategy() {
     pulseButton("optimize");
     setAutoOptimized(false);
+    setSetupSource("optimizer_running");
     setLoading(true);
     setLoadingMode("optimize");
     setResult(null);
@@ -1194,6 +1388,7 @@ Best eligible risk-adjusted score among all tested combinations.
       setRisk(best.risk);
 
       setAutoOptimized(true);
+      setSetupSource("auto_optimization");
 
       const optimizedResult = {
         coin: best.coin,
@@ -1570,8 +1765,8 @@ async function loadTradeHistory() {
       const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result;
       return execution?.success === true || execution?.executed === true;
     });
-    const selectedStrategy = result?.selected_strategy || "not optimized yet";
-    const marketRegime = result ? getMarketRegime() : "waiting for CoinMarketCap data";
+    const selectedStrategy = getSimpleSelectedStrategyLabel();
+    const marketRegime = getSimpleMarketRegimeLabel();
     const confidenceLabel = agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "not scored yet";
     const riskStatus = agentResult?.risk_control?.status || "not checked yet";
     const portfolioValue = formatMoney(portfolio?.totalUsdValue || paperPortfolio?.total_value_usdt || 0);
@@ -1597,9 +1792,9 @@ async function loadTradeHistory() {
                 <p className="simple-brand-slogan">Roundhouse kick dumb trades.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
                 <p className="simple-speech-text">
-                  I am an autonomous crypto trading agent. I read CoinMarketCap market intelligence,
-                  compare strategy options, check risk, and only then decide whether I should wait,
-                  simulate, paper trade, or execute through TWAK → PancakeSwap → BNB Smart Chain.
+                  I trade crypto autonomously. I read market conditions, compare strategy options,
+                  check risk, and decide whether I should wait or execute. I can also simulate
+                  decisions or make paper trades.
                 </p>
               </div>
 
@@ -1654,8 +1849,7 @@ async function loadTradeHistory() {
               <div className="simple-metric-row"><span>TIMEFRAME</span><strong>{result?.timeframe || timeframe}</strong></div>
               <div className="simple-metric-row"><span>MARKET REGIME</span><strong>{marketRegime}</strong></div>
               <div className="simple-metric-row"><span>SELECTED STRATEGY</span><strong>{selectedStrategy}</strong></div>
-              <div className="simple-metric-row"><span>AUTO STATUS</span><strong>{autoOptimized ? "optimizer selected a setup" : "optimizer not run yet"}</strong></div>
-              <div className="simple-metric-row"><span>CMC SKILL</span><strong>{getCmcTopSkill()}</strong></div>
+              <div className="simple-metric-row"><span>SETUP STATUS</span><strong>{getSimpleSetupStatusLabel()}</strong></div>
               <div className="simple-metric-row"><span>CONFIDENCE</span><strong>{confidenceLabel}</strong></div>
 
               <div className="simple-message-box">
@@ -1767,7 +1961,7 @@ async function loadTradeHistory() {
               </div>
 
               <div className="simple-metric-row"><span>RISK STATUS</span><strong>{riskStatus}</strong></div>
-              <div className="simple-metric-row"><span>CURRENT DRAWDOWN</span><strong>{agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</strong></div>
+              <div className="simple-metric-row"><span>PORTFOLIO DRAWDOWN</span><strong>{getSimplePortfolioDrawdownLabel()}</strong></div>
               <div className="simple-metric-row"><span>MAX DRAWDOWN LIMIT</span><strong>{agentResult?.risk_control?.max_drawdown_limit_pct !== undefined ? `${agentResult.risk_control.max_drawdown_limit_pct}%` : "N/A"}</strong></div>
               <div className="simple-metric-row"><span>PORTFOLIO VALUE</span><strong>{portfolioValue}</strong></div>
             </div>
@@ -1795,7 +1989,7 @@ async function loadTradeHistory() {
               <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
               <div className="simple-metric-row"><span>SOURCE</span><strong>{executionSource}</strong></div>
               <div className="simple-metric-row"><span>CHAIN</span><strong>BNB SMART CHAIN / BSC</strong></div>
-              <div className="simple-metric-row"><span>REGISTRATION</span><strong>{getRegistrationLabel()}</strong></div>
+              <div className="simple-metric-row"><span>AGENT WALLET</span><strong>{getSimpleAgentWalletLabel()}</strong></div>
               <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
               <div className="simple-metric-row"><span>TX HASH</span><strong>{simpleTxHash}</strong></div>
               {tradePlan && (
@@ -1847,41 +2041,22 @@ async function loadTradeHistory() {
               <p className="subtitle retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
 
               <div className="hero-description retro-hero-description">
-                I Know Quant Fu is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
+                I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
                 Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
                 and Binance Smart Chain infrastructure.
               </div>
 
               <div className="metrics retro-mini-window">
-                <p><strong>Roundhouse kick dumb trades.</strong></p>
-                                <p>Backtest the signal. Lock the risk. Automate the move.</p>
+                <p><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
                 <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
               </div>
             </div>
 
-            <details className="retro-window" open>
-              <summary>IDENTITY / PURPOSE</summary>
-              <div className="metrics">
-                <p>NAME............... I KNOW QUANT FU</p>
-                <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-                <p>DATA SOURCE........ COINMARKETCAP AGENT HUB</p>
-                <p>EXECUTION LAYER.... TRUST WALLET AGENT KIT</p>
-                <p>ROUTING VENUE...... PANCAKESWAP</p>
-                <p>SETTLEMENT CHAIN... BNB SMART CHAIN / BSC</p>
-                <p>MODE............... {getExecutionModeLabel()}</p>
-              </div>
-            </details>
-
             {agentResult && (
               <details className="retro-window">
-                <summary>HACKATHON / ON-CHAIN VERIFICATION</summary>
+                <summary>ON-CHAIN VERIFICATION</summary>
                 <div className="metrics strategy-library-box verification-panel">
-                  <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
-                  <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-                  <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
-                  <p>CMC AGENT HUB...... CONNECTED</p>
-                  <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
-                  <p>REGISTRATION....... {getRegistrationLabel()}</p>
+                  <p><strong>ON-CHAIN VERIFICATION</strong></p>
                   <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
                   <p>SELECTED TOKEN..... {coin}</p>
                   <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
@@ -1897,13 +2072,13 @@ async function loadTradeHistory() {
 
         <section className={getDetailedQuadrantClass("what", "retro-quadrant retro-what")}>
           <div className="retro-quadrant-header">
-            <span>WHAT DO I DO?</span>
+            <span>WHAT?</span>
             {renderDetailedExpandButton("what")}
           </div>
 
           <div className="retro-quadrant-body">
             <details className="retro-window" open>
-              <summary>WHAT I KNOW QUANT FU DOES</summary>
+              <summary>WHAT DO I DO?</summary>
               <div className="metrics">
                 <p>I Know Quant Fu continuously analyzes market conditions, compares strategy performance, backtests multiple approaches, evaluates portfolio risk, generates explainable AI trade decisions, and can operate in Decision Simulation, Paper Trading, or Live Trading Mode.</p>
                 <p>Every decision passes through market regime analysis, confidence scoring, strategy validation, drawdown protection, portfolio risk controls, and execution safety checks before a trade is approved.</p>
@@ -1941,8 +2116,7 @@ async function loadTradeHistory() {
               <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>AGENT STATUS</span></summary>
               <div className="metrics strategy-library-box">
                 <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
-                <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-                <p>CONNECTED WALLET........ {walletAddress || "N/A"}</p>
+                <p>USER WALLET......... {walletAddress ? `CONNECTED: ${walletAddress}` : "NOT CONNECTED"}</p>
                 <p>USER NETWORK....... {getUserNetworkLabel()}</p>
                 <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
                 <p>
@@ -1952,10 +2126,7 @@ async function loadTradeHistory() {
                     : "N/A"}
                 </p>
                 <p>AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}</p>
-                <p>TWAK............... CONFIGURED</p>
                 <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-                <p>CHAIN.............. BSC</p>
-                <p>EXECUTION MODE..... {getExecutionModeLabel()}</p>
                 <p>SELECTED TIMEFRAME.. {timeframe}</p>
                 <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
                 <p>TRADE SIZE.......... {tradeSize} BNB TARGET</p>
@@ -1963,6 +2134,7 @@ async function loadTradeHistory() {
                 <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
                 <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
                 <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
+                <p>TWAK............... {twakStatus || "CONFIGURED"}</p>
               </div>
             </details>
 
@@ -2253,7 +2425,6 @@ async function loadTradeHistory() {
                   <div className="metrics strategy-library-box execution-status-panel">
                     <p><strong>EXECUTION STATUS</strong></p>
                     <p>MODE................ {getExecutionModeLabel()}</p>
-                    <p>ACTION.............. {executionStatus.action}</p>
                     <p>TRADE EXECUTED...... {executionStatus.executed}</p>
                     <p>STATUS.............. {executionStatus.status}</p>
                     <p>REASON.............. {executionStatus.reason}</p>
@@ -2347,9 +2518,9 @@ async function loadTradeHistory() {
 
                       return (
                         <div key={index} className="retro-log-entry">
+                          <p style={{ color: "#9cff8f" }}>TYPE: {isRealTrade ? "REAL TRADE / EXECUTION" : "DECISION ONLY"}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>{timestamp}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>EVENT: {(trade.status || "UNKNOWN").replaceAll("_", " ").toUpperCase()}</p>
-                          <p style={{ color: "#9cff8f" }}>TYPE: {isRealTrade ? "REAL TRADE / EXECUTION" : "DECISION ONLY"}</p>
                           {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
                           {trade.risk_control?.current_drawdown_pct !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%</p>}
                           {trade.why?.length > 0 && (
@@ -2380,50 +2551,7 @@ async function loadTradeHistory() {
               </div>
             </details>
 
-            <details className="retro-window trade-history-window" open>
-              <summary>STRATEGY BACKTEST HISTORY</summary>
-              {!result && (
-                <div className="metrics">
-                  <p className="trade-log-empty">NO STRATEGY BACKTEST HISTORY LOADED YET. RUN AUTO-OPTIMIZE OR GENERATE STRATEGY TO FILL THIS TABLE.</p>
-                </div>
-              )}
 
-              {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
-                <div className="metrics">
-                  <p className="trade-log-empty">STRATEGY LOADED, BUT NO RECENT BACKTEST TRADES WERE RETURNED.</p>
-                </div>
-              )}
-
-              {result?.backtest?.recent_trades?.length > 0 && (
-                <>
-                  <div className="table-scroll-hint" aria-label="This table scrolls left to right">
-                    <span>{"<"}</span>
-                    <span>THIS TABLE SCROLLS LEFT TO RIGHT</span>
-                    <span>{">"}</span>
-                  </div>
-
-                  <div
-                    className="trade-table strategy-backtest-scroll-table"
-                    style={{ maxHeight: "220px", overflowY: "auto", overflowX: "auto" }}
-                  >
-                  <div className="trade-row trade-header">
-                    <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
-                  </div>
-                  {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
-                    <div className="trade-row" key={index}>
-                      <span>{trade.entry_time}</span>
-                      <span>{trade.exit_time}</span>
-                      <span>{trade.entry_price}</span>
-                      <span>{trade.exit_price}</span>
-                      <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
-                      <span>{trade.pnl_pct}%</span>
-                      <span>{trade.duration}</span>
-                    </div>
-                  ))}
-                </div>
-                </>
-              )}
-            </details>
 
             {getTradePlan() && (
               <details className="retro-window" open>
@@ -2440,7 +2568,6 @@ async function loadTradeHistory() {
                   {getExecutionTxHash() && (
                     <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
                   )}
-                  <p>CHAIN............... BSC</p>
                   <p>SOURCE.............. {getExecutionSourceLabel()}</p>
                 </div>
               </details>
@@ -2452,14 +2579,13 @@ async function loadTradeHistory() {
                 <div className="metrics strategy-library-box">
                   <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
                   <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
-                  <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
                   <br />
                   <p><strong>CONFIDENCE BREAKDOWN</strong></p>
                   <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
                   <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
                   <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
-                  <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
-                  <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+                  <p>STRATEGY QUALITY...... {getDetailedStrategyQualityLabel()}</p>
+                  <p>RISK CONDITIONS....... {getDetailedRiskConditionsLabel()}</p>
                   <br />
                   <p>
                     INTERPRETATION.......{" "}
@@ -2474,14 +2600,6 @@ async function loadTradeHistory() {
                   <p>SCALE................ 0 = NO CONFIDENCE / 100 = MAX CONFIDENCE</p>
                 </div>
 
-                {agentResult?.why?.length > 0 && (
-                  <div className="metrics strategy-library-box">
-                    <p><strong>WHY THE AGENT DECIDED</strong></p>
-                    {agentResult.why.map((reason, index) => (
-                      <p key={index}>- {reason}</p>
-                    ))}
-                  </div>
-                )}
               </details>
             )}
 
@@ -2496,6 +2614,10 @@ async function loadTradeHistory() {
                   <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
                   <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
                   <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
+                  <p>CURRENT STOP LOSS... {getCurrentStopLossPctLabel()}</p>
+                  <p>AVG POSSIBLE LOSS... {getAveragePossibleLossLabel()}</p>
+                  <p>SLIPPAGE + FEES..... 0.10%</p>
+                  <p>RISK / REWARD....... {getCurrentRiskRewardRatioLabel()}</p>
                   <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
                 </div>
               </details>
@@ -2537,8 +2659,7 @@ async function loadTradeHistory() {
                     <p>CHANGE 24H.......... {formatPercent(result.cmc_signal?.percent_change_24h)}</p>
                     <p>VOLUME 24H.......... {formatMoney(result.cmc_signal?.volume_24h)}</p>
                     <p>SIGNAL.............. {result.backtest.current_signal?.status}</p>
-                    <p>ACTION.............. {result.backtest.current_signal?.action}</p>
-                    <p>RSI................. {result.backtest.current_signal?.latest_rsi}</p>
+                            <p>RSI................. {result.backtest.current_signal?.latest_rsi}</p>
                     <p>DEVIATION........... {result.backtest.current_signal?.latest_deviation}%</p>
                     <p>MESSAGE............. {result.backtest.current_signal?.message}</p>
                   </div>
@@ -2550,7 +2671,6 @@ async function loadTradeHistory() {
                     <p>DATA SOURCE......... CoinMarketCap Agent Hub</p>
                     <p>EXECUTION LAYER..... Trust Wallet Agent Kit</p>
                     <p>ROUTING VENUE....... PancakeSwap</p>
-                    <p>SETTLEMENT CHAIN.... BNB Chain / BSC</p>
                     <br />
                     <p>MARKET REGIME....... {getMarketRegime()}</p>
                     <p>STRATEGY MODE....... AUTO-SELECT BEST BACKTESTED STRATEGY</p>
@@ -2564,8 +2684,7 @@ async function loadTradeHistory() {
                     <br />
                     <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
                     <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
-                    <p>EXECUTION MODE...... {getExecutionModeLabel()}</p>
-                  </div>
+                          </div>
                 </details>
 
                 <details className="retro-sub-window">
@@ -2759,7 +2878,7 @@ async function loadTradeHistory() {
                   <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
                   <div className="metrics">
                     <p><strong>WHAT I KNOW QUANT FU DOES</strong></p>
-                    <p>I Know Quant Fu combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement into a single autonomous trading platform.</p>
+                    <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement.</p>
                     <p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
                     <br />
                     <p><strong>EXECUTION MODES</strong></p>
@@ -2803,6 +2922,51 @@ async function loadTradeHistory() {
               </details>
             )}
 
+            <details className="retro-window trade-history-window" open>
+              <summary>STRATEGY BACKTEST HISTORY</summary>
+              {!result && (
+                <div className="metrics">
+                  <p className="trade-log-empty">NO STRATEGY BACKTEST HISTORY LOADED YET. RUN AUTO-OPTIMIZE OR GENERATE STRATEGY TO FILL THIS TABLE.</p>
+                </div>
+              )}
+
+              {result && (!result.backtest?.recent_trades || result.backtest.recent_trades.length === 0) && (
+                <div className="metrics">
+                  <p className="trade-log-empty">STRATEGY LOADED, BUT NO RECENT BACKTEST TRADES WERE RETURNED.</p>
+                </div>
+              )}
+
+              {result?.backtest?.recent_trades?.length > 0 && (
+                <>
+                  <div className="table-scroll-hint" aria-label="This table scrolls left to right">
+                    <span>{"<"}</span>
+                    <span>THIS TABLE SCROLLS LEFT TO RIGHT</span>
+                    <span>{">"}</span>
+                  </div>
+
+                  <div
+                    className="trade-table strategy-backtest-scroll-table"
+                    style={{ maxHeight: "220px", overflowY: "auto", overflowX: "auto" }}
+                  >
+                  <div className="trade-row trade-header">
+                    <span>ENTRY TIME</span><span>EXIT TIME</span><span>ENTRY</span><span>EXIT</span><span>RESULT</span><span>PNL</span><span>DURATION</span>
+                  </div>
+                  {result.backtest.recent_trades && result.backtest.recent_trades.map((trade, index) => (
+                    <div className="trade-row" key={index}>
+                      <span>{trade.entry_time}</span>
+                      <span>{trade.exit_time}</span>
+                      <span>{trade.entry_price}</span>
+                      <span>{trade.exit_price}</span>
+                      <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>{trade.result.toUpperCase()}</span>
+                      <span>{trade.pnl_pct}%</span>
+                      <span>{trade.duration}</span>
+                    </div>
+                  ))}
+                </div>
+                </>
+              )}
+            </details>
+
           </div>
         </section>
 
@@ -2820,7 +2984,6 @@ async function loadTradeHistory() {
       <main className="full-terminal">
       <div className="topbar">
         <span>IKQF v0.1.0</span>
-        <span>STRATEGY MATRIX LOADED</span>
         <span>AI ONLINE</span>
       </div>
 
@@ -2830,10 +2993,11 @@ async function loadTradeHistory() {
 
       <p className="subtitle">AI-POWERED TRADING AGENT</p>
 
-      <p className="full-slogan">Roundhouse kick dumb trades.<br />Backtest the signal. Lock the risk. Automate the move.</p>
+      <p className="full-slogan">Roundhouse kick dumb trades.</p>
+      <p className="full-subline-no-glow">Backtest the signal. Lock the risk. Automate the move.</p>
 
       <div className="hero-description">
-        I Know Quant Fu is an autonomous cryptocurrency trading platform powered by CoinMarketCap market intelligence,
+        I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
         Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
         and Binance Smart Chain infrastructure.
 
@@ -3073,7 +3237,6 @@ async function loadTradeHistory() {
     <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
       <p><strong>EXECUTION STATUS</strong></p>
       <p>MODE................ {getExecutionModeLabel()}</p>
-      <p>ACTION.............. {executionStatus.action}</p>
       <p>TRADE EXECUTED...... {executionStatus.executed}</p>
       <p>STATUS.............. {executionStatus.status}</p>
       <p>REASON.............. {executionStatus.reason}</p>
@@ -3103,114 +3266,18 @@ async function loadTradeHistory() {
     {getExecutionTxHash() && (
       <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
     )}
-    <p>CHAIN............... BSC</p>
     <p>SOURCE.............. {getExecutionSourceLabel()}</p>
   </div>
 )}
-
-<div className="panel portfolio-section-panel">
-  <div className="panel-title">PORTFOLIO</div>
-{walletAddress && (
-  <div className="panel portfolio-panel">
-    <div className="panel-title">AGENT PORTFOLIO</div>
-
-    <div className="metrics autonomous-section">
-      {portfolio?.assets?.length > 0 ? (
-        portfolio.assets.map((asset, index) => (
-          <p key={index}>
-            {asset.symbol}................... {asset.balance ?? "N/A"} ({formatMoney(asset.usdValue)})
-          </p>
-        ))
-      ) : portfolioLoading ? (
-        <p>LOADING AGENT WALLET ASSETS...</p>
-      ) : (
-        <p>NO AGENT WALLET ASSETS LOADED</p>
-      )}
-
-      <br />
-
-      <p>TOTAL VALUE........... {formatMoney(portfolio?.totalUsdValue || 0)}</p>
-      <p>START VALUE........... {formatMoney(portfolio?.startingPortfolioValue || 0)}</p>
-
-      <p>
-        TRADING P/L...........{" "}
-        {Number(portfolio?.tradingPnlUsd || 0) >= 0 ? "+" : "-"}$
-        {Math.abs(Number(portfolio?.tradingPnlUsd || 0)).toFixed(2)}
-      </p>
-
-      <button
-        onClick={resetPnlBaseline}
-        className="copy-btn"
-        style={{ marginTop: "12px", ...getButtonStyle("resetPnl") }}
-      >
-        {"> RESET PNL BASELINE <"}
-      </button>
-    </div>
-  </div>
-)}
-
-        {getCurrentExecutionMode() === "paper_trading" && (
-          <div className="panel portfolio-panel">
-            <div className="panel-title">PAPER PORTFOLIO</div>
-
-            <div className="metrics autonomous-section">
-              <p>STARTING VALUE..... {formatMoney(paperPortfolio?.starting_balance_usdt || paperStartingBalance)}</p>
-              <p>CURRENT VALUE...... {formatMoney(paperPortfolio?.total_value_usdt || paperStartingBalance)}</p>
-              <p>CASH USDT.......... {formatMoney(paperPortfolio?.cash_usdt || 0)}</p>
-              <p>BNB HOLDINGS....... {paperPortfolio?.bnb_balance ?? 0} BNB</p>
-
-              <br />
-
-              <p>REALIZED P/L....... {formatMoney(paperPortfolio?.realized_pnl_usdt || 0)}</p>
-              <p>UNREALIZED P/L..... {formatMoney(paperPortfolio?.unrealized_pnl_usdt || 0)}</p>
-              <p>TOTAL P/L.......... {formatMoney(paperPortfolio?.total_pnl_usdt || 0)}</p>
-              <p>RETURN............. {paperPortfolio?.return_pct ?? 0}%</p>
-              <p>DRAWDOWN........... {paperPortfolio?.drawdown_pct ?? 0}%</p>
-
-              <br />
-
-              <p>OPEN POSITIONS..... {paperPortfolio?.open_position_count ?? 0}</p>
-              <p>CLOSED TRADES...... {paperPortfolio?.closed_trade_count ?? 0}</p>
-
-              <br />
-
-              <label>PAPER STARTING BALANCE</label>
-              <div className="capital-input">
-                <span>$</span>
-                <input
-                  type="number"
-                  min="10"
-                  step="10"
-                  value={paperStartingBalance}
-                  disabled={autonomousMode || loading}
-                  onChange={(e) => setPaperStartingBalance(Number(e.target.value))}
-                />
-              </div>
-
-              <button
-                onClick={resetPaperPortfolio}
-                disabled={autonomousMode || loading}
-                className="copy-btn"
-                style={{ marginTop: "12px", ...getButtonStyle("resetPaper") }}
-              >
-                {"> RESET PAPER PORTFOLIO <"}
-              </button>
-            </div>
-          </div>
-        )}
-</div>
 
 <div className="panel decision-section-panel">
   <div className="panel-title">AGENT DECISION ENGINE</div>
 <h2 className="strategy-library-title">AGENT STATUS</h2>
 
 <div className="metrics strategy-library-box">
+  <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
   <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-
-  <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
-
   <p>USER NETWORK....... {getUserNetworkLabel()}</p>
-
   <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
 
   <p>
@@ -3224,10 +3291,7 @@ async function loadTradeHistory() {
     AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
   </p>
 
-  <p>TWAK............... CONFIGURED</p>
   <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-  <p>CHAIN.............. BSC</p>
-  <p>EXECUTION MODE..... {getExecutionModeLabel()}</p>
   <p>SELECTED TIMEFRAME.. {timeframe}</p>
   <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
   <p>TRADE SIZE.......... {tradeSize} BNB TARGET</p>
@@ -3235,7 +3299,7 @@ async function loadTradeHistory() {
   <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
   <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
   <p>PAPER VALUE........ {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
-  <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
+  <p>TWAK............... {twakStatus || "CONFIGURED"}</p>
 </div>
 
 <div className="autonomous-container">
@@ -3273,16 +3337,14 @@ async function loadTradeHistory() {
   <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
     <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
     <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
-    <p>RECOMMENDATION........ {agentResult.decision || "N/A"}</p>
-
     <br />
 
     <p><strong>CONFIDENCE BREAKDOWN</strong></p>
     <p>MARKET TREND.......... {agentResult.signal_breakdown?.cmc_bias ?? "N/A"} / 30</p>
     <p>FEAR & GREED.......... {agentResult.signal_breakdown?.fear_greed ?? "N/A"} / 20</p>
     <p>ALTCOIN ROTATION...... {agentResult.signal_breakdown?.altcoin_season ?? "N/A"} / 10</p>
-    <p>STRATEGY QUALITY...... {agentResult.signal_breakdown?.backtest_score ?? "N/A"} / 25</p>
-    <p>RISK CONDITIONS....... {agentResult.signal_breakdown?.drawdown_safety ?? "N/A"} / 15</p>
+    <p>STRATEGY QUALITY...... {getDetailedStrategyQualityLabel()}</p>
+    <p>RISK CONDITIONS....... {getDetailedRiskConditionsLabel()}</p>
 
     <br />
 
@@ -3300,15 +3362,6 @@ async function loadTradeHistory() {
   </div>
 )}
 
-{agentResult?.why?.length > 0 && (
-  <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-    <p><strong>WHY THE AGENT DECIDED</strong></p>
-    {agentResult.why.map((reason, index) => (
-      <p key={index}>- {reason}</p>
-    ))}
-  </div>
-)}
-
 {agentResult?.risk_control && (
   <div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
     <p><strong>RISK CONTROL</strong></p>
@@ -3318,6 +3371,10 @@ async function loadTradeHistory() {
     <p>CURRENT DRAWDOWN.... {agentResult.risk_control.current_drawdown_pct ?? "N/A"}%</p>
     <p>MAX DRAWDOWN LIMIT.. {agentResult.risk_control.max_drawdown_limit_pct ?? "N/A"}%</p>
     <p>DAILY LOSS LIMIT.... {agentResult.risk_control.daily_loss_limit_pct ?? "N/A"}%</p>
+    <p>CURRENT STOP LOSS... {getCurrentStopLossPctLabel()}</p>
+    <p>AVG POSSIBLE LOSS... {getAveragePossibleLossLabel()}</p>
+    <p>SLIPPAGE + FEES..... 0.10%</p>
+    <p>RISK / REWARD....... {getCurrentRiskRewardRatioLabel()}</p>
     <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
   </div>
 )}
@@ -3403,7 +3460,14 @@ const isRealTrade =
           borderBottom: "1px solid rgba(156,255,143,0.25)",
         }}
       >
-        <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
+        <p style={{ color: "#9cff8f" }}>
+  TYPE:{" "}
+  {isRealTrade
+    ? "REAL TRADE / EXECUTION"
+    : "DECISION ONLY"}
+</p>
+
+<p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
   {timestamp}
 </p>
 
@@ -3412,13 +3476,6 @@ const isRealTrade =
   {(trade.status || "UNKNOWN")
     .replaceAll("_", " ")
     .toUpperCase()}
-</p>
-
-<p style={{ color: "#9cff8f" }}>
-  TYPE:{" "}
-  {isRealTrade
-    ? "REAL TRADE / EXECUTION"
-    : "DECISION ONLY"}
 </p>
 
 {trade.confidence_score !== undefined && (
@@ -3557,7 +3614,6 @@ const isRealTrade =
             <p>CHANGE 24H.......... {formatPercent(result.cmc_signal?.percent_change_24h)}</p>
             <p>VOLUME 24H.......... {formatMoney(result.cmc_signal?.volume_24h)}</p>
             <p>SIGNAL.............. {result.backtest.current_signal?.status}</p>
-            <p>ACTION.............. {result.backtest.current_signal?.action}</p>
             <p>RSI................. {result.backtest.current_signal?.latest_rsi}</p>
             <p>DEVIATION........... {result.backtest.current_signal?.latest_deviation}%</p>
             <p>MESSAGE............. {result.backtest.current_signal?.message}</p>
@@ -3569,7 +3625,6 @@ const isRealTrade =
             <p>DATA SOURCE......... CoinMarketCap Agent Hub</p>
             <p>EXECUTION LAYER..... Trust Wallet Agent Kit</p>
             <p>ROUTING VENUE....... PancakeSwap</p>
-            <p>SETTLEMENT CHAIN.... BNB Chain / BSC</p>
 
             <br />
 
@@ -3587,7 +3642,6 @@ const isRealTrade =
 
             <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
             <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
-            <p>EXECUTION MODE...... {getExecutionModeLabel()}</p>
           </div>
 
           {result.backtest.equity_curve && result.backtest.equity_curve.length > 1 && (
@@ -3647,12 +3701,7 @@ const isRealTrade =
     <div className="panel-title">AGENT VERIFICATION</div>
 
     <div className="metrics strategy-library-box">
-      <p><strong>HACKATHON / ON-CHAIN VERIFICATION</strong></p>
-      <p>TRACK.............. AUTONOMOUS TRADING AGENT</p>
-      <p>CHAIN.............. BNB SMART CHAIN / BSC</p>
-      <p>CMC AGENT HUB...... CONNECTED</p>
-      <p>TWAK EXECUTION..... {twakStatus || "CONFIGURED"}</p>
-      <p>REGISTRATION....... {getRegistrationLabel()}</p>
+      <p><strong>ON-CHAIN VERIFICATION</strong></p>
       <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
       <p>SELECTED TOKEN..... {coin}</p>
       <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
@@ -3795,45 +3844,15 @@ const isRealTrade =
             </div>
           </details>
 
-          <details>
-            <summary>STRATEGY BACKTEST HISTORY</summary>
 
-            <div className="table-scroll-hint"><span>&lt;</span><strong>THIS TABLE SCROLLS LEFT TO RIGHT</strong><span>&gt;</span></div>
-                <div className="trade-table">
-              <div className="trade-row trade-header">
-                <span>ENTRY TIME</span>
-                <span>EXIT TIME</span>
-                <span>ENTRY</span>
-                <span>EXIT</span>
-                <span>RESULT</span>
-                <span>PNL</span>
-                <span>DURATION</span>
-              </div>
-
-              {result.backtest.recent_trades &&
-                result.backtest.recent_trades.map((trade, index) => (
-                  <div className="trade-row" key={index}>
-                    <span>{trade.entry_time}</span>
-                    <span>{trade.exit_time}</span>
-                    <span>{trade.entry_price}</span>
-                    <span>{trade.exit_price}</span>
-                    <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>
-                      {trade.result.toUpperCase()}
-                    </span>
-                    <span>{trade.pnl_pct}%</span>
-                    <span>{trade.duration}</span>
-                  </div>
-                ))}
-            </div>
-          </details>
 
        
           <details>
             <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
 
             <div className="metrics">
-              <p><strong>WHAT STRATEGYFORGE DOES</strong></p>
-              <p>I Know Quant Fu combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement into a single autonomous trading platform.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
+              <p><strong>WHAT DO I DO?</strong></p>
+              <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
 
               <br />
 
@@ -3866,14 +3885,6 @@ const isRealTrade =
 
               <br />
 
-              <p><strong>PORTFOLIO PERFORMANCE</strong></p>
-              <p>Starting Value: portfolio value when tracking began or after reset.</p>
-              <p>Current Value: current estimated portfolio value.</p>
-              <p>Best Value: highest portfolio value reached since tracking began.</p>
-              <p>Profit / Loss: difference between current value and starting value.</p>
-              <p>Current Drawdown: percentage decline from the best value.</p>
-
-              <br />
 
               <p><strong>BACKTEST METRICS</strong></p>
               <p>Profit Factor: winning trade profit divided by losing trade loss. Above 1.0 is profitable.</p>
@@ -3882,6 +3893,38 @@ const isRealTrade =
               <p>Calmar Ratio: net return divided by maximum drawdown.</p>
               <p>Expectancy: average expected profit or loss per trade.</p>
               <p>Risk-Adjusted Score: custom optimizer score that rewards return and penalizes drawdown.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>STRATEGY BACKTEST HISTORY</summary>
+
+            <div className="table-scroll-hint"><span>&lt;</span><strong>THIS TABLE SCROLLS LEFT TO RIGHT</strong><span>&gt;</span></div>
+                <div className="trade-table">
+              <div className="trade-row trade-header">
+                <span>ENTRY TIME</span>
+                <span>EXIT TIME</span>
+                <span>ENTRY</span>
+                <span>EXIT</span>
+                <span>RESULT</span>
+                <span>PNL</span>
+                <span>DURATION</span>
+              </div>
+
+              {result.backtest.recent_trades &&
+                result.backtest.recent_trades.map((trade, index) => (
+                  <div className="trade-row" key={index}>
+                    <span>{trade.entry_time}</span>
+                    <span>{trade.exit_time}</span>
+                    <span>{trade.entry_price}</span>
+                    <span>{trade.exit_price}</span>
+                    <span className={trade.result === "win" ? "trade-win" : "trade-loss"}>
+                      {trade.result.toUpperCase()}
+                    </span>
+                    <span>{trade.pnl_pct}%</span>
+                    <span>{trade.duration}</span>
+                  </div>
+                ))}
             </div>
           </details>
   </div>

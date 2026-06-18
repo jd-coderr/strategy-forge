@@ -2996,3 +2996,58 @@ select option:checked {
   background: rgba(156, 255, 143, 0.5) !important;
   color: var(--ikqf-green) !important;
 }
+
+/* Detailed Version: keep WHO AM I content pinned to the top of its window */
+.retro-square .retro-who .retro-quadrant-body {
+  padding-top: 0 !important;
+  align-content: start !important;
+}
+
+.retro-square .retro-who .retro-brand-card {
+  margin-top: 0 !important;
+}
+
+.retro-square .retro-who .retro-title {
+  margin-top: clamp(4px, 0.7vmin, 8px) !important;
+}
+
+/* Full Size: keep the second slogan line clean, without CRT glow */
+.full-terminal .full-slogan {
+  margin-bottom: 8px !important;
+}
+
+.full-terminal .full-subline-no-glow {
+  text-align: center !important;
+  font-size: clamp(14px, 2.4vw, 18px) !important;
+  margin: 0 0 40px !important;
+  letter-spacing: 2px !important;
+  line-height: 1.6 !important;
+  font-weight: bold !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+/* Full Size: keep section headings pinned to the top-left, especially on phones */
+.full-terminal .panel-title {
+  left: 24px !important;
+  right: auto !important;
+  width: auto !important;
+  max-width: calc(100% - 48px) !important;
+  text-align: left !important;
+  transform: none !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 768px) {
+  .full-terminal .panel {
+    padding-top: 46px !important;
+  }
+
+  .full-terminal .panel-title {
+    top: -14px !important;
+    left: 12px !important;
+    max-width: calc(100% - 24px) !important;
+    font-size: clamp(14px, 4vw, 18px) !important;
+    line-height: 1.2 !important;
+  }
+}

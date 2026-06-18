@@ -1789,7 +1789,7 @@ async function loadTradeHistory() {
                 <h1 className="simple-square-title">
                   I KNOW QUANT FU<span className="blink">_</span>
                 </h1>
-                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+                <p className="simple-brand-slogan">Roundhouse kick dumb trades.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
                 <p className="simple-speech-text">
                   I trade crypto autonomously. I read market conditions, compare strategy options,
@@ -2991,7 +2991,7 @@ async function loadTradeHistory() {
         I KNOW QUANT FU<span className="blink">_</span>
       </h1>
 
-      <p className="full-slogan">Roundhouse kick dumb trades.</p>
+      <p className="full-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
       <p className="full-subline-no-glow">Backtest the signal. Lock the risk. Automate the move.</p>
 
       <div className="hero-description">

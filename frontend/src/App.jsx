@@ -1155,6 +1155,8 @@ async function runAgentCycle() {
 
   pulseButton("run");
   focusAgentActivitySections();
+  setLoading(true);
+  setLoadingMode("agent");
 
   try {
     const response = await fetch(`${API_BASE}/agent-cycle`, {
@@ -1193,6 +1195,9 @@ async function runAgentCycle() {
   } catch (err) {
     console.error(err);
     alert("AGENT CYCLE FAILED");
+  } finally {
+    setLoading(false);
+    setLoadingMode("");
   }
 }
 
@@ -1596,7 +1601,15 @@ async function loadTradeHistory() {
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
                 <button onClick={runAgentCycle} disabled={loading} style={getButtonStyle("run")}>
-                  {autonomousMode ? "I AM RUNNING" : "> RUN AGENT <"}
+                  {loading && loadingMode === "agent" ? (
+                    <>
+                      I AM RUNNING<span className="loading-dots"></span>
+                    </>
+                  ) : autonomousMode ? (
+                    "I AM RUNNING"
+                  ) : (
+                    "> RUN AGENT <"
+                  )}
                 </button>
                 <button onClick={stopAutonomousMode} disabled={loading} style={getButtonStyle("stop")}>
                   {agentStopConfirmed && !autonomousMode ? "I AM STOPPED" : "> STOP AGENT <"}
@@ -1967,7 +1980,17 @@ async function loadTradeHistory() {
 
               <div className="button-row">
                 <button onClick={runAgentCycle} disabled={loading} className="copy-btn" style={getButtonStyle("run")}>
-                  {autonomousMode ? "AGENT RUNNING" : activeButton === "run" ? "> RUNNING... <" : "> RUN AGENT <"}
+                  {loading && loadingMode === "agent" ? (
+      <>
+        RUNNING AGENT<span className="loading-dots"></span>
+      </>
+    ) : autonomousMode ? (
+      "AGENT RUNNING"
+    ) : activeButton === "run" ? (
+      "> RUNNING... <"
+    ) : (
+      "> RUN AGENT <"
+    )}
                 </button>
 
                 <button onClick={stopAutonomousMode} disabled={loading} className="copy-btn" style={getButtonStyle("stop")}>
@@ -2775,7 +2798,17 @@ async function loadTradeHistory() {
     className="copy-btn"
     style={getButtonStyle("run")}
   >
-    {autonomousMode ? "AGENT RUNNING" : activeButton === "run" ? "> RUNNING... <" : "> RUN AGENT <"}
+    {loading && loadingMode === "agent" ? (
+      <>
+        RUNNING AGENT<span className="loading-dots"></span>
+      </>
+    ) : autonomousMode ? (
+      "AGENT RUNNING"
+    ) : activeButton === "run" ? (
+      "> RUNNING... <"
+    ) : (
+      "> RUN AGENT <"
+    )}
   </button>
 
   <button

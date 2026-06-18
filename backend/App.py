@@ -120,6 +120,120 @@ AUTONOMOUS_STATE = {
 AUTONOMOUS_THREAD = None
 AUTONOMOUS_CONFIG = None
 
+AGENT_SETUP_STATE_FILE = BASE_DIR / "agent_setup_state.json"
+SAVED_AGENT_SETUP = None
+
+
+def get_default_agent_setup():
+    return {
+        "coin": "ETH",
+        "timeframe": "5M",
+        "risk": "medium",
+        "initial_capital": 10000,
+        "live_execution": False,
+        "execution_mode": "decision_simulation",
+        "trade_size": 0.001,
+        "interval_minutes": 5,
+        "selected_strategy": None,
+        "result_snapshot": None,
+        "optimization": None,
+        "source": "default",
+        "updated_at": None,
+    }
+
+
+def load_saved_agent_setup():
+    global SAVED_AGENT_SETUP
+
+    if SAVED_AGENT_SETUP is not None:
+        return SAVED_AGENT_SETUP
+
+    setup = get_default_agent_setup()
+
+    if AGENT_SETUP_STATE_FILE.exists():
+        try:
+            saved = json.loads(AGENT_SETUP_STATE_FILE.read_text())
+            if isinstance(saved, dict):
+                setup.update(saved)
+        except Exception:
+            pass
+
+    SAVED_AGENT_SETUP = setup
+    return SAVED_AGENT_SETUP
+
+
+def persist_saved_agent_setup():
+    setup = load_saved_agent_setup()
+
+    try:
+        AGENT_SETUP_STATE_FILE.write_text(json.dumps(setup, indent=2, default=str))
+    except Exception:
+        pass
+
+    return setup
+
+
+def get_saved_agent_setup_snapshot():
+    setup = load_saved_agent_setup()
+    return json.loads(json.dumps(setup, default=str))
+
+
+def update_saved_agent_setup(
+    *,
+    coin=None,
+    timeframe=None,
+    risk=None,
+    initial_capital=None,
+    live_execution=None,
+    execution_mode=None,
+    trade_size=None,
+    selected_strategy=None,
+    interval_minutes=None,
+    result_snapshot=None,
+    optimization=None,
+    source="manual_selection",
+):
+    setup = load_saved_agent_setup()
+
+    updates = {
+        "coin": coin,
+        "timeframe": timeframe,
+        "risk": risk,
+        "initial_capital": initial_capital,
+        "live_execution": live_execution,
+        "execution_mode": execution_mode,
+        "trade_size": trade_size,
+        "selected_strategy": selected_strategy,
+        "interval_minutes": interval_minutes,
+        "result_snapshot": result_snapshot,
+        "optimization": optimization,
+    }
+
+    for key, value in updates.items():
+        if value is not None:
+            setup[key] = value
+
+    setup["source"] = source or setup.get("source") or "manual_selection"
+    setup["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    return persist_saved_agent_setup()
+
+
+def get_autonomous_config_snapshot():
+    if AUTONOMOUS_CONFIG is None:
+        return None
+
+    return {
+        "coin": AUTONOMOUS_CONFIG.coin,
+        "timeframe": AUTONOMOUS_CONFIG.timeframe,
+        "risk": AUTONOMOUS_CONFIG.risk,
+        "initial_capital": AUTONOMOUS_CONFIG.initial_capital,
+        "live_execution": AUTONOMOUS_CONFIG.live_execution,
+        "execution_mode": AUTONOMOUS_CONFIG.execution_mode,
+        "trade_size": AUTONOMOUS_CONFIG.trade_size,
+        "selected_strategy": AUTONOMOUS_CONFIG.selected_strategy,
+    }
+
 
 RISK_STATE = {
     "baseline_portfolio_value_usd": None,
@@ -179,25 +293,44 @@ class PaperResetRequest(BaseModel):
 
 
 class AgentCycleRequest(BaseModel):
-    coin: str = "BNB"
-    timeframe: str = "1H"
-    risk: str = "low"
+    coin: str = "ETH"
+    timeframe: str = "5M"
+    risk: str = "medium"
     initial_capital: float = 10000
     live_execution: bool = False
     execution_mode: str = "decision_simulation"
     trade_size: float = 0.001
+    interval_minutes: int = 5
     selected_strategy: str | None = None
 
 class AutonomousRequest(BaseModel):
-    coin: str = "BNB"
-    timeframe: str = "1H"
-    risk: str = "low"
+    coin: str = "ETH"
+    timeframe: str = "5M"
+    risk: str = "medium"
     initial_capital: float = 10000
     live_execution: bool = False
     execution_mode: str = "decision_simulation"
     trade_size: float = 0.001
     selected_strategy: str | None = None
     interval_minutes: int = 5
+    result_snapshot: dict | None = None
+    optimization: dict | None = None
+    setup_source: str | None = None
+
+
+class AgentSetupRequest(BaseModel):
+    coin: str | None = None
+    timeframe: str | None = None
+    risk: str | None = None
+    initial_capital: float | None = None
+    live_execution: bool | None = None
+    execution_mode: str | None = None
+    trade_size: float | None = None
+    interval_minutes: int | None = None
+    selected_strategy: str | None = None
+    result_snapshot: dict | None = None
+    optimization: dict | None = None
+    source: str | None = "manual_selection"
 
 
 @app.get("/")
@@ -241,6 +374,53 @@ def is_backtest_eligible(backtest):
     return (
         backtest.get("min_trade_gate") == "PASS"
         and backtest.get("drawdown_gate") == "PASS"
+    )
+
+
+def metric_to_float(value, default=0.0):
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if value is None:
+        return default
+
+    cleaned = (
+        str(value)
+        .replace("%", "")
+        .replace("$", "")
+        .replace(",", "")
+        .replace("days", "")
+        .replace("day", "")
+        .replace("hours", "")
+        .replace("hour", "")
+        .replace("trades", "")
+        .replace("trade", "")
+        .strip()
+    )
+
+    try:
+        return float(cleaned)
+    except (TypeError, ValueError):
+        return default
+
+
+def frequency_ranking_key(item):
+    backtest = item.get("backtest", {})
+    win_rate = metric_to_float(backtest.get("win_rate"), 0.0)
+    profit_factor = metric_to_float(backtest.get("profit_factor"), 0.0)
+    max_drawdown = metric_to_float(backtest.get("max_drawdown"), 999.0)
+    signals_per_day = metric_to_float(
+        backtest.get("signals_per_day_value", backtest.get("signals_per_day")),
+        0.0,
+    )
+
+    win_rate_floor_pass = win_rate >= 30.0
+
+    return (
+        win_rate_floor_pass,
+        profit_factor,
+        -max_drawdown,
+        signals_per_day,
     )
 
 
@@ -995,6 +1175,12 @@ def optimize_strategy(request: OptimizeRequest):
 
     best_result = max(ranking_pool, key=lambda item: item["risk_adjusted_score"])
 
+    frequency_ranked_results = sorted(
+        results,
+        key=frequency_ranking_key,
+        reverse=True,
+    )
+
     return {
         "coin": request.coin,
         "mode": "auto_optimization",
@@ -1003,12 +1189,49 @@ def optimize_strategy(request: OptimizeRequest):
         "eligible_combinations": len(eligible_results),
         "best_setup": best_result,
         "all_results": results,
+        "frequency_ranked_results": frequency_ranked_results,
     }
 
 
 @app.get("/twak-status")
 def twak_status():
     return get_twak_status()
+
+
+@app.get("/agent-config")
+def agent_config():
+    return {
+        "success": True,
+        "mode": "agent_config",
+        "setup": get_saved_agent_setup_snapshot(),
+        "active_config": get_autonomous_config_snapshot(),
+        "autonomous_running": AUTONOMOUS_STATE["running"],
+    }
+
+
+@app.post("/agent-config")
+def save_agent_config(request: AgentSetupRequest, _operator_ok: bool = Depends(require_operator_key)):
+    setup = update_saved_agent_setup(
+        coin=request.coin,
+        timeframe=request.timeframe,
+        risk=request.risk,
+        initial_capital=request.initial_capital,
+        live_execution=request.live_execution,
+        execution_mode=request.execution_mode,
+        trade_size=request.trade_size,
+        interval_minutes=request.interval_minutes,
+        selected_strategy=request.selected_strategy,
+        result_snapshot=request.result_snapshot,
+        optimization=request.optimization,
+        source=request.source or "manual_selection",
+    )
+
+    return {
+        "success": True,
+        "mode": "agent_config",
+        "setup": setup,
+        "message": "Agent setup saved on the backend.",
+    }
 
 
 @app.post("/register-agent")
@@ -1489,6 +1712,7 @@ def autonomous_start(request: AutonomousRequest, _operator_ok: bool = Depends(re
         live_execution=request.live_execution,
         execution_mode=request.execution_mode,
         trade_size=request.trade_size,
+        interval_minutes=request.interval_minutes,
         selected_strategy=request.selected_strategy,
     )
 
@@ -1499,6 +1723,21 @@ def autonomous_start(request: AutonomousRequest, _operator_ok: bool = Depends(re
     AUTONOMOUS_STATE["last_decision"] = None
     AUTONOMOUS_STATE["last_reason"] = "Autonomous mode started. Backend loop is running."
     AUTONOMOUS_STATE["last_result"] = None
+
+    update_saved_agent_setup(
+        coin=request.coin,
+        timeframe=request.timeframe,
+        risk=request.risk,
+        initial_capital=request.initial_capital,
+        live_execution=request.live_execution,
+        execution_mode=request.execution_mode,
+        trade_size=request.trade_size,
+        interval_minutes=request.interval_minutes,
+        selected_strategy=request.selected_strategy,
+        result_snapshot=request.result_snapshot,
+        optimization=request.optimization,
+        source=request.setup_source or "autonomous_start",
+    )
 
     if AUTONOMOUS_THREAD is None or not AUTONOMOUS_THREAD.is_alive():
         AUTONOMOUS_THREAD = threading.Thread(
@@ -1514,6 +1753,8 @@ def autonomous_start(request: AutonomousRequest, _operator_ok: bool = Depends(re
         "interval_minutes": request.interval_minutes,
         "trade_size": request.trade_size,
         "execution_mode": request.execution_mode,
+        "active_config": get_autonomous_config_snapshot(),
+        "saved_agent_setup": get_saved_agent_setup_snapshot(),
         "next_run": AUTONOMOUS_STATE["next_run"],
         "message": "Autonomous backend loop started.",
     }
@@ -1538,6 +1779,12 @@ def autonomous_status():
     return {
         "success": True,
         "mode": "autonomous",
+        "agent_address": get_configured_agent_address(),
+        "agent_chain": "bsc",
+        "chain": "bsc",
+        "network": "BNB Smart Chain / BSC",
+        "active_config": get_autonomous_config_snapshot(),
+        "saved_agent_setup": get_saved_agent_setup_snapshot(),
         **AUTONOMOUS_STATE,
     }
 
@@ -1583,6 +1830,9 @@ def portfolio():
         "success": result["success"],
         "execution_layer": "TWAK CLI",
         "agent_address": agent_address,
+        "agent_chain": "bsc",
+        "chain": "bsc",
+        "network": "BNB Smart Chain / BSC",
         "result": result,
         "event": event,
     }

@@ -63,6 +63,7 @@ function App() {
   const [twakStatus, setTwakStatus] = useState("CONFIGURED");
   const [twakRegistration, setTwakRegistration] = useState("READY");
   const [twakAgentAddress, setTwakAgentAddress] = useState(null);
+  const [twakAgentChain, setTwakAgentChain] = useState("bsc");
   const [viewMode, setViewMode] = useState("simple");
   const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
   const [expandedSimpleQuadrant, setExpandedSimpleQuadrant] = useState(null);
@@ -70,6 +71,7 @@ function App() {
   const simpleProofRef = useRef(null);
   const agentStatusRef = useRef(null);
   const liveAgentActivityRef = useRef(null);
+  const remoteSetupSyncedRef = useRef(false);
 
   function focusAgentActivitySections() {
     if (viewMode === "detailed") {
@@ -219,6 +221,24 @@ function App() {
     return "DECISION SIMULATION";
   }
 
+  function getUserNetworkLabel() {
+    if (!walletAddress) return "NOT CONNECTED";
+    if (walletChainId === "0x38") return "BNB SMART CHAIN";
+    if (walletChainId) return `WRONG NETWORK (${walletChainId})`;
+
+    return "UNKNOWN";
+  }
+
+  function getAgentNetworkLabel() {
+    const chain = String(twakAgentChain || "bsc").toLowerCase();
+
+    if (chain === "bsc" || chain.includes("bnb") || chain.includes("bsc")) {
+      return "BNB SMART CHAIN / BSC";
+    }
+
+    return String(twakAgentChain || "BSC").toUpperCase();
+  }
+
   function getButtonStyle(name) {
     const isPersistentActive =
       (name === "wallet" && walletAddress) ||
@@ -322,6 +342,102 @@ function App() {
     return false;
   }
 
+  function applyRemoteAgentSetup(setup, restoreResult = true) {
+    if (!setup) return;
+
+    if (setup.coin) setCoin(setup.coin);
+    if (setup.timeframe) setTimeframe(setup.timeframe);
+    if (setup.risk) setRisk(setup.risk);
+
+    if (setup.trade_size !== undefined && setup.trade_size !== null) {
+      setTradeSize(Number(setup.trade_size));
+    }
+
+    if (setup.initial_capital !== undefined && setup.initial_capital !== null) {
+      setInitialCapital(Number(setup.initial_capital));
+    }
+
+    if (setup.interval_minutes !== undefined && setup.interval_minutes !== null) {
+      setAutonomousInterval(Number(setup.interval_minutes));
+    }
+
+    if (setup.execution_mode) {
+      setExecutionMode(setup.execution_mode);
+      setLiveExecution(setup.execution_mode === "live_trading");
+    }
+
+    if (restoreResult && setup.result_snapshot) {
+      setResult(setup.result_snapshot);
+      setAutoOptimized(Boolean(setup.result_snapshot?.optimization || setup.optimization));
+    }
+  }
+
+  function buildAgentSetupPayload(patch = {}) {
+    const snapshot = patch.result_snapshot !== undefined ? patch.result_snapshot : result || null;
+    const optimizationSnapshot = patch.optimization !== undefined ? patch.optimization : snapshot?.optimization || null;
+
+    return {
+      coin: patch.coin !== undefined ? patch.coin : coin,
+      timeframe: patch.timeframe !== undefined ? patch.timeframe : timeframe,
+      risk: patch.risk !== undefined ? patch.risk : risk,
+      initial_capital: patch.initial_capital !== undefined ? patch.initial_capital : initialCapital,
+      live_execution: patch.live_execution !== undefined ? patch.live_execution : executionMode === "live_trading",
+      execution_mode: patch.execution_mode !== undefined ? patch.execution_mode : executionMode,
+      trade_size: patch.trade_size !== undefined ? patch.trade_size : tradeSize,
+      interval_minutes: patch.interval_minutes !== undefined ? patch.interval_minutes : autonomousInterval,
+      selected_strategy: patch.selected_strategy !== undefined ? patch.selected_strategy : snapshot?.selected_strategy || null,
+      result_snapshot: snapshot,
+      optimization: optimizationSnapshot,
+      source: patch.source || "manual_selection",
+    };
+  }
+
+  async function saveAgentSetupToBackend(patch = {}) {
+    if (!operatorUnlocked || !operatorKey.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/agent-config`, {
+        method: "POST",
+        headers: getOperatorHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify(buildAgentSetupPayload(patch)),
+      });
+
+      if (await handleLockedResponse(response)) return;
+
+      const data = await response.json().catch(() => null);
+
+      if (data?.setup) {
+        remoteSetupSyncedRef.current = true;
+      }
+    } catch (error) {
+      console.error("AGENT SETUP SAVE FAILED:", error);
+    }
+  }
+
+  function handleManualSetupChange(patch, resetStrategy = false) {
+    if (patch.coin !== undefined) setCoin(patch.coin);
+    if (patch.timeframe !== undefined) setTimeframe(patch.timeframe);
+    if (patch.risk !== undefined) setRisk(patch.risk);
+    if (patch.initial_capital !== undefined) setInitialCapital(Number(patch.initial_capital));
+    if (patch.trade_size !== undefined) setTradeSize(Number(patch.trade_size));
+    if (patch.interval_minutes !== undefined) setAutonomousInterval(Number(patch.interval_minutes));
+
+    const savePatch = { ...patch, source: patch.source || "manual_selection" };
+
+    if (resetStrategy) {
+      setAutoOptimized(false);
+      setResult(null);
+      setAgentResult(null);
+      savePatch.selected_strategy = null;
+      savePatch.result_snapshot = null;
+      savePatch.optimization = null;
+    }
+
+    saveAgentSetupToBackend(savePatch);
+  }
+
   function isApproved() {
   return (
     result?.backtest?.drawdown_gate === "PASS" &&
@@ -351,6 +467,9 @@ async function startAutonomousMode() {
         trade_size: tradeSize,
         selected_strategy: result?.selected_strategy || null,
         interval_minutes: autonomousInterval,
+        result_snapshot: result || null,
+        optimization: result?.optimization || null,
+        setup_source: autoOptimized ? "auto_optimized_start" : "manual_start",
       }),
     });
 
@@ -358,6 +477,9 @@ async function startAutonomousMode() {
 
     const data = await response.json();
     setAutonomousStatus(data);
+    if (data.saved_agent_setup) {
+      applyRemoteAgentSetup(data.saved_agent_setup, false);
+    }
     setAutonomousMode(true);
     setAgentStopConfirmed(false);
   } catch (err) {
@@ -397,6 +519,10 @@ async function loadAutonomousStatus() {
     setAutonomousStatus(data);
     setAutonomousMode(data.running === true);
 
+    if (data.chain || data.agent_chain) {
+      setTwakAgentChain(data.chain || data.agent_chain);
+    }
+
     if (data.running === true) {
       setAgentStopConfirmed(false);
     }
@@ -408,20 +534,24 @@ async function loadAutonomousStatus() {
     }
 
     // If the backend is already running, the UI must show the active backend setup,
-    // not the React default dropdown value after a page refresh.
+    // not the React default dropdown value after a page refresh. If the backend is not
+    // running, sync the last saved operator setup once so another browser sees the same
+    // manual asset/timeframe/risk and the last optimizer comparison.
     const activeConfig = data.active_config || data.config || data.last_result?.active_config || null;
+    const savedAgentSetup = data.saved_agent_setup || data.agent_setup || null;
 
     if (data.running === true && activeConfig) {
-      if (activeConfig.coin) setCoin(activeConfig.coin);
-      if (activeConfig.timeframe) setTimeframe(activeConfig.timeframe);
-      if (activeConfig.risk) setRisk(activeConfig.risk);
-      if (activeConfig.trade_size !== undefined && activeConfig.trade_size !== null) {
-        setTradeSize(Number(activeConfig.trade_size));
-      }
-      if (activeConfig.initial_capital !== undefined && activeConfig.initial_capital !== null) {
-        setInitialCapital(Number(activeConfig.initial_capital));
-      }
-      if (activeConfig.execution_mode) setExecutionMode(activeConfig.execution_mode);
+      applyRemoteAgentSetup(
+        {
+          ...savedAgentSetup,
+          ...activeConfig,
+        },
+        Boolean(savedAgentSetup?.result_snapshot)
+      );
+      remoteSetupSyncedRef.current = true;
+    } else if (!remoteSetupSyncedRef.current && savedAgentSetup) {
+      applyRemoteAgentSetup(savedAgentSetup, true);
+      remoteSetupSyncedRef.current = true;
     }
 
     if (data.last_result) {
@@ -879,6 +1009,7 @@ Best eligible risk-adjusted score among all tested combinations.
       setTwakStatus("CONFIGURED");
       setTwakRegistration(data.registration);
       setTwakAgentAddress(data.agent_address);
+      setTwakAgentChain(data.chain || "bsc");
     } catch (error) {
       alert("REGISTRATION CHECK FAILED");
     }
@@ -908,6 +1039,16 @@ Best eligible risk-adjusted score among all tested combinations.
 
       const data = await response.json();
       setResult(data);
+      setAutoOptimized(false);
+      saveAgentSetupToBackend({
+        coin: data.coin || coin,
+        timeframe: data.timeframe || timeframe,
+        risk: data.risk || risk,
+        selected_strategy: data.selected_strategy || null,
+        result_snapshot: data,
+        optimization: null,
+        source: "generated_strategy",
+      });
     } catch (error) {
       alert("FAILED TO CONNECT TO BACKEND");
     }
@@ -968,7 +1109,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
       setAutoOptimized(true);
 
-      setResult({
+      const optimizedResult = {
         coin: best.coin,
         timeframe: best.timeframe,
         risk: best.risk,
@@ -989,6 +1130,17 @@ Best eligible risk-adjusted score among all tested combinations.
           all_results: data.all_results,
           frequency_ranked_results: data.frequency_ranked_results
         }
+      };
+
+      setResult(optimizedResult);
+      saveAgentSetupToBackend({
+        coin: best.coin || coin,
+        timeframe: best.timeframe,
+        risk: best.risk,
+        selected_strategy: best.selected_strategy,
+        result_snapshot: optimizedResult,
+        optimization: optimizedResult.optimization,
+        source: "auto_optimization",
       });
     } catch (error) {
       alert("FAILED TO CONNECT TO OPTIMIZER");
@@ -1053,6 +1205,10 @@ async function runAgentCycle() {
 
       if (data?.agent_address) {
         setTwakAgentAddress(data.agent_address);
+      }
+
+      if (data?.chain || data?.agent_chain || data?.result?.chain) {
+        setTwakAgentChain(data.chain || data.agent_chain || data.result.chain);
       }
 
     const rawPortfolio =
@@ -1450,7 +1606,7 @@ async function loadTradeHistory() {
               <div className="simple-control-grid">
                 <div>
                   <label>ASSET</label>
-                  <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={coin} disabled={loading} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -1480,8 +1636,10 @@ async function loadTradeHistory() {
                     disabled={autonomousMode || loading}
                     onChange={(e) => {
                       const mode = e.target.value;
-                      setExecutionMode(mode);
-                      setLiveExecution(mode === "live_trading");
+                      handleManualSetupChange({
+                        execution_mode: mode,
+                        live_execution: mode === "live_trading",
+                      }, false);
                     }}
                   onWheel={(e) => e.currentTarget.blur()}
                   >
@@ -1495,7 +1653,7 @@ async function loadTradeHistory() {
                   <select
   value={autonomousInterval}
   disabled={autonomousMode}
-  onChange={(e) => setAutonomousInterval(Number(e.target.value))}
+  onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
   onWheel={(e) => e.currentTarget.blur()}
 >
   <option value={1}>1 MINUTE</option>
@@ -1506,7 +1664,7 @@ async function loadTradeHistory() {
                 </div>
                 <div>
                   <label>TRADE SIZE ({coin})</label>
-                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => setTradeSize(Number(e.target.value))} />
+                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                 </div>
               </div>
 
@@ -1689,14 +1847,8 @@ async function loadTradeHistory() {
                 <p>AGENT STATUS....... {autonomousMode ? "LIVE TRADING READY" : "STOPPED"}</p>
                 <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
                 <p>CONNECTED WALLET........ {walletAddress || "N/A"}</p>
-                <p>
-                  NETWORK.............{" "}
-                  {walletChainId === "0x38"
-                    ? "BNB SMART CHAIN"
-                    : walletChainId
-                    ? `WRONG NETWORK (${walletChainId})`
-                    : "UNKNOWN"}
-                </p>
+                <p>USER NETWORK....... {getUserNetworkLabel()}</p>
+                <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
                 <p>
                   AGENT BNB BALANCE....{" "}
                   {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
@@ -1838,7 +1990,7 @@ async function loadTradeHistory() {
               <div className="input-row">
                 <div>
                   <label>ASSET</label>
-                  <select value={coin} disabled={loading} onChange={(e) => setCoin(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={coin} disabled={loading} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -1864,7 +2016,7 @@ async function loadTradeHistory() {
 
                 <div>
                   <label>TIMEFRAME</label>
-                  <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={timeframe} disabled={loading} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="5M">5M</option>
                     <option value="15M">15M</option>
                     <option value="1H">1H</option>
@@ -1875,7 +2027,7 @@ async function loadTradeHistory() {
 
                 <div>
                   <label>RISK LEVEL</label>
-                  <select value={risk} disabled={loading} onChange={(e) => setRisk(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={risk} disabled={loading} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="low">LOW</option>
                     <option value="medium">MEDIUM</option>
                     <option value="high">HIGH</option>
@@ -1886,14 +2038,14 @@ async function loadTradeHistory() {
                   <label>BACKTEST CAPITAL</label>
                   <div className="capital-input">
                     <span>$</span>
-                    <input type="number" min="100" step="100" value={initialCapital} disabled={loading} onChange={(e) => setInitialCapital(Number(e.target.value))} />
+                    <input type="number" min="100" step="100" value={initialCapital} disabled={loading} onChange={(e) => handleManualSetupChange({ initial_capital: Number(e.target.value) }, true)} />
                   </div>
                 </div>
 
                 <div>
                   <label>TRADE SIZE ({coin})</label>
                   <div className="capital-input trade-size-input">
-                    <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => setTradeSize(Number(e.target.value))} />
+                    <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                   </div>
                 </div>
               </div>
@@ -1918,8 +2070,10 @@ async function loadTradeHistory() {
                     disabled={autonomousMode || loading}
                     onChange={(e) => {
                       const mode = e.target.value;
-                      setExecutionMode(mode);
-                      setLiveExecution(mode === "live_trading");
+                      handleManualSetupChange({
+                        execution_mode: mode,
+                        live_execution: mode === "live_trading",
+                      }, false);
                     }}
                   onWheel={(e) => e.currentTarget.blur()}
                   >
@@ -1936,7 +2090,7 @@ async function loadTradeHistory() {
                 <select
   value={autonomousInterval}
   disabled={autonomousMode}
-  onChange={(e) => setAutonomousInterval(Number(e.target.value))}
+  onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
   onWheel={(e) => e.currentTarget.blur()}
 >
                   <option value={1}>1 MINUTE</option>
@@ -2675,7 +2829,7 @@ async function loadTradeHistory() {
             <select
   value={coin}
   disabled={loading}
-  onChange={(e) => setCoin(e.target.value)}
+  onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)}
   onWheel={(e) => e.currentTarget.blur()}
 >
                     <option value="ETH">Ethereum (ETH)</option>
@@ -2703,7 +2857,7 @@ async function loadTradeHistory() {
 
           <div>
             <label>TIMEFRAME</label>
-            <select value={timeframe} disabled={loading} onChange={(e) => setTimeframe(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+            <select value={timeframe} disabled={loading} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
               <option value="5M">5M</option>
               <option value="15M">15M</option>
               <option value="1H">1H</option>
@@ -2714,7 +2868,7 @@ async function loadTradeHistory() {
 
           <div>
             <label>RISK LEVEL</label>
-            <select value={risk} disabled={loading} onChange={(e) => setRisk(e.target.value)} onWheel={(e) => e.currentTarget.blur()}>
+            <select value={risk} disabled={loading} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
               <option value="low">LOW</option>
               <option value="medium">MEDIUM</option>
               <option value="high">HIGH</option>
@@ -2733,7 +2887,7 @@ async function loadTradeHistory() {
                 step="100"
                 value={initialCapital}
                 disabled={loading}
-                onChange={(e) => setInitialCapital(Number(e.target.value))}
+                onChange={(e) => handleManualSetupChange({ initial_capital: Number(e.target.value) }, true)}
               />
             </div>
           </div>
@@ -2748,7 +2902,7 @@ async function loadTradeHistory() {
                 step="0.001"
                 value={tradeSize}
                 disabled={loading}
-                onChange={(e) => setTradeSize(Number(e.target.value))}
+                onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)}
               />
             </div>
           </div>
@@ -2783,8 +2937,10 @@ async function loadTradeHistory() {
   onWheel={(e) => e.currentTarget.blur()}
   onChange={(e) => {
               const mode = e.target.value;
-              setExecutionMode(mode);
-              setLiveExecution(mode === "live_trading");
+              handleManualSetupChange({
+                execution_mode: mode,
+                live_execution: mode === "live_trading",
+              }, false);
             }}
           >
             <option value="decision_simulation">EXECUTION MODE - SIMULATION</option>
@@ -2800,7 +2956,7 @@ async function loadTradeHistory() {
           <select
             value={autonomousInterval}
             disabled={autonomousMode}
-            onChange={(e) => setAutonomousInterval(Number(e.target.value))}
+            onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
           onWheel={(e) => e.currentTarget.blur()}
           >
             <option value={1}>1 MINUTE</option>
@@ -2957,14 +3113,9 @@ async function loadTradeHistory() {
 
   <p>USER ADDRESS........ {walletAddress || "N/A"}</p>
 
-  <p>
-    NETWORK.............{" "}
-    {walletChainId === "0x38"
-      ? "BNB SMART CHAIN"
-      : walletChainId
-      ? `WRONG NETWORK (${walletChainId})`
-      : "UNKNOWN"}
-  </p>
+  <p>USER NETWORK....... {getUserNetworkLabel()}</p>
+
+  <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
 
   <p>
     AGENT BNB BALANCE....{" "}

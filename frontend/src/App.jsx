@@ -41,7 +41,7 @@ function App() {
   const [showOnlyRealTrades, setShowOnlyRealTrades] = useState(false);
   const [startingPortfolioValue, setStartingPortfolioValue] = useState(null);
   const [liveExecution, setLiveExecution] = useState(false);
-  const [executionMode, setExecutionMode] = useState(() => getSavedSetting("ikqf_execution_mode", "decision_simulation"));
+  const [executionMode, setExecutionMode] = useState(() => getSavedSetting("ikqf_execution_mode", ""));
   const [paperPortfolio, setPaperPortfolio] = useState(null);
   const [paperStartingBalance, setPaperStartingBalance] = useState(1000);
   const [loading, setLoading] = useState(false);
@@ -71,6 +71,7 @@ function App() {
   const simpleProofRef = useRef(null);
   const agentStatusRef = useRef(null);
   const liveAgentActivityRef = useRef(null);
+  const executionModeRef = useRef(executionMode || "decision_simulation");
   const remoteSetupSyncedRef = useRef(false);
 
   function focusAgentActivitySections() {
@@ -239,6 +240,10 @@ function App() {
     return "DECISION SIMULATION";
   }
 
+  function getExecutionModeForPayload(modeOverride) {
+    return modeOverride || executionModeRef.current || executionMode || "decision_simulation";
+  }
+
   function getAgentRuntimeStatusLabel() {
     if (!autonomousMode) return "STOPPED";
 
@@ -400,6 +405,7 @@ function App() {
     }
 
     if (setup.execution_mode) {
+      executionModeRef.current = setup.execution_mode;
       setExecutionMode(setup.execution_mode);
       setLiveExecution(setup.execution_mode === "live_trading");
     }
@@ -419,8 +425,8 @@ function App() {
       timeframe: patch.timeframe !== undefined ? patch.timeframe : timeframe,
       risk: patch.risk !== undefined ? patch.risk : risk,
       initial_capital: patch.initial_capital !== undefined ? patch.initial_capital : initialCapital,
-      live_execution: patch.live_execution !== undefined ? patch.live_execution : executionMode === "live_trading",
-      execution_mode: patch.execution_mode !== undefined ? patch.execution_mode : executionMode,
+      live_execution: patch.live_execution !== undefined ? patch.live_execution : getExecutionModeForPayload() === "live_trading",
+      execution_mode: patch.execution_mode !== undefined ? (patch.execution_mode || "decision_simulation") : getExecutionModeForPayload(),
       trade_size: patch.trade_size !== undefined ? patch.trade_size : tradeSize,
       interval_minutes: patch.interval_minutes !== undefined ? patch.interval_minutes : autonomousInterval,
       selected_strategy: patch.selected_strategy !== undefined ? patch.selected_strategy : snapshot?.selected_strategy || null,
@@ -462,6 +468,19 @@ function App() {
     if (patch.trade_size !== undefined) setTradeSize(Number(patch.trade_size));
     if (patch.interval_minutes !== undefined) setAutonomousInterval(Number(patch.interval_minutes));
 
+    if (patch.execution_mode !== undefined) {
+      const nextExecutionMode = patch.execution_mode || "decision_simulation";
+      executionModeRef.current = nextExecutionMode;
+      setExecutionMode(nextExecutionMode);
+      setLiveExecution(nextExecutionMode === "live_trading");
+    } else if (patch.live_execution !== undefined) {
+      setLiveExecution(Boolean(patch.live_execution));
+      if (patch.live_execution === true) {
+        executionModeRef.current = "live_trading";
+        setExecutionMode("live_trading");
+      }
+    }
+
     const savePatch = { ...patch, source: patch.source || "manual_selection" };
 
     if (resetStrategy) {
@@ -490,6 +509,8 @@ async function startAutonomousMode() {
   focusAgentActivitySections();
 
   try {
+    const selectedExecutionMode = getExecutionModeForPayload();
+
     const response = await fetch(`${API_BASE}/autonomous/start`, {
       method: "POST",
       headers: getOperatorHeaders({
@@ -500,8 +521,8 @@ async function startAutonomousMode() {
         timeframe,
         risk,
         initial_capital: initialCapital,
-        live_execution: executionMode === "live_trading",
-        execution_mode: executionMode,
+        live_execution: selectedExecutionMode === "live_trading",
+        execution_mode: selectedExecutionMode,
         trade_size: tradeSize,
         selected_strategy: result?.selected_strategy || null,
         interval_minutes: autonomousInterval,
@@ -629,9 +650,17 @@ useEffect(() => {
   window.localStorage.setItem("ikqf_risk", risk);
   window.localStorage.setItem("ikqf_trade_size", String(tradeSize));
   window.localStorage.setItem("ikqf_initial_capital", String(initialCapital));
-  window.localStorage.setItem("ikqf_execution_mode", executionMode);
+  if (executionMode) {
+    window.localStorage.setItem("ikqf_execution_mode", executionMode);
+  }
   window.localStorage.setItem("ikqf_autonomous_interval", String(autonomousInterval));
 }, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval]);
+
+useEffect(() => {
+  if (executionMode) {
+    executionModeRef.current = executionMode;
+  }
+}, [executionMode]);
 
 useEffect(() => {
   if (autonomousMode) {
@@ -1216,6 +1245,8 @@ async function runAgentCycle() {
   setLoadingMode("agent");
 
   try {
+    const selectedExecutionMode = getExecutionModeForPayload();
+
     const response = await fetch(`${API_BASE}/agent-cycle`, {
       method: "POST",
       headers: getOperatorHeaders({
@@ -1226,8 +1257,8 @@ async function runAgentCycle() {
         timeframe,
         risk,
         trade_size: tradeSize,
-        live_execution: executionMode === "live_trading",
-        execution_mode: executionMode,
+        live_execution: selectedExecutionMode === "live_trading",
+        execution_mode: selectedExecutionMode,
         selected_strategy: result?.selected_strategy || null,
       }),
     });
@@ -1698,7 +1729,7 @@ async function loadTradeHistory() {
                 <div>
                   <label>MODE</label>
                   <select
-                    value={executionMode}
+                    value={executionMode || ""}
                     disabled={autonomousMode || loading}
                     onChange={(e) => {
                       const mode = e.target.value;
@@ -1709,9 +1740,10 @@ async function loadTradeHistory() {
                     }}
                   onWheel={(e) => e.currentTarget.blur()}
                   >
-                    <option value="decision_simulation">DECISION SIMULATION</option>
-                    <option value="paper_trading">PAPER TRADING</option>
-                    <option value="live_trading">LIVE TRADING</option>
+                    <option value="" disabled>Execution Mode</option>
+                    <option value="decision_simulation">Simulation Mode</option>
+                    <option value="paper_trading">Paper Mode</option>
+                    <option value="live_trading">Live Mode</option>
                   </select>
                 </div>
                 <div>
@@ -2138,7 +2170,7 @@ async function loadTradeHistory() {
 
                 <div>
                   <select
-                    value={executionMode}
+                    value={executionMode || ""}
                     disabled={autonomousMode || loading}
                     onChange={(e) => {
                       const mode = e.target.value;
@@ -2149,9 +2181,10 @@ async function loadTradeHistory() {
                     }}
                   onWheel={(e) => e.currentTarget.blur()}
                   >
-                    <option value="decision_simulation">EXECUTION MODE - SIMULATION</option>
-                    <option value="paper_trading">EXECUTION MODE - PAPER</option>
-                    <option value="live_trading">EXECUTION MODE - LIVE</option>
+                    <option value="" disabled>Execution Mode</option>
+                    <option value="decision_simulation">Simulation Mode</option>
+                    <option value="paper_trading">Paper Mode</option>
+                    <option value="live_trading">Live Mode</option>
                   </select>
                 </div>
 
@@ -2994,7 +3027,7 @@ async function loadTradeHistory() {
 
         <div>
           <select
-  value={executionMode}
+  value={executionMode || ""}
   disabled={autonomousMode || loading}
   onWheel={(e) => e.currentTarget.blur()}
   onChange={(e) => {
@@ -3005,9 +3038,10 @@ async function loadTradeHistory() {
               }, false);
             }}
           >
-            <option value="decision_simulation">EXECUTION MODE - SIMULATION</option>
-            <option value="paper_trading">EXECUTION MODE - PAPER</option>
-            <option value="live_trading">EXECUTION MODE - LIVE</option>
+            <option value="" disabled>Execution Mode</option>
+            <option value="decision_simulation">Simulation Mode</option>
+            <option value="paper_trading">Paper Mode</option>
+            <option value="live_trading">Live Mode</option>
           </select>
         </div>
 

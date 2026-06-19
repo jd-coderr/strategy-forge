@@ -1,0 +1,27 @@
+IKQF STRATEGY JSON AUDIT
+
+Audit time UTC: 2026-06-19T09:56:03.090380Z
+
+Checked files:
+
+- smc_sequence.json: SMC Sequence Continuation / trend_continuation / PASS
+- stochastic_quad.json: Stochastic Quad Rotation / momentum_rotation / PASS
+- tdi_white_signal.json: TDI Sharkfin Reversal / tdi_signal_reversal / PASS
+- vwap_reversion.json: VWAP Extreme Reversion / mean_reversion / PASS
+- fvg_channel.json: FVG Channel / mean_reversion_channel / PASS
+  FIXED: risk_governor.best_timeframes: removed 1M
+- ichimoku_macd_ema_confluence.json: Ichimoku MACD EMA Confluence / trend_confluence / PASS
+  FIXED: risk_governor.fast_timeframes: removed 1M
+
+Backtest compatibility smoke test:
+- smc_sequence(1).json / SMC Sequence Continuation / trend_continuation: PASS trades=0 win_rate=0.00% missing_keys=[]
+- stochastic_quad(1).json / Stochastic Quad Rotation / momentum_rotation: PASS trades=16 win_rate=68.75% missing_keys=[]
+- tdi_white_signal(2).json / TDI Sharkfin Reversal / tdi_signal_reversal: PASS trades=19 win_rate=47.37% missing_keys=[]
+- vwap_reversion(2).json / VWAP Extreme Reversion / mean_reversion: PASS trades=4 win_rate=100.00% missing_keys=[]
+- fvg_channel(1).json / FVG Channel / mean_reversion_channel: PASS trades=23 win_rate=26.09% missing_keys=[]
+- ichimoku_macd_ema_confluence(1).json / Ichimoku MACD EMA Confluence / trend_confluence: PASS trades=8 win_rate=75.00% missing_keys=[]
+
+Notes:
+- These strategy JSON files do not execute trades directly. They describe strategy rules used by app.py/backtest.py.
+- Real live execution remains controlled by the backend agent and TWAK swap path.
+- 1M references were removed from strategy metadata to match the current optimizer/timeframe list.

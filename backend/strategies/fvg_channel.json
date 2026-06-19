@@ -22,7 +22,7 @@
     "risk_per_trade": "1%",
     "stop_after_consecutive_losses": 2,
     "cooldown_bars": 50,
-    "best_timeframes": "1M, 5M, 15M",
+    "best_timeframes": "5M, 15M",
     "volume_filter_available": true,
     "high_confidence_signals": "Super Bull and Super Bear"
   }

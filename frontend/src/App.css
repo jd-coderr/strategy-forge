@@ -4666,3 +4666,453 @@ select option:checked {
     font-size: 11px !important;
   }
 }
+
+
+/* ========================================================================== */
+/* IKQF FINAL FULL-SIZE SYSTEM LOCK
+   This is the strict pass for the Full Size Version.
+   Purpose:
+   - remove odd legacy type jumps
+   - enforce one monospace family
+   - enforce one green + white + muted green palette
+   - make all headings/panels/readouts/buttons use a controlled scale
+   - stop big poster headings inside sections
+/* ========================================================================== */
+
+.ikqf-full-system,
+.ikqf-full-system *,
+.ikqf-full-system *::before,
+.ikqf-full-system *::after {
+  font-family: "Courier New", monospace !important;
+  box-sizing: border-box !important;
+}
+
+.ikqf-full-system {
+  --fs-bg: #020502;
+  --fs-panel: rgba(0, 0, 0, 0.36);
+  --fs-panel-2: rgba(156, 255, 143, 0.095);
+  --fs-green: #9cff8f;
+  --fs-green-muted: rgba(156, 255, 143, 0.72);
+  --fs-green-dim: rgba(156, 255, 143, 0.38);
+  --fs-white: #ffffff;
+  --fs-warm: #fff2bf;
+
+  --fs-text: 12px;
+  --fs-small: 10px;
+  --fs-label: 11px;
+  --fs-heading: 13px;
+  --fs-title: clamp(24px, 2.35vw, 32px);
+
+  min-height: 100dvh !important;
+  width: 100vw !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: clamp(10px, 1.6vw, 22px) !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(156, 255, 143, 0.11), transparent 36%),
+    #020402 !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-text) !important;
+  line-height: 1.36 !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.58) !important;
+}
+
+.ikqf-full-system .full-terminal,
+.ikqf-full-system .ikqf-command-terminal {
+  width: min(1180px, 96vw) !important;
+  margin: 0 auto !important;
+  padding: clamp(12px, 1.4vw, 18px) !important;
+  border: 3px double var(--fs-green) !important;
+  background: rgba(0, 0, 0, 0.66) !important;
+  box-shadow:
+    0 0 0 3px #020502,
+    0 0 28px rgba(156, 255, 143, 0.3),
+    inset 0 0 48px rgba(156, 255, 143, 0.06) !important;
+}
+
+/* TOP IDENTITY AREA */
+.ikqf-full-system .topbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 0 0 10px !important;
+  padding: 0 0 8px !important;
+  border-bottom: 1px solid var(--fs-green-dim) !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-small) !important;
+  line-height: 1 !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+}
+
+.ikqf-full-system .full-terminal-title,
+.ikqf-full-system .ikqf-terminal-title,
+.ikqf-full-system > .full-terminal > h1.title {
+  display: block !important;
+  margin: 12px auto 6px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: var(--fs-white) !important;
+  font-size: var(--fs-title) !important;
+  line-height: 1 !important;
+  letter-spacing: clamp(2px, 0.34vw, 4px) !important;
+  word-spacing: 0.08em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  text-transform: uppercase !important;
+  text-shadow:
+    0 0 3px #ffffff,
+    0 0 9px rgba(156, 255, 143, 0.9),
+    0 0 16px rgba(156, 255, 143, 0.36) !important;
+}
+
+.ikqf-full-system .full-slogan,
+.ikqf-full-system .subtitle {
+  margin: 0 0 4px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: var(--fs-warm) !important;
+  font-size: var(--fs-label) !important;
+  line-height: 1.2 !important;
+  letter-spacing: 1.4px !important;
+  text-align: center !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  text-shadow: none !important;
+}
+
+.ikqf-full-system .full-subline-no-glow {
+  margin: 0 0 12px !important;
+  padding: 0 !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-label) !important;
+  line-height: 1.22 !important;
+  letter-spacing: 0.9px !important;
+  text-align: center !important;
+  font-weight: bold !important;
+}
+
+.ikqf-full-system .hero-description {
+  max-width: 840px !important;
+  margin: 0 auto 14px !important;
+  padding: 9px 12px !important;
+  border: 1px solid var(--fs-green-dim) !important;
+  background: var(--fs-panel) !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-text) !important;
+  line-height: 1.34 !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  font-weight: normal !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+  box-shadow: none !important;
+}
+
+.ikqf-full-system .hero-description strong {
+  color: var(--fs-white) !important;
+  font-size: var(--fs-label) !important;
+  letter-spacing: 1px !important;
+}
+
+/* PANEL SYSTEM: no more fieldset-style title jumps */
+.ikqf-full-system .panel,
+.ikqf-full-system .metrics,
+.ikqf-full-system .reason,
+.ikqf-full-system .box,
+.ikqf-full-system .loading-box,
+.ikqf-full-system .strategy-library-box,
+.ikqf-full-system .execution-status-panel,
+.ikqf-full-system .last-execution-panel,
+.ikqf-full-system .detailed-human-translation,
+.ikqf-full-system .detailed-copy-block,
+.ikqf-full-system .detailed-portfolio-panel,
+.ikqf-full-system .detailed-proof-grid,
+.ikqf-full-system .trade-table,
+.ikqf-full-system .optimizer-table,
+.ikqf-full-system .chart-box {
+  position: relative !important;
+  margin: 0 0 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--fs-green-dim) !important;
+  background: var(--fs-panel) !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-text) !important;
+  line-height: 1.36 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+  text-transform: none !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.ikqf-full-system .panel {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.ikqf-full-system .panel > :not(.panel-title) {
+  margin-left: 12px !important;
+  margin-right: 12px !important;
+}
+
+.ikqf-full-system .panel > .panel-title + * {
+  margin-top: 10px !important;
+}
+
+.ikqf-full-system .panel > *:last-child {
+  margin-bottom: 12px !important;
+}
+
+/* Exactly one panel-title size */
+.ikqf-full-system .panel-title {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--fs-green-dim) !important;
+  background: var(--fs-panel-2) !important;
+  color: var(--fs-white) !important;
+  font-size: var(--fs-heading) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.4px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  white-space: normal !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+  box-shadow: none !important;
+}
+
+/* Kill all giant inner headings in full-size mode */
+.ikqf-full-system h1:not(.full-terminal-title):not(.ikqf-terminal-title),
+.ikqf-full-system h2,
+.ikqf-full-system h3,
+.ikqf-full-system .strategy-library-title,
+.ikqf-full-system .metrics > p:first-child strong,
+.ikqf-full-system .reason > p:first-child strong,
+.ikqf-full-system .box > p:first-child strong,
+.ikqf-full-system .strategy-library-box > p:first-child strong,
+.ikqf-full-system .execution-status-panel > p:first-child strong,
+.ikqf-full-system .last-execution-panel > p:first-child strong,
+.ikqf-full-system .autonomous-status-box > p:first-child strong {
+  display: block !important;
+  margin: 0 0 8px !important;
+  padding: 0 0 5px !important;
+  border: 0 !important;
+  border-bottom: 1px dotted var(--fs-green-dim) !important;
+  background: transparent !important;
+  color: var(--fs-white) !important;
+  font-size: var(--fs-heading) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.2px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  white-space: normal !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+}
+
+/* Body/readouts: one size, left aligned, one green */
+.ikqf-full-system p,
+.ikqf-full-system li,
+.ikqf-full-system span,
+.ikqf-full-system div {
+  font-size: var(--fs-text) !important;
+  line-height: 1.36 !important;
+}
+
+.ikqf-full-system .metrics p,
+.ikqf-full-system .reason p,
+.ikqf-full-system .box p,
+.ikqf-full-system .panel p,
+.ikqf-full-system .autonomous-status-box p,
+.ikqf-full-system .retro-log-entry p,
+.ikqf-full-system .strategy-library-box p,
+.ikqf-full-system .execution-status-panel p,
+.ikqf-full-system .last-execution-panel p {
+  margin: 4px 0 !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-text) !important;
+  line-height: 1.34 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+  text-transform: none !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.ikqf-full-system strong,
+.ikqf-full-system b,
+.ikqf-full-system .metrics strong,
+.ikqf-full-system .reason strong,
+.ikqf-full-system .box strong,
+.ikqf-full-system .panel strong {
+  color: var(--fs-white) !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: 0.8px !important;
+  text-align: inherit !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 4px rgba(156, 255, 143, 0.8) !important;
+}
+
+/* Details drawers */
+.ikqf-full-system details,
+.ikqf-full-system .retro-window,
+.ikqf-full-system .retro-sub-window {
+  margin: 0 0 12px !important;
+  border: 1px solid var(--fs-green-dim) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+
+.ikqf-full-system details > summary,
+.ikqf-full-system .retro-window > summary,
+.ikqf-full-system .retro-sub-window > summary {
+  display: block !important;
+  padding: 7px 10px !important;
+  border-bottom: 1px solid var(--fs-green-dim) !important;
+  background: var(--fs-panel-2) !important;
+  color: var(--fs-white) !important;
+  font-size: var(--fs-heading) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.2px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+}
+
+.ikqf-full-system details:not([open]) > summary {
+  border-bottom: 0 !important;
+}
+
+/* Controls */
+.ikqf-full-system label {
+  display: block !important;
+  margin: 0 0 4px !important;
+  color: var(--fs-green-muted) !important;
+  font-size: var(--fs-small) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+}
+
+.ikqf-full-system button,
+.ikqf-full-system input,
+.ikqf-full-system select,
+.ikqf-full-system textarea,
+.ikqf-full-system .copy-btn {
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border: 1px solid rgba(156, 255, 143, 0.62) !important;
+  background: rgba(0, 0, 0, 0.46) !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-text) !important;
+  line-height: 1.12 !important;
+  letter-spacing: 0.7px !important;
+  text-align: center !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+  box-shadow: none !important;
+}
+
+.ikqf-full-system button:hover,
+.ikqf-full-system select:hover,
+.ikqf-full-system summary:hover {
+  background: rgba(156, 255, 143, 0.14) !important;
+  color: var(--fs-white) !important;
+}
+
+.ikqf-full-system .agent-control-panel,
+.ikqf-full-system .button-row,
+.ikqf-full-system .input-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 8px 0 12px !important;
+}
+
+/* Tables */
+.ikqf-full-system .trade-row,
+.ikqf-full-system .optimizer-row {
+  border-bottom: 1px dotted var(--fs-green-dim) !important;
+}
+
+.ikqf-full-system .trade-row span,
+.ikqf-full-system .optimizer-row span {
+  min-height: 26px !important;
+  padding: 4px 5px !important;
+  border-right: 1px dotted var(--fs-green-dim) !important;
+  color: var(--fs-green) !important;
+  font-size: var(--fs-label) !important;
+  line-height: 1.18 !important;
+  text-align: left !important;
+  text-transform: none !important;
+}
+
+.ikqf-full-system .trade-header,
+.ikqf-full-system .optimizer-header {
+  background: var(--fs-panel-2) !important;
+}
+
+.ikqf-full-system .trade-header span,
+.ikqf-full-system .optimizer-header span {
+  color: var(--fs-white) !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+}
+
+/* Remove weird extra visual emphasis */
+.ikqf-full-system .detailed-agent-text-glow,
+.ikqf-full-system .agent-active-glow {
+  animation: none !important;
+  box-shadow: none !important;
+}
+
+.ikqf-full-system .trade-loss {
+  color: #ff6060 !important;
+  text-shadow: 0 0 4px rgba(255, 96, 96, 0.75) !important;
+}
+
+.ikqf-full-system .trade-win {
+  color: var(--fs-green) !important;
+}
+
+/* Responsive: same system, not new sizes */
+@media (max-width: 768px) {
+  .ikqf-full-system {
+    --fs-text: 11px;
+    --fs-label: 10px;
+    --fs-heading: 12px;
+    --fs-title: clamp(18px, 6vw, 25px);
+    padding: 8px !important;
+  }
+
+  .ikqf-full-system .full-terminal,
+  .ikqf-full-system .ikqf-command-terminal {
+    width: 98vw !important;
+    padding: 10px !important;
+    border-width: 2px !important;
+  }
+
+  .ikqf-full-system .agent-control-panel,
+  .ikqf-full-system .button-row,
+  .ikqf-full-system .input-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ikqf-full-system .full-terminal-title,
+  .ikqf-full-system .ikqf-terminal-title {
+    white-space: normal !important;
+  }
+}

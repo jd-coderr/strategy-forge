@@ -3553,7 +3553,7 @@ async function loadTradeHistory() {
 
 
   const renderFullSizeVersion = () => (
-    <div className="full-size-page">
+    <div className="full-size-page ikqf-full-system">
       <main className="full-terminal ikqf-command-terminal">
       <div className="topbar">
         <span>IKQF v0.1.0</span>

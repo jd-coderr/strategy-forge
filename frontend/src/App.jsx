@@ -563,6 +563,15 @@ function App() {
     return `${text.slice(0, 6)}...${text.slice(-5)}`;
   }
 
+  function shortenHash(hash) {
+    if (!hash) return "N/A";
+
+    const text = String(hash);
+    if (text.length <= 20) return text;
+
+    return `${text.slice(0, 10)}...${text.slice(-8)}`;
+  }
+
   function formatAssetBalance(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return "N/A";
@@ -2262,7 +2271,7 @@ async function loadTradeHistory() {
     const executionSource = getExecutionSourceLabel();
     const simpleTxStatus = tradePlan ? getExecutionTxStatus() : "WAITING FOR APPROVED TRADE";
     const simpleExecutionRoute = tradePlan ? getExecutionRouteLabel() : "ROUTE APPEARS AFTER TRADE PLAN";
-    const simpleTxHash = txHash || (latestRealTrade ? "LIVE TRADE LOGGED - TX HASH NOT RETURNED BY TWAK" : "ONLY AFTER LIVE ON-CHAIN EXECUTION");
+    const simpleTxHash = txHash ? shortenHash(txHash) : (latestRealTrade ? "LIVE TRADE LOGGED - TX HASH NOT RETURNED BY TWAK" : "ONLY AFTER LIVE ON-CHAIN EXECUTION");
 
     return (
       <div className="retro-page">
@@ -2342,10 +2351,15 @@ async function loadTradeHistory() {
               <div className="simple-metric-row"><span>CONFIDENCE</span><strong>{confidenceLabel}</strong></div>
 
               <div className="simple-message-box">
-                <strong>BEFORE I TRADE</strong>
+                <strong>MY LOOP</strong>
                 <p>
-                  I check market regime, strategy performance, confidence score, portfolio exposure, drawdown risk, and execution safety. No confidence. No trade. No logic. No trade. No dojo. No roundhouse.
+                  I read the market, choose the strongest available strategy, score the confidence, check drawdown, then decide: wait, simulate, paper trade, or execute.
                 </p>
+              </div>
+
+              <div className="simple-message-box">
+                <strong>TERMINAL RULE</strong>
+                <p>No confidence. No trade. No logic. No trade. The candle must earn the roundhouse.</p>
               </div>
             </div>
           </section>
@@ -2357,8 +2371,15 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <p className="simple-speech-text">
-                This is where the operator starts the machine. Choose the asset, timeframe, risk level, strategy method, execution mode, and check interval. The human sets the rules. The agent checks the market. The risk governor decides if the trade is allowed.
+                This is where the operator starts the machine. Choose the asset, timeframe, risk profile, execution mode, and check interval — or let me auto-optimize first. I compare strategy candidates, backtest the signal history, rank the results, and pick the strongest setup for the chosen crypto.
               </p>
+
+              <div className="simple-message-box">
+                <strong>CHECK SPEED VS TRADE SPEED</strong>
+                <p>
+                  I may check every {autonomousInterval} minutes, but I only act when the strategy candle confirms. If the chosen setup needs a closed {timeframe} candle, I wait. Patience is also a strategy.
+                </p>
+              </div>
 
               <div className="simple-action-grid">
                 <button onClick={optimizeStrategy} disabled={loading} style={getButtonStyle("optimize")}>
@@ -2469,6 +2490,26 @@ async function loadTradeHistory() {
                 Every decision is logged. If I wait, I explain why. If I act, I show the route. If I trade live, the proof belongs on-chain.
               </p>
 
+              <div className="simple-proof-snapshot">
+                <div className="simple-proof-title">STRATEGY PROOF FIRST</div>
+                {result ? (
+                  <div className="simple-proof-grid">
+                    <div><span>STRATEGY</span><strong>{result.selected_strategy || selectedStrategy}</strong></div>
+                    <div><span>STATUS</span><strong>{isApproved() ? "APPROVED" : "REJECTED"}</strong></div>
+                    <div><span>RATING</span><strong>{getOverallRating()}</strong></div>
+                    <div><span>RETURN</span><strong>{result.backtest?.net_return || "N/A"}</strong></div>
+                    <div><span>MAX DD</span><strong>{result.backtest?.max_drawdown || "N/A"}</strong></div>
+                    <div><span>WIN RATE</span><strong>{result.backtest?.win_rate || "N/A"}</strong></div>
+                    <div><span>PROFIT FACTOR</span><strong>{result.backtest?.profit_factor || "N/A"}</strong></div>
+                    <div><span>EDGE</span><strong>{parsePercent(result.backtest?.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</strong></div>
+                  </div>
+                ) : (
+                  <p className="simple-proof-empty">Run auto-optimize to see strategy rating, return, drawdown, win rate, and profit factor here.</p>
+                )}
+              </div>
+
+              <div className="simple-micro-copy">No proof. No roundhouse.</div>
+
               <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "CURRENTLY RUNNING" : "CURRENTLY STOPPED"}</strong></div>
               <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
               <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
@@ -2477,7 +2518,7 @@ async function loadTradeHistory() {
               <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
               <div className="simple-metric-row"><span>EXECUTION LAYER</span><strong>{executionSource}</strong></div>
               <div className="simple-metric-row"><span>AGENT WALLET</span><strong>{getSimpleAgentWalletLabel()}</strong></div>
-              <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
+              <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</strong></div>
               <div className="simple-metric-row"><span>TX HASH</span><strong>{simpleTxHash}</strong></div>
               {tradePlan && (
                 <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
@@ -2591,6 +2632,25 @@ async function loadTradeHistory() {
                 <p>No confidence. No trade.</p>
                 <p>No logic. No trade.</p>
                 <p>No dojo. No roundhouse.</p>
+              </div>
+            </details>
+
+            <details className="retro-window detailed-proof-banner" open>
+              <summary>JUDGE SNAPSHOT / PROOF FIRST</summary>
+              <div className="metrics detailed-proof-grid">
+                <p><strong>WHAT AM I DOING NOW?</strong></p>
+                <p>AGENT STATUS........ {getAgentRuntimeStatusLabel()}</p>
+                <p>MODE................ {getExecutionModeLabel()}</p>
+                <p>LAST DECISION....... {getExecutionAction()}</p>
+                <p>ACTIVE STRATEGY..... {getActiveStrategyLabel()}</p>
+                <p>STRATEGY RATING..... {result ? `${getOverallRating()} — ${getRatingExplanation()}` : "WAITING FOR BACKTEST"}</p>
+                <p>BACKTEST RETURN..... {result?.backtest?.net_return || "N/A"}</p>
+                <p>MAX DRAWDOWN........ {result?.backtest?.max_drawdown || "N/A"}</p>
+                <p>WIN RATE............ {result?.backtest?.win_rate || "N/A"}</p>
+                <p>PROFIT FACTOR....... {result?.backtest?.profit_factor || "N/A"}</p>
+                <p>RISK PROFILE........ {getRiskProfileLabel(result?.risk || risk)}</p>
+                <p>RISK STATUS......... {agentResult?.risk_control?.status || "WAITING"}</p>
+                <p>TERMINAL COMMENT.... {getFullTerminalComment()}</p>
               </div>
             </details>
 
@@ -2812,7 +2872,7 @@ async function loadTradeHistory() {
                   <select value={risk} disabled={loading} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="low">CONSERVATIVE</option>
                     <option value="medium">BALANCED</option>
-                    <option value="high">AGGRESSIVE</option>
+                    <option value="high">AGGRESSIVE / GOVERNED</option>
                   </select>
                 </div>
 
@@ -2881,6 +2941,12 @@ async function loadTradeHistory() {
                   <option value={15}>15 MINUTES</option>
                   <option value={30}>30 MINUTES</option>
                 </select>
+
+                <div className="metrics strategy-library-box timing-logic-note">
+                  <p><strong>TIMING LOGIC</strong></p>
+                  <p>I can check every {autonomousInterval} minutes, but I only act when the selected strategy has confirmed. If the setup is based on a closed {timeframe} candle, I wait for that close before approving a trade.</p>
+                  <p>Terminal note: the candle is not worthy until the rules say so.</p>
+                </div>
               </div>
             </details>
 
@@ -2893,6 +2959,7 @@ async function loadTradeHistory() {
                   <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
                   <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
                   <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
+                  <p>TRADE TIMING........ CHECKS EVERY {autonomousInterval} MINUTES / ACTS ON CONFIRMED {timeframe} STRATEGY CANDLES</p>
                 </div>
               </div>
             </details>
@@ -3642,7 +3709,7 @@ async function loadTradeHistory() {
             <select value={risk} disabled={loading} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
               <option value="low">CONSERVATIVE</option>
               <option value="medium">BALANCED</option>
-              <option value="high">AGGRESSIVE</option>
+              <option value="high">AGGRESSIVE / GOVERNED</option>
             </select>
           </div>
 

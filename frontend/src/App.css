@@ -4393,3 +4393,276 @@ select option:checked {
     padding: 10px !important;
   }
 }
+
+
+/* ========================================================================== */
+/* IKQF FULL SIZE TYPOGRAPHY FIX
+   Fixes screenshot issue:
+   - panel titles were oversized and floating like old fieldset labels
+   - h2 headings had too much letter spacing and wrong scale
+   - metrics were centered like a poster instead of terminal readouts
+   - controls/body/panels were using conflicting legacy full-size values
+/* ========================================================================== */
+
+.full-size-page,
+.full-terminal,
+.full-terminal * {
+  font-family: "Courier New", monospace !important;
+}
+
+.full-terminal,
+.ikqf-command-terminal {
+  font-size: 12px !important;
+  line-height: 1.38 !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+}
+
+/* Keep the main brand title special, but controlled */
+.full-terminal .full-terminal-title,
+.full-terminal .ikqf-terminal-title {
+  font-size: clamp(24px, 2.6vw, 34px) !important;
+  line-height: 1 !important;
+  letter-spacing: clamp(2px, 0.38vw, 5px) !important;
+  margin: clamp(12px, 1.4vw, 20px) auto clamp(6px, 0.8vw, 10px) !important;
+}
+
+/* Full-size panels should read like terminal cards, not giant fieldsets */
+.full-terminal .panel {
+  position: relative !important;
+  padding: 0 !important;
+  margin: 0 0 clamp(12px, 1.4vw, 18px) !important;
+  border: 1px solid rgba(156, 255, 143, 0.65) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
+}
+
+/* This is the main fix: panel titles become small header bars */
+.full-terminal .panel-title {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border-bottom: 1px solid rgba(156, 255, 143, 0.52) !important;
+  background: rgba(156, 255, 143, 0.105) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.8px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  white-space: nowrap !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+}
+
+/* Content inside panels gets the padding, not the title */
+.full-terminal .panel > :not(.panel-title) {
+  margin-left: clamp(10px, 1.2vw, 16px) !important;
+  margin-right: clamp(10px, 1.2vw, 16px) !important;
+}
+
+.full-terminal .panel > .panel-title + * {
+  margin-top: clamp(10px, 1.2vw, 14px) !important;
+}
+
+.full-terminal .panel > *:last-child {
+  margin-bottom: clamp(10px, 1.2vw, 14px) !important;
+}
+
+/* Secondary headings: small terminal labels, not giant display text */
+.full-terminal h1:not(.full-terminal-title),
+.full-terminal h2,
+.full-terminal .strategy-library-title {
+  margin: clamp(9px, 1vw, 13px) 0 clamp(6px, 0.75vw, 9px) !important;
+  padding: 0 0 5px !important;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.35) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.4px !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+}
+
+/* Terminal data boxes */
+.full-terminal .metrics,
+.full-terminal .reason,
+.full-terminal .box,
+.full-terminal .loading-box,
+.full-terminal .strategy-library-box,
+.full-terminal .execution-status-panel,
+.full-terminal .last-execution-panel,
+.full-terminal .trade-table,
+.full-terminal .optimizer-table,
+.full-terminal .chart-box {
+  margin: clamp(8px, 0.9vw, 12px) 0 !important;
+  padding: clamp(9px, 1vw, 13px) !important;
+  border: 1px solid rgba(156, 255, 143, 0.55) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  font-size: 12px !important;
+  line-height: 1.36 !important;
+  text-align: left !important;
+  box-shadow: inset 0 0 10px rgba(156, 255, 143, 0.035) !important;
+}
+
+/* This is the second big fix: readouts align like terminal rows */
+.full-terminal .metrics p,
+.full-terminal .reason p,
+.full-terminal .box p,
+.full-terminal .autonomous-status-box p,
+.full-terminal .retro-log-entry p {
+  margin: 4px 0 !important;
+  color: #9cff8f !important;
+  font-size: 12px !important;
+  line-height: 1.34 !important;
+  text-align: left !important;
+  letter-spacing: 0.25px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+}
+
+.full-terminal .metrics p:first-child,
+.full-terminal .strategy-library-box p:first-child,
+.full-terminal .execution-status-panel p:first-child,
+.full-terminal .last-execution-panel p:first-child {
+  margin-bottom: 7px !important;
+}
+
+.full-terminal .metrics strong,
+.full-terminal .reason strong,
+.full-terminal .box strong,
+.full-terminal .panel strong {
+  color: #ffffff !important;
+  font-size: 12px !important;
+  line-height: 1.18 !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9) !important;
+}
+
+/* Hero copy should match terminal body scale */
+.full-terminal .hero-description {
+  max-width: 860px !important;
+  margin: 0 auto clamp(12px, 1.4vw, 18px) !important;
+  padding: 10px 14px !important;
+  font-size: 12px !important;
+  line-height: 1.36 !important;
+  letter-spacing: 0.2px !important;
+}
+
+.full-terminal .full-slogan {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 1.5px !important;
+}
+
+.full-terminal .full-subline-no-glow {
+  font-size: 12px !important;
+  line-height: 1.24 !important;
+  letter-spacing: 1px !important;
+}
+
+/* Controls: same visual weight as Simple/Detailed */
+.full-terminal label {
+  margin-bottom: 4px !important;
+  color: #9cff8f !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1px !important;
+  text-align: left !important;
+}
+
+.full-terminal button,
+.full-terminal input,
+.full-terminal select,
+.full-terminal textarea,
+.full-terminal .copy-btn {
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border: 1px solid rgba(156, 255, 143, 0.7) !important;
+  background: rgba(0, 0, 0, 0.46) !important;
+  color: #9cff8f !important;
+  font-size: 12px !important;
+  line-height: 1.12 !important;
+  letter-spacing: 0.75px !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+  box-shadow: inset 0 0 10px rgba(156, 255, 143, 0.06) !important;
+}
+
+.full-terminal .agent-control-panel,
+.full-terminal .button-row,
+.full-terminal .input-row {
+  gap: clamp(7px, 0.85vw, 11px) !important;
+  margin: clamp(8px, 0.95vw, 13px) 0 !important;
+}
+
+/* Do not let old inline margins create random vertical gaps */
+.full-terminal .strategy-library-box,
+.full-terminal .execution-status-panel,
+.full-terminal .last-execution-panel,
+.full-terminal .full-strategy-assessment-panel,
+.full-terminal .decision-section-panel,
+.full-terminal .operator-controls-panel {
+  margin-top: clamp(8px, 0.95vw, 13px) !important;
+  margin-bottom: clamp(10px, 1.1vw, 15px) !important;
+}
+
+/* Tables follow the same type size */
+.full-terminal .trade-row span,
+.full-terminal .optimizer-row span {
+  min-height: 26px !important;
+  padding: 4px 5px !important;
+  font-size: 11px !important;
+  line-height: 1.18 !important;
+  text-align: left !important;
+}
+
+/* Details drawers */
+.full-terminal details > summary,
+.full-terminal .retro-window > summary,
+.full-terminal .retro-sub-window > summary {
+  padding: 7px 9px !important;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 1.2px !important;
+}
+
+/* Current agent state should not look like a huge centered poster */
+.full-terminal .full-current-state-panel .strategy-library-box {
+  max-width: none !important;
+  text-align: left !important;
+}
+
+.full-terminal .full-current-state-panel .strategy-library-box p {
+  text-align: left !important;
+}
+
+/* Mobile keeps same hierarchy, just stacked */
+@media (max-width: 768px) {
+  .full-terminal .panel-title {
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+
+  .full-terminal,
+  .ikqf-command-terminal {
+    font-size: 11px !important;
+  }
+
+  .full-terminal .metrics p,
+  .full-terminal .reason p,
+  .full-terminal .box p,
+  .full-terminal button,
+  .full-terminal input,
+  .full-terminal select,
+  .full-terminal textarea {
+    font-size: 11px !important;
+  }
+}

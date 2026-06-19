@@ -3554,6 +3554,19 @@ async function loadTradeHistory() {
 
   const renderFullSizeVersion = () => {
     const executionStatus = getExecutionStatus();
+    const fullAgentAddress = twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C";
+
+    const copyFullAgentAddress = async () => {
+      try {
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(fullAgentAddress);
+          alert("AGENT ADDRESS COPIED");
+        }
+      } catch (error) {
+        console.error("COPY AGENT ADDRESS FAILED:", error);
+      }
+    };
+
     const latestActivity = tradeHistory
       .filter((trade) => {
         const status = String(trade.status || "").toLowerCase();
@@ -3835,7 +3848,21 @@ async function loadTradeHistory() {
                 <div><span>BROWSER WALLET</span><strong>{walletAddress ? "CONNECTED" : "NOT CONNECTED"}</strong></div>
                 <div><span>BROWSER NETWORK</span><strong>{getUserNetworkLabel()}</strong></div>
                 <div><span>AGENT NETWORK</span><strong>{getAgentNetworkLabel()}</strong></div>
-                <div><span>AGENT ADDRESS</span><strong>{shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</strong></div>
+                <div className="ikqf-full-v2-address-row">
+                  <span>AGENT ADDRESS</span>
+                  <strong className="ikqf-full-v2-address">{fullAgentAddress}</strong>
+                  <button type="button" className="ikqf-full-v2-copy-address" onClick={copyFullAgentAddress}>
+                    COPY ADDRESS
+                  </button>
+                  <a
+                    className="ikqf-full-v2-explorer-link"
+                    href={`https://bscscan.com/address/${fullAgentAddress}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    OPEN BSCSCAN
+                  </a>
+                </div>
                 <div><span>AGENT TOTAL VALUE</span><strong>{formatMoney(portfolio?.totalUsdValue || 0)}</strong></div>
                 <div><span>PAPER VALUE</span><strong>{paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</strong></div>
                 <div><span>CONFIDENCE</span><strong>{agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</strong></div>
@@ -3888,7 +3915,7 @@ async function loadTradeHistory() {
                     tradePlan.from_token || trade.from_token
                       ? `${tradePlan.from_token || trade.from_token} → ${tradePlan.to_token || trade.to_token}`
                       : "N/A";
-                  const tradeSizeLabel = trade.amount || trade.trade_plan?.amount || "N/A";
+                  const tradeSize = trade.amount || trade.trade_plan?.amount || "N/A";
 
                   return (
                     <div className={isRealTrade ? "ikqf-full-v2-log is-real" : "ikqf-full-v2-log"} key={index}>
@@ -3898,7 +3925,7 @@ async function loadTradeHistory() {
                       {trade.decision && <div><span>DECISION</span><strong>{trade.decision}</strong></div>}
                       <div><span>SIGNAL ASSET</span><strong>{trade.coin || "N/A"}</strong></div>
                       <div><span>ROUTE</span><strong>{executionRoute}</strong></div>
-                      <div><span>SIZE</span><strong>{tradeSizeLabel}</strong></div>
+                      <div><span>SIZE</span><strong>{tradeSize}</strong></div>
                       <div><span>RESULT</span><strong>{isRealTrade ? getTradeLogPnlLabel(trade) : getTradeLogNonExecutionLabel(trade)}</strong></div>
                     </div>
                   );

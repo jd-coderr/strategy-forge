@@ -2569,34 +2569,15 @@ async function loadTradeHistory() {
 
           <div className="retro-quadrant-body">
             <div className="retro-brand-card detailed-simple-identity">
-              <div className="simple-brand-block">
-                <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
-                <h1 className="simple-square-title">
-                  I KNOW QUANT FU<span className="blink">_</span>
-                </h1>
-                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
-                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
-                <p className="simple-speech-text">
-                  I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
-                  test strategy logic, check portfolio risk, explain my decision, and only then decide whether
-                  to wait, simulate, paper trade, or execute.
-                </p>
-              </div>
-
-              <div className="simple-message-box">
-                <strong>TRANSLATION FOR HUMANS</strong>
-                <p>
-                  I do not chase candles. I do not panic-click green buttons. I check the math before entering the dojo.
-                </p>
-              </div>
-
-              <div className="simple-message-box">
-                <strong>POWERED BY</strong>
-                <p>
-                  CoinMarketCap market intelligence → Trust Wallet Agent Kit → PancakeSwap execution routing → BNB Smart Chain infrastructure.
-                </p>
-              </div>
-            </div>
+  <div className="simple-brand-block">
+    <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
+    <h1 className="simple-square-title">
+      I KNOW QUANT FU<span className="blink">_</span>
+    </h1>
+    <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+    <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
+  </div>
+</div>
 
             {agentResult && (
               <details className="retro-window">

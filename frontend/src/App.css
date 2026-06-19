@@ -3229,3 +3229,27 @@ select option:checked {
   color: #ffffff !important;
   text-shadow: none !important;
 }
+
+/* Detailed Version WHO AM I: keep title as Detailed, make Roundhouse/Backtest match Simple Version */
+.retro-square .retro-who .retro-subtitle {
+  margin: 0 0 4px !important;
+  color: #fff2bf !important;
+  font-weight: bold !important;
+  font-size: clamp(8px, 1.15vmin, 14px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: clamp(1px, 0.28vmin, 2px) !important;
+  text-transform: uppercase !important;
+  text-shadow: none !important;
+}
+
+.retro-square .retro-who .retro-brand-subline-white {
+  display: block !important;
+  margin: 0 0 10px !important;
+  text-align: center !important;
+  color: #9cff8f !important;
+  font-size: clamp(10px, 1.35vmin, 16px) !important;
+  line-height: 1.3 !important;
+  letter-spacing: clamp(0.5px, 0.25vmin, 2px) !important;
+  font-weight: bold !important;
+  text-shadow: none !important;
+}

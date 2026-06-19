@@ -1,0 +1,19 @@
+IKQF Backend Audit - 2026-06-19
+
+Checked:
+- Python syntax compile for all uploaded backend .py files
+- Imports for app/backtest/TWAK/trade safety/logger/CMC modules
+- TWAK live swap path stays centralized through twak_executor.run_twak_swap
+- Daily UTC guard live-trade counting excludes decision simulation, paper trading, and quote-only
+- Tx hash extraction from TWAK stdout/stderr/message
+- 5M timeframe mapping
+- Risk state no longer turns failed portfolio lookup into fake 100% drawdown
+
+Fixed:
+- cmc_skill_hub no longer crashes the whole backend if mcp package/key is unavailable
+- direct PancakeSwap helper disabled safely so it cannot bypass TWAK or crash on import
+- binance_data 5M mapping added
+- market_data now tries Binance global/API1/Binance US and validates numeric candles
+- live drawdown safety now uses live_execution_enabled, not only request.live_execution
+- /execute-trade now attaches tx_hash and execution_result consistently
+- autonomous loop logs backend cycle errors

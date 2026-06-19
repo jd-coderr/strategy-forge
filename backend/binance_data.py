@@ -15,10 +15,11 @@ def normalize_timeframe(timeframe: str) -> str:
     tf = timeframe.upper()
 
     mapping = {
+        "5M": "5m",
         "15M": "15m",
         "1H": "1h",
         "4H": "4h",
-        "1D": "1d"
+        "1D": "1d",
     }
 
     return mapping.get(tf, "4h")

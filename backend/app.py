@@ -548,7 +548,11 @@ def get_token_price_usd(portfolio_items, symbol):
     return 0.0
 
 
-def update_risk_state(portfolio_items):
+def update_risk_state(portfolio_items, portfolio_available=True):
+    if not portfolio_available or not portfolio_items:
+        RISK_STATE["status"] = "PORTFOLIO UNAVAILABLE"
+        return dict(RISK_STATE)
+
     portfolio_value = get_portfolio_value_usd_from_items(portfolio_items)
 
     if portfolio_value > 0:
@@ -582,7 +586,7 @@ def update_risk_state(portfolio_items):
     return dict(RISK_STATE)
 
 
-def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
+def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision, risk_control=None):
     market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
     fear_greed = cmc_signal.get("fear_greed") or {}
     altcoin_season = cmc_signal.get("altcoin_season") or {}
@@ -652,7 +656,8 @@ def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
         signal_breakdown["backtest_score"] = 0
         why.append("Backtest risk-adjusted score is poor.")
 
-    risk_control = update_risk_state(portfolio_items)
+    if risk_control is None:
+        risk_control = update_risk_state(portfolio_items)
 
     if risk_control["status"] == "SAFE":
         signal_breakdown["drawdown_safety"] = 15
@@ -660,6 +665,9 @@ def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
     elif risk_control["status"] == "WARNING":
         signal_breakdown["drawdown_safety"] = 5
         why.append("Drawdown monitor is warning; agent should reduce risk.")
+    elif risk_control["status"] == "PORTFOLIO UNAVAILABLE":
+        signal_breakdown["drawdown_safety"] = 0
+        why.append("Portfolio risk could not be verified because the portfolio lookup was unavailable.")
     else:
         signal_breakdown["drawdown_safety"] = 0
         why.append("Drawdown limit breached; live trading should be blocked.")
@@ -1446,7 +1454,10 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
     bnb_balance = balances.get("BNB", 0)
     usdt_balance = balances.get("USDT", 0)
     requested_trade_size = max(0.0, safe_float(request.trade_size, 0.0))
-    risk_control = update_risk_state(portfolio_items)
+    risk_control = update_risk_state(
+        portfolio_items,
+        portfolio_available=bool(portfolio_result.get("success") and portfolio_items),
+    )
 
     decision = "HOLD"
     trade_plan = None
@@ -1531,7 +1542,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         decision = "HOLD"
 
     if trade_plan is not None:
-        if request.live_execution and risk_control["status"] == "DRAWDOWN LIMIT BREACHED":
+        if live_execution_enabled and risk_control["status"] == "DRAWDOWN LIMIT BREACHED":
             execution_result = {
                 "success": False,
                 "blocked": True,
@@ -1610,6 +1621,8 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                         quote_only=trade_plan["quote_only"],
                     )
                     execution_result = attach_tx_hash(execution_result)
+                    execution_result["mode"] = "quote_only" if trade_plan["quote_only"] else "live_execution"
+                    execution_result["executed"] = bool(execution_result.get("success") and not trade_plan["quote_only"])
 
                     if execution_result["success"] and not trade_plan["quote_only"]:
                         mark_live_trade_executed()
@@ -1644,6 +1657,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         backtest=backtest,
         portfolio_items=portfolio_items,
         decision=decision,
+        risk_control=risk_control,
     )
 
     event = log_trade(
@@ -1736,6 +1750,9 @@ def execute_trade(request: ExecuteTradeRequest, _operator_ok: bool = Depends(req
         slippage=request.slippage,
         quote_only=request.quote_only,
     )
+    result = attach_tx_hash(result)
+    result["mode"] = "quote_only" if request.quote_only else "live_execution"
+    result["executed"] = bool(result.get("success") and not request.quote_only)
 
     if result["success"] and not request.quote_only:
         mark_live_trade_executed()
@@ -1751,6 +1768,7 @@ def execute_trade(request: ExecuteTradeRequest, _operator_ok: bool = Depends(req
             "chain": request.chain,
             "quote_only": request.quote_only,
             "result": result,
+            "execution_result": result,
         }
     )
 
@@ -1796,6 +1814,10 @@ def autonomous_loop():
             update_autonomous_state_from_result(result)
         except Exception as error:
             AUTONOMOUS_STATE["last_reason"] = f"Autonomous cycle error: {str(error)}"
+            log_trade({
+                "status": "autonomous_error",
+                "error": str(error),
+            })
 
         time.sleep(AUTONOMOUS_STATE["interval_minutes"] * 60)
 

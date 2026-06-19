@@ -891,9 +891,16 @@ useEffect(() => {
     return "FAILED";
   }
 
+  function extractTxHashFromTextParts(parts = []) {
+    const possibleText = parts.filter(Boolean).join(" ");
+    const match = possibleText.match(/0x[a-fA-F0-9]{64}/);
+    return match ? match[0] : null;
+  }
+
   function getExecutionTxHash() {
     const executionResult = getExecutionResult();
-    const possibleText = [
+
+    return extractTxHashFromTextParts([
       executionResult?.tx_hash,
       executionResult?.transaction_hash,
       executionResult?.transactionHash,
@@ -901,12 +908,67 @@ useEffect(() => {
       executionResult?.stdout,
       executionResult?.stderr,
       executionResult?.message,
-    ]
-      .filter(Boolean)
-      .join(" ");
+    ]);
+  }
 
-    const match = possibleText.match(/0x[a-fA-F0-9]{64}/);
-    return match ? match[0] : null;
+  function extractTxHashFromTradeLogEntry(entry) {
+    const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result || {};
+
+    return extractTxHashFromTextParts([
+      entry?.tx_hash,
+      entry?.transaction_hash,
+      entry?.transactionHash,
+      entry?.hash,
+      entry?.stdout,
+      entry?.stderr,
+      entry?.message,
+      execution?.tx_hash,
+      execution?.transaction_hash,
+      execution?.transactionHash,
+      execution?.hash,
+      execution?.stdout,
+      execution?.stderr,
+      execution?.message,
+    ]);
+  }
+
+  function isLiveTradeLogEntry(entry) {
+    const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result || {};
+    const mode = String(
+      entry?.execution_mode ||
+      entry?.mode ||
+      execution?.execution_mode ||
+      execution?.mode ||
+      ""
+    ).toLowerCase();
+    const status = String(entry?.status || entry?.event || "").toLowerCase();
+    const decision = String(entry?.decision || execution?.decision || "").toUpperCase();
+
+    if (mode && mode !== "live_trading") return false;
+    if (decision === "HOLD") return false;
+    if (status.includes("decision")) return false;
+    if (entry?.quote_only === true || execution?.quote_only === true) return false;
+    if (execution?.blocked === true || execution?.executed === false) return false;
+
+    return (
+      execution?.success === true ||
+      execution?.executed === true ||
+      status === "success" ||
+      status === "real_trade" ||
+      status.includes("live")
+    );
+  }
+
+  function getLatestLiveTradeLogEntry() {
+    return tradeHistory.find(isLiveTradeLogEntry) || null;
+  }
+
+  function getLatestLiveTxHash() {
+    const currentTxHash = getExecutionTxHash();
+    if (currentTxHash) return currentTxHash;
+
+    const latestLiveTrade = getLatestLiveTradeLogEntry();
+    return latestLiveTrade ? extractTxHashFromTradeLogEntry(latestLiveTrade) : null;
   }
 
   function getSignalAssetLabel() {
@@ -979,8 +1041,17 @@ useEffect(() => {
     if (autoOptimized || result?.optimization || setupSource === "auto_optimization" || setupSource === "auto_optimized_start") {
       return "OPTIMIZER SELECTED SETUP";
     }
+
+    const chosenStrategy =
+      result?.selected_strategy ||
+      agentResult?.selected_strategy ||
+      autonomousStatus?.last_result?.selected_strategy ||
+      autonomousStatus?.active_config?.selected_strategy ||
+      autonomousStatus?.saved_agent_setup?.selected_strategy ||
+      null;
+
     if (setupSource === "manual_selection" || setupSource === "manual_start" || setupSource === "generated_strategy") {
-      return "MANUAL SETUP ACTIVE";
+      return chosenStrategy ? "MANUAL SETUP ACTIVE — STRATEGY AUTO-SELECTED" : "MANUAL SETUP ACTIVE";
     }
 
     return "OPTIMIZER NOT RUN YET";
@@ -991,7 +1062,10 @@ useEffect(() => {
 
     if (drawdown === undefined || drawdown === null || drawdown === "") return "N/A";
 
-    return `${drawdown}% FROM TRACKED PORTFOLIO PEAK`;
+    const number = parseMetricNumber(drawdown, null);
+    const formattedDrawdown = number === null ? String(drawdown).replace("%", "") : number.toFixed(2);
+
+    return `${formattedDrawdown}% FROM TRACKED PORTFOLIO PEAK`;
   }
 
   function getSimpleAgentWalletLabel() {
@@ -1046,7 +1120,8 @@ useEffect(() => {
   function getDetailedStrategyQualityLabel() {
     const score = getDetailedStrategyQualityScore();
 
-    if (score === "N/A") return "N/A";
+    if (score === "N/A") return "NOT SCORED YET";
+    if (Number(score) <= 0) return "0 / 25 — POOR BACKTEST SCORE";
 
     return `${score} / 25 FROM CURRENT SETUP BACKTEST`;
   }
@@ -1115,7 +1190,7 @@ useEffect(() => {
     const estimatedNotional = price * requestedSize;
     const estimatedLoss = estimatedNotional * ((stopLossPct + 0.1) / 100);
 
-    return `${formatMoney(estimatedLoss)} EST. ON ${formatMoney(estimatedNotional)} SIZE`;
+    return `${formatMoney(estimatedLoss)} EST. ON ${formatMoney(estimatedNotional)} TRADE SIZE`;
   }
 
   function getCurrentRiskRewardRatioLabel() {
@@ -1760,11 +1835,8 @@ async function loadTradeHistory() {
   function renderSimpleVersion() {
     const executionStatus = getExecutionStatus();
     const tradePlan = getTradePlan();
-    const txHash = getExecutionTxHash();
-    const latestRealTrade = tradeHistory.find((entry) => {
-      const execution = entry?.execution_result || entry?.event?.execution_result || entry?.result;
-      return execution?.success === true || execution?.executed === true;
-    });
+    const txHash = getLatestLiveTxHash();
+    const latestRealTrade = getLatestLiveTradeLogEntry();
     const selectedStrategy = getSimpleSelectedStrategyLabel();
     const marketRegime = getSimpleMarketRegimeLabel();
     const confidenceLabel = agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "not scored yet";
@@ -1773,7 +1845,7 @@ async function loadTradeHistory() {
     const executionSource = getExecutionSourceLabel();
     const simpleTxStatus = tradePlan ? getExecutionTxStatus() : "WAITING FOR APPROVED TRADE";
     const simpleExecutionRoute = tradePlan ? getExecutionRouteLabel() : "ROUTE APPEARS AFTER TRADE PLAN";
-    const simpleTxHash = txHash || "ONLY AFTER LIVE ON-CHAIN EXECUTION";
+    const simpleTxHash = txHash || (latestRealTrade ? "LIVE TRADE LOGGED - TX HASH NOT RETURNED BY TWAK" : "ONLY AFTER LIVE ON-CHAIN EXECUTION");
 
     return (
       <div className="retro-page">
@@ -1808,7 +1880,7 @@ async function loadTradeHistory() {
                   <strong>{autonomousMode ? "I AM RUNNING" : "I AM STOPPED"}</strong>
                 </div>
                 <div className="simple-status-box">
-                  <span>WALLET</span>
+                  <span>USER WALLET</span>
                   <strong>{walletAddress ? "IS CONNECTED" : "IS NOT CONNECTED"}</strong>
                 </div>
 
@@ -1829,7 +1901,7 @@ async function loadTradeHistory() {
               <div className="simple-message-box">
                 <strong>MY FULL ROUTE</strong>
                 <p>
-                  COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN
+                  COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BNB SMART CHAIN
                 </p>
               </div>
             </div>
@@ -1981,14 +2053,12 @@ async function loadTradeHistory() {
               </p>
 
               <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "CURRENTLY RUNNING" : "CURRENTLY STOPPED"}</strong></div>
-              <div className="simple-metric-row"><span>MY ACTION</span><strong>{executionStatus.action}</strong></div>
               <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
               <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
               <div className="simple-metric-row"><span>TX STATUS</span><strong>{simpleTxStatus}</strong></div>
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
               <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
-              <div className="simple-metric-row"><span>SOURCE</span><strong>{executionSource}</strong></div>
-              <div className="simple-metric-row"><span>CHAIN</span><strong>BNB SMART CHAIN / BSC</strong></div>
+              <div className="simple-metric-row"><span>EXECUTION LAYER</span><strong>{executionSource}</strong></div>
               <div className="simple-metric-row"><span>AGENT WALLET</span><strong>{getSimpleAgentWalletLabel()}</strong></div>
               <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</strong></div>
               <div className="simple-metric-row"><span>TX HASH</span><strong>{simpleTxHash}</strong></div>
@@ -2043,11 +2113,11 @@ async function loadTradeHistory() {
               <div className="hero-description retro-hero-description">
                 I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
                 Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
-                and Binance Smart Chain infrastructure.
+                and BNB Smart Chain infrastructure.
               </div>
 
               <div className="metrics retro-mini-window">
-                <p><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
+                <p className="retro-brand-subline-white"><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
                 <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
               </div>
             </div>
@@ -2058,11 +2128,12 @@ async function loadTradeHistory() {
                 <div className="metrics strategy-library-box verification-panel">
                   <p><strong>ON-CHAIN VERIFICATION</strong></p>
                   <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-                  <p>SELECTED TOKEN..... {coin}</p>
-                  <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
-                  <p>LAST TX HASH....... {getExecutionTxHash() || "N/A"}</p>
-                  {getExecutionTxHash() && (
-                    <p>BSCSCAN............ https://bscscan.com/tx/{getExecutionTxHash()}</p>
+                  <p>SELECTED ASSET..... {coin}</p>
+                  <p>TOKEN STATUS....... {coin} / CMC-LISTED ASSET</p>
+                  <p>NETWORK............ BNB SMART CHAIN</p>
+                  <p>LAST TX HASH....... {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
+                  {getLatestLiveTxHash() && (
+                    <p>BSCSCAN............ https://bscscan.com/tx/{getLatestLiveTxHash()}</p>
                   )}
                 </div>
               </details>
@@ -2104,7 +2175,7 @@ async function loadTradeHistory() {
                   <span>↓</span>
                   <div>PANCAKESWAP</div>
                   <span>↓</span>
-                  <div>BINANCE SMART CHAIN</div>
+                  <div>BNB SMART CHAIN</div>
                 </div>
               </div>
             </details>
@@ -2116,8 +2187,8 @@ async function loadTradeHistory() {
               <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>AGENT STATUS</span></summary>
               <div className="metrics strategy-library-box">
                 <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
-                <p>USER WALLET......... {walletAddress ? `CONNECTED: ${walletAddress}` : "NOT CONNECTED"}</p>
-                <p>USER NETWORK....... {getUserNetworkLabel()}</p>
+                <p>BROWSER WALLET...... {walletAddress ? `CONNECTED: ${walletAddress}` : "NOT CONNECTED"}</p>
+                <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
                 <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
                 <p>
                   AGENT BNB BALANCE....{" "}
@@ -2564,7 +2635,7 @@ async function loadTradeHistory() {
                   <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
                   <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
                   <p>TX STATUS........... {getExecutionTxStatus()}</p>
-                  <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
+                  <p>TX HASH............. {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
                   {getExecutionTxHash() && (
                     <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
                   )}
@@ -2682,7 +2753,7 @@ async function loadTradeHistory() {
                     <p>TRADE PLAN.......... {agentResult?.trade_plan ? "GENERATED" : "NONE"}</p>
                     <p>ACTION TAKEN........ {agentResult?.execution_result ? "EXECUTION ATTEMPTED" : "NONE"}</p>
                     <br />
-                    <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
+                    <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BNB SMART CHAIN</p>
                     <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
                           </div>
                 </details>
@@ -2878,7 +2949,7 @@ async function loadTradeHistory() {
                   <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
                   <div className="metrics">
                     <p><strong>WHAT I KNOW QUANT FU DOES</strong></p>
-                    <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement.</p>
+                    <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and BNB Smart Chain settlement.</p>
                     <p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
                     <br />
                     <p><strong>EXECUTION MODES</strong></p>
@@ -2997,7 +3068,7 @@ async function loadTradeHistory() {
       <div className="hero-description">
         I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
         Trust Wallet Agent Kit (TWAK), PancakeSwap execution routing,
-        and Binance Smart Chain infrastructure.
+        and BNB Smart Chain infrastructure.
 
         It continuously analyzes market conditions, compares strategy performance,
         backtests multiple approaches, evaluates portfolio risk, generates explainable
@@ -3260,7 +3331,7 @@ async function loadTradeHistory() {
     <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
     <p>REQUESTED SIZE...... {getTradePlan()?.requested_trade_size ?? tradeSize} {getTradePlan()?.requested_trade_size_token || coin}</p>
     <p>TX STATUS........... {getExecutionTxStatus()}</p>
-    <p>TX HASH............. {getExecutionTxHash() || "N/A"}</p>
+    <p>TX HASH............. {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
     {getExecutionTxHash() && (
       <p>BSCSCAN............. https://bscscan.com/tx/{getExecutionTxHash()}</p>
     )}
@@ -3274,8 +3345,8 @@ async function loadTradeHistory() {
 
 <div className="metrics strategy-library-box">
   <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
-  <p>USER WALLET......... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-  <p>USER NETWORK....... {getUserNetworkLabel()}</p>
+  <p>BROWSER WALLET...... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
+  <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
   <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
 
   <p>
@@ -3326,7 +3397,7 @@ async function loadTradeHistory() {
     <span>↓</span>
     <div>PANCAKESWAP</div>
     <span>↓</span>
-    <div>BINANCE SMART CHAIN</div>
+    <div>BNB SMART CHAIN</div>
   </div>
 </div>
 </div>
@@ -3638,7 +3709,7 @@ const isRealTrade =
 
             <br />
 
-            <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BINANCE SMART CHAIN</p>
+            <p>AGENT FLOW.......... COINMARKETCAP → MARKET ANALYSIS → STRATEGY ENGINE → CONFIDENCE MODEL → RISK GOVERNOR → TWAK → PANCAKESWAP → BNB SMART CHAIN</p>
             <p>RULE ADHERENCE...... USER RISK LIMITS ENFORCED</p>
           </div>
 
@@ -3701,11 +3772,12 @@ const isRealTrade =
     <div className="metrics strategy-library-box">
       <p><strong>ON-CHAIN VERIFICATION</strong></p>
       <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-      <p>SELECTED TOKEN..... {coin}</p>
-      <p>ELIGIBLE TOKEN..... BSC / CMC-LISTED TOKEN</p>
-      <p>LAST TX HASH....... {getExecutionTxHash() || "N/A"}</p>
-      {getExecutionTxHash() && (
-        <p>BSCSCAN............ https://bscscan.com/tx/{getExecutionTxHash()}</p>
+      <p>SELECTED ASSET..... {coin}</p>
+      <p>TOKEN STATUS....... {coin} / CMC-LISTED ASSET</p>
+      <p>NETWORK............ BNB SMART CHAIN</p>
+      <p>LAST TX HASH....... {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
+      {getLatestLiveTxHash() && (
+        <p>BSCSCAN............ https://bscscan.com/tx/{getLatestLiveTxHash()}</p>
       )}
     </div>
   </div>
@@ -3850,7 +3922,7 @@ const isRealTrade =
 
             <div className="metrics">
               <p><strong>WHAT DO I DO?</strong></p>
-              <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and Binance Smart Chain settlement.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
+              <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and BNB Smart Chain settlement.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
 
               <br />
 

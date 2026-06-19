@@ -2568,33 +2568,31 @@ async function loadTradeHistory() {
           </div>
 
           <div className="retro-quadrant-body">
-            <div className="retro-brand-card detailed-simple-identity">
-              <div className="simple-brand-block">
-                <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
-                <h1 className="simple-square-title">
-                  I KNOW QUANT FU<span className="blink">_</span>
-                </h1>
-                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
-                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
-                <p className="simple-speech-text">
-                  I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
-                  test strategy logic, check portfolio risk, explain my decision, and only then decide whether
-                  to wait, simulate, paper trade, or execute.
-                </p>
+            <div className="retro-brand-card">
+              <div className="topbar retro-topbar">
+                <span>IKQF v0.1.0 — AI ONLINE</span>
               </div>
 
-              <div className="simple-message-box">
-                <strong>TRANSLATION FOR HUMANS</strong>
-                <p>
-                  I do not chase candles. I do not panic-click green buttons. I check the math before entering the dojo.
-                </p>
+              <h1 className="title retro-title ikqf-terminal-title">
+                I KNOW QUANT FU<span className="blink">_</span>
+              </h1>
+
+              <p className="subtitle retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
+              <p className="retro-brand-subline"><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
+
+              <div className="hero-description retro-hero-description">
+                I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
+                Trust Wallet Agent Kit, PancakeSwap execution routing,
+                and BNB Smart Chain infrastructure.
               </div>
 
-              <div className="simple-message-box">
-                <strong>POWERED BY</strong>
-                <p>
-                  CoinMarketCap market intelligence → Trust Wallet Agent Kit → PancakeSwap execution routing → BNB Smart Chain infrastructure.
-                </p>
+              <div className="metrics retro-mini-window detailed-human-translation">
+                <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
+                <br />
+                <p><strong>Translation for humans:</strong></p>
+                <p>I do not chase candles.</p>
+                <p>I do not panic-click green buttons.</p>
+                <p>I test the signal before I enter the dojo.</p>
               </div>
             </div>
 
@@ -3556,18 +3554,6 @@ async function loadTradeHistory() {
 
   const renderFullSizeVersion = () => {
     const executionStatus = getExecutionStatus();
-    const fullAgentAddress = twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C";
-
-    const copyFullAgentAddress = async () => {
-      try {
-        if (typeof navigator !== "undefined" && navigator.clipboard) {
-          await navigator.clipboard.writeText(fullAgentAddress);
-          alert("AGENT ADDRESS COPIED");
-        }
-      } catch (error) {
-        console.error("COPY AGENT ADDRESS FAILED:", error);
-      }
-    };
 
     const latestActivity = tradeHistory
       .filter((trade) => {
@@ -3850,21 +3836,7 @@ async function loadTradeHistory() {
                 <div><span>BROWSER WALLET</span><strong>{walletAddress ? "CONNECTED" : "NOT CONNECTED"}</strong></div>
                 <div><span>BROWSER NETWORK</span><strong>{getUserNetworkLabel()}</strong></div>
                 <div><span>AGENT NETWORK</span><strong>{getAgentNetworkLabel()}</strong></div>
-                <div className="ikqf-full-v2-address-row">
-                  <span>AGENT ADDRESS</span>
-                  <strong className="ikqf-full-v2-address">{fullAgentAddress}</strong>
-                  <button type="button" className="ikqf-full-v2-copy-address" onClick={copyFullAgentAddress}>
-                    COPY ADDRESS
-                  </button>
-                  <a
-                    className="ikqf-full-v2-explorer-link"
-                    href={`https://bscscan.com/address/${fullAgentAddress}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    OPEN BSCSCAN
-                  </a>
-                </div>
+                <div><span>AGENT ADDRESS</span><strong>{shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</strong></div>
                 <div><span>AGENT TOTAL VALUE</span><strong>{formatMoney(portfolio?.totalUsdValue || 0)}</strong></div>
                 <div><span>PAPER VALUE</span><strong>{paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</strong></div>
                 <div><span>CONFIDENCE</span><strong>{agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</strong></div>

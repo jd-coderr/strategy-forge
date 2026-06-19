@@ -3266,9 +3266,6 @@ select option:checked {
 .ikqf-full-v2-page,
 .ikqf-full-v2-page * {
   box-sizing: border-box;
-}
-
-.ikqf-full-v2-page * {
   font-family: "Courier New", monospace !important;
 }
 
@@ -3349,19 +3346,18 @@ select option:checked {
   margin: clamp(16px, 2vw, 28px) 0 clamp(8px, 1vw, 14px);
   padding: 0;
   color: var(--v2-white);
-  font-family: "Courier New", monospace !important;
-  font-size: clamp(32px, 5.2vmin, 70px);
-  line-height: 0.92;
-  letter-spacing: clamp(2px, 0.8vmin, 8px);
-  word-spacing: normal;
+  font-size: var(--v2-title);
+  line-height: 0.95;
+  letter-spacing: clamp(3px, 0.55vw, 9px);
+  word-spacing: clamp(4px, 0.55vw, 10px);
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   font-weight: bold;
-  transform: none;
   text-shadow:
     0 0 4px #ffffff,
-    0 0 10px #9cff8f;
+    0 0 12px rgba(156, 255, 143, 0.95),
+    0 0 28px rgba(156, 255, 143, 0.52);
 }
 
 .ikqf-full-v2-title .blink {
@@ -3619,55 +3615,6 @@ select option:checked {
 .ikqf-full-v2-details > :not(summary) {
   margin-left: 10px;
   margin-right: 10px;
-}
-
-
-
-.ikqf-full-v2-address-row {
-  grid-template-columns: minmax(130px, 0.32fr) minmax(260px, 1fr) minmax(120px, 0.26fr) minmax(120px, 0.26fr) !important;
-  align-items: center;
-}
-
-.ikqf-full-v2-address {
-  text-transform: none !important;
-  user-select: all;
-  cursor: text;
-  font-size: var(--v2-small) !important;
-  letter-spacing: 0.2px !important;
-}
-
-.ikqf-full-v2-copy-address,
-.ikqf-full-v2-explorer-link {
-  min-height: 30px !important;
-  padding: 6px 8px !important;
-  border: 1px solid rgba(156, 255, 143, 0.58);
-  background: rgba(0, 0, 0, 0.44);
-  color: var(--v2-green);
-  font-size: var(--v2-small) !important;
-  line-height: 1.1;
-  letter-spacing: 0.8px;
-  text-align: center;
-  text-decoration: none;
-  text-transform: uppercase;
-  font-weight: bold;
-  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55);
-}
-
-.ikqf-full-v2-copy-address:hover,
-.ikqf-full-v2-explorer-link:hover {
-  background: rgba(156, 255, 143, 0.14);
-  color: var(--v2-white);
-}
-
-@media (max-width: 980px) {
-  .ikqf-full-v2-address-row {
-    grid-template-columns: 1fr !important;
-    gap: 6px !important;
-  }
-
-  .ikqf-full-v2-address {
-    overflow-wrap: anywhere;
-  }
 }
 
 .ikqf-full-v2-footer {

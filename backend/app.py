@@ -16,6 +16,7 @@ import threading
 import time
 import shutil
 import os
+import re
 import secrets
 
 app = FastAPI()
@@ -254,6 +255,9 @@ DAILY_QUALIFICATION_STATE = {
     "time_exit_buffer_minutes": 5,
     "open_forced_trade": None,
     "last_status": "WAITING",
+    "last_reason": "No daily guard check has run yet.",
+    "last_attempt_at": None,
+    "last_block_reason": None,
 }
 
 PAPER_PORTFOLIO = {
@@ -482,6 +486,47 @@ def safe_float(value, default=0.0):
         return default
 
 
+def extract_tx_hash_from_text(value):
+    text = "" if value is None else str(value)
+    match = re.search(r"0x[a-fA-F0-9]{64}", text)
+    return match.group(0) if match else None
+
+
+def attach_tx_hash(execution_result):
+    if not isinstance(execution_result, dict):
+        return execution_result
+
+    existing_hash = (
+        execution_result.get("tx_hash")
+        or execution_result.get("transaction_hash")
+        or execution_result.get("transactionHash")
+        or execution_result.get("hash")
+    )
+
+    tx_hash = extract_tx_hash_from_text(existing_hash)
+
+    if not tx_hash:
+        tx_hash = extract_tx_hash_from_text(
+            " ".join(
+                str(part)
+                for part in (
+                    execution_result.get("stdout"),
+                    execution_result.get("stderr"),
+                    execution_result.get("message"),
+                )
+                if part
+            )
+        )
+
+    if tx_hash:
+        execution_result["tx_hash"] = tx_hash
+        execution_result["bscscan_url"] = f"https://bscscan.com/tx/{tx_hash}"
+    elif execution_result.get("success") is True:
+        execution_result["tx_hash_status"] = "TWAK did not return a transaction hash in stdout/stderr."
+
+    return execution_result
+
+
 def get_portfolio_value_usd_from_items(portfolio_items):
     return sum(safe_float(item.get("usdValue", 0)) for item in portfolio_items)
 
@@ -679,9 +724,38 @@ def is_in_forced_daily_trade_window(now=None):
     return minutes_until_utc_day_end(now) <= DAILY_QUALIFICATION_STATE["forced_window_minutes"]
 
 
+def is_live_execution_result(record, execution_result, trade_plan):
+    """Return True only for real live/on-chain executions, not simulations, quotes, or paper trades."""
+    execution_result = execution_result or {}
+    trade_plan = trade_plan or {}
+
+    if trade_plan.get("quote_only") is True or record.get("quote_only") is True:
+        return False
+
+    mode = str(
+        execution_result.get("mode")
+        or record.get("execution_mode")
+        or record.get("mode")
+        or ""
+    ).lower()
+
+    if mode in {"decision_simulation", "paper_trading", "quote_only"}:
+        return False
+
+    if execution_result.get("executed") is False:
+        return False
+
+    if execution_result.get("blocked") is True:
+        return False
+
+    return execution_result.get("success") is True
+
+
 def count_live_trades_today():
+    """Count real live trades during the current UTC competition day."""
     start, end = utc_day_bounds()
     live_trade_count = 0
+    seen_records = set()
 
     for record in read_trade_log(500):
         try:
@@ -694,19 +768,14 @@ def count_live_trades_today():
 
         trade_plan = record.get("trade_plan") or {}
         execution_result = record.get("execution_result") or record.get("result") or {}
+        record_key = record.get("id") or record.get("timestamp") or str(record)
 
-        if (
-            trade_plan
-            and trade_plan.get("quote_only") is False
-            and execution_result.get("success") is True
-        ):
-            live_trade_count += 1
+        if record_key in seen_records:
+            continue
 
-        if (
-            record.get("quote_only") is False
-            and execution_result.get("success") is True
-        ):
+        if is_live_execution_result(record, execution_result, trade_plan):
             live_trade_count += 1
+            seen_records.add(record_key)
 
     return live_trade_count
 
@@ -718,16 +787,21 @@ def get_daily_qualification_status():
 
     if trades_today >= DAILY_QUALIFICATION_STATE["target_trades_per_day"]:
         status = "QUALIFIED"
+        reason = "A real live trade has already been recorded during the current UTC competition day."
     elif in_forced_window:
         status = "FORCED TRADE WINDOW ACTIVE"
+        reason = "No live trade has been recorded today and the final UTC hour is active."
     else:
         status = "WAITING"
+        reason = "No live trade has been recorded today, but the final UTC qualification window is not active yet."
 
     DAILY_QUALIFICATION_STATE["last_status"] = status
+    DAILY_QUALIFICATION_STATE["last_reason"] = reason
 
     return {
         "enabled": DAILY_QUALIFICATION_STATE["enabled"],
         "status": status,
+        "reason": reason,
         "trades_today": trades_today,
         "target_trades_per_day": DAILY_QUALIFICATION_STATE["target_trades_per_day"],
         "forced_window_minutes": DAILY_QUALIFICATION_STATE["forced_window_minutes"],
@@ -736,17 +810,25 @@ def get_daily_qualification_status():
         "stop_loss_pct": DAILY_QUALIFICATION_STATE["stop_loss_pct"],
         "time_exit_buffer_minutes": DAILY_QUALIFICATION_STATE["time_exit_buffer_minutes"],
         "open_forced_trade": DAILY_QUALIFICATION_STATE["open_forced_trade"],
+        "last_attempt_at": DAILY_QUALIFICATION_STATE.get("last_attempt_at"),
+        "last_block_reason": DAILY_QUALIFICATION_STATE.get("last_block_reason"),
     }
 
 
-def should_force_daily_qualification_trade():
+def should_force_daily_qualification_trade(live_execution_enabled=False):
     if not DAILY_QUALIFICATION_STATE["enabled"]:
-        return False
+        return False, "DAILY GUARD DISABLED"
 
     if count_live_trades_today() >= DAILY_QUALIFICATION_STATE["target_trades_per_day"]:
-        return False
+        return False, "DAILY GUARD SKIPPED: LIVE TRADE ALREADY RECORDED TODAY"
 
-    return is_in_forced_daily_trade_window()
+    if not is_in_forced_daily_trade_window():
+        return False, "DAILY GUARD WAITING: OUTSIDE FINAL UTC HOUR"
+
+    if not live_execution_enabled:
+        return False, "DAILY GUARD SKIPPED: AGENT NOT IN LIVE MODE"
+
+    return True, "DAILY GUARD WINDOW ACTIVE: FORCED LIVE TRADE REQUIRED"
 
 
 def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_execution_enabled=False):
@@ -780,6 +862,11 @@ def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_exe
             from_token = "BNB"
             to_token = "USDT"
             amount = str(round(min(requested_trade_size, bnb_balance), 6))
+
+    if safe_float(amount) <= 0:
+        DAILY_QUALIFICATION_STATE["last_block_reason"] = (
+            "DAILY GUARD BLOCKED: no usable BNB or USDT balance was available for the forced trade."
+        )
 
     now = datetime.now(timezone.utc)
     _, day_end = utc_day_bounds(now)
@@ -1365,15 +1452,20 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
     trade_plan = None
     execution_result = None
     daily_qualification = get_daily_qualification_status()
+    daily_guard_should_trade, daily_guard_reason = should_force_daily_qualification_trade(
+        live_execution_enabled=live_execution_enabled
+    )
 
     forced_close_plan = maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enabled=live_execution_enabled)
 
     if forced_close_plan is not None:
         decision = "DAILY_QUALIFICATION_CLOSE"
         trade_plan = forced_close_plan
+        daily_guard_reason = "DAILY GUARD CLOSE: forced trade exit rule is active."
 
-    elif should_force_daily_qualification_trade():
+    elif daily_guard_should_trade:
         decision = "DAILY_QUALIFICATION_TRADE"
+        DAILY_QUALIFICATION_STATE["last_attempt_at"] = datetime.now(timezone.utc).isoformat()
         trade_plan = build_forced_daily_trade_plan(
             request=request,
             portfolio_items=portfolio_items,
@@ -1446,6 +1538,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                 "safety_message": "Blocked: max drawdown limit breached.",
                 "risk_control": risk_control,
             }
+            DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
 
         elif execution_mode != "decision_simulation" and trade_plan["from_token"] == "BNB" and bnb_balance < float(trade_plan["amount"]):
             execution_result = {
@@ -1454,6 +1547,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                 "safety_message": "Blocked: not enough BNB balance for planned trade.",
                 "bnb_balance": bnb_balance,
             }
+            DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
 
         elif execution_mode != "decision_simulation" and trade_plan["from_token"] == "USDT" and usdt_balance < float(trade_plan["amount"]):
             execution_result = {
@@ -1462,6 +1556,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                 "safety_message": "Blocked: not enough USDT balance for planned trade.",
                 "usdt_balance": usdt_balance,
             }
+            DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
 
         else:
             if paper_trading_enabled:
@@ -1514,9 +1609,11 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                         slippage="1",
                         quote_only=trade_plan["quote_only"],
                     )
+                    execution_result = attach_tx_hash(execution_result)
 
                     if execution_result["success"] and not trade_plan["quote_only"]:
                         mark_live_trade_executed()
+                        DAILY_QUALIFICATION_STATE["last_block_reason"] = None
 
                         if trade_plan.get("type") == "daily_qualification_trade":
                             current_price = safe_float(cmc_signal.get("price_usd"), 0)
@@ -1568,6 +1665,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             "why": agent_analysis["why"],
             "risk_control": agent_analysis["risk_control"],
             "daily_qualification": get_daily_qualification_status(),
+            "daily_guard_reason": daily_guard_reason,
             "trade_size": request.trade_size,
             "trade_plan": trade_plan,
             "execution_result": execution_result,
@@ -1673,7 +1771,9 @@ def update_autonomous_state_from_result(result):
     now = datetime.now(timezone.utc)
     next_run = now + timedelta(minutes=AUTONOMOUS_STATE["interval_minutes"])
 
-    if result.get("decision") == "HOLD":
+    if result.get("daily_guard_reason"):
+        reason = result.get("daily_guard_reason")
+    elif result.get("decision") == "HOLD":
         reason = get_hold_reason(result.get("cmc_signal", {}))
     elif result.get("trade_plan") is None:
         reason = "No trade plan was produced by the strategy and risk engine."

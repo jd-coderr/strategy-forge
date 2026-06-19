@@ -3254,11 +3254,32 @@ select option:checked {
   text-shadow: none !important;
 }
 
-/* Simple Version: force title to match the intended two-line brand split */
+
+/* Simple Version master copy: force brand title to match the intended two-line layout */
 .simple-brand-block .simple-square-title > span {
   display: block;
+  white-space: nowrap;
 }
 
 .simple-brand-block .simple-square-title .blink {
   display: inline;
+}
+
+/* Detailed Version master copy: match Simple brand line colors without changing title size */
+.retro-square .retro-who .retro-brand-subline {
+  display: block !important;
+  margin: 0 0 10px !important;
+  text-align: center !important;
+  color: #9cff8f !important;
+  font-size: clamp(10px, 1.35vmin, 16px) !important;
+  line-height: 1.3 !important;
+  letter-spacing: clamp(0.5px, 0.25vmin, 2px) !important;
+  font-weight: bold !important;
+  text-shadow: none !important;
+}
+
+.retro-square .detailed-human-translation p,
+.retro-square .detailed-copy-block p,
+.retro-square .detailed-portfolio-panel p {
+  margin: 5px 0;
 }

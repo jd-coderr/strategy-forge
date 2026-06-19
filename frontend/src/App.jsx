@@ -2285,8 +2285,7 @@ async function loadTradeHistory() {
               <div className="simple-brand-block">
                 <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
                 <h1 className="simple-square-title">
-                  <span>I KNOW</span>
-                  <span>QUANT FU<span className="blink">_</span></span>
+                  I KNOW QUANT FU<span className="blink">_</span>
                 </h1>
                 <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
@@ -2371,121 +2370,120 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <p className="simple-speech-text">
-                You set the mission. I can auto-optimize the setup first, then I keep checking the chosen crypto on schedule. I only act when the strategy, market regime, and risk governor agree.
+                You set the mission. I scan on schedule, but I only act after a closed candle, a valid signal, and risk approval.
               </p>
 
               <div className="simple-message-box simple-operator-brief">
                 <strong>OPERATOR FLOW</strong>
-                <p>
-                  Pick the asset, execution mode, interval, and trade size — or hit auto-optimize and let me rank the strategy candidates before the agent starts.
-                </p>
+                <p>Choose the asset, mode, interval, and size. Then optimize, connect, and run the agent.</p>
               </div>
 
+              <div className="simple-metric-row"><span>SETUP</span><strong>{coin} / {timeframe} / {getExecutionModeLabel()}</strong></div>
               <div className="simple-metric-row"><span>OPTIMIZER</span><strong>{autoOptimized ? "SETUP AUTO-OPTIMIZED" : "READY TO RANK STRATEGIES"}</strong></div>
-              <div className="simple-metric-row"><span>CHECK INTERVAL</span><strong>EVERY {autonomousInterval} MINUTES</strong></div>
-              <div className="simple-metric-row"><span>TRADE TRIGGER</span><strong>CLOSED {timeframe} CANDLE + VALID STRATEGY SIGNAL</strong></div>
-              <div className="simple-metric-row"><span>RISK PROFILE</span><strong>{getRiskProfileLabel(risk)}</strong></div>
+              <div className="simple-metric-row"><span>CHECKS</span><strong>EVERY {autonomousInterval} MINUTES</strong></div>
+              <div className="simple-metric-row"><span>TRIGGER</span><strong>CLOSED {timeframe} CANDLE + VALID SIGNAL</strong></div>
+              <div className="simple-metric-row"><span>RISK</span><strong>{getRiskProfileLabel(risk)}</strong></div>
 
               <div className="simple-action-grid simple-terminal-actions">
                 <button onClick={optimizeStrategy} disabled={loading} style={getButtonStyle("optimize")}>
-                  {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
+                  {loading && loadingMode === "optimize" ? "OPTIMIZING..." : autoOptimized ? "OPTIMIZED" : "> OPTIMIZE <"}
                 </button>
                 <button onClick={connectWallet} disabled={loading} style={getButtonStyle("wallet")}>
-                  {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
+                  {walletAddress ? "WALLET OK" : "> WALLET <"}
                 </button>
                 <button onClick={runAgentCycle} disabled={loading} style={getButtonStyle("run")}>
                   {loading && loadingMode === "agent" ? (
                     <>
-                      I AM RUNNING<span className="loading-dots"></span>
+                      RUNNING<span className="loading-dots"></span>
                     </>
                   ) : autonomousMode ? (
-                    "I AM RUNNING"
+                    "RUNNING"
                   ) : (
-                    "> RUN AGENT <"
+                    "> RUN <"
                   )}
                 </button>
                 <button onClick={stopAutonomousMode} disabled={loading} style={getButtonStyle("stop")}>
-                  {agentStopConfirmed && !autonomousMode ? "I AM STOPPED" : "> STOP AGENT <"}
+                  {agentStopConfirmed && !autonomousMode ? "STOPPED" : "> STOP <"}
                 </button>
               </div>
 
-              <div className="simple-control-grid simple-terminal-controls">
-                <div>
-                  <label>ASSET</label>
-                  <select value={coin} disabled={loading} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
-                    <option value="ETH">Ethereum (ETH)</option>
-                    <option value="XRP">XRP (XRP)</option>
-                    <option value="DOGE">Dogecoin (DOGE)</option>
-                    <option value="LINK">Chainlink (LINK)</option>
-                    <option value="ADA">Cardano (ADA)</option>
-                    <option value="AVAX">Avalanche (AVAX)</option>
-                    <option value="UNI">Uniswap (UNI)</option>
-                    <option value="INJ">Injective (INJ)</option>
-                    <option value="CAKE">PancakeSwap (CAKE)</option>
-                    <option value="TWT">Trust Wallet Token (TWT)</option>
-                    <option value="AAVE">Aave (AAVE)</option>
-                    <option value="ATOM">Cosmos (ATOM)</option>
-                    <option value="LTC">Litecoin (LTC)</option>
-                    <option value="DOT">Polkadot (DOT)</option>
-                    <option value="SHIB">Shiba Inu (SHIB)</option>
-                    <option value="FIL">Filecoin (FIL)</option>
-                    <option value="FET">Fetch.ai (FET)</option>
-                    <option value="PENDLE">Pendle (PENDLE)</option>
-                    <option value="FLOKI">Floki (FLOKI)</option>
-                    <option value="1INCH">1inch (1INCH)</option>
-                  </select>
+              <details className="simple-control-drawer">
+                <summary>OPERATOR CONTROLS</summary>
+                <div className="simple-control-grid simple-terminal-controls">
+                  <div>
+                    <label>ASSET</label>
+                    <select value={coin} disabled={loading} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                      <option value="ETH">Ethereum (ETH)</option>
+                      <option value="XRP">XRP (XRP)</option>
+                      <option value="DOGE">Dogecoin (DOGE)</option>
+                      <option value="LINK">Chainlink (LINK)</option>
+                      <option value="ADA">Cardano (ADA)</option>
+                      <option value="AVAX">Avalanche (AVAX)</option>
+                      <option value="UNI">Uniswap (UNI)</option>
+                      <option value="INJ">Injective (INJ)</option>
+                      <option value="CAKE">PancakeSwap (CAKE)</option>
+                      <option value="TWT">Trust Wallet Token (TWT)</option>
+                      <option value="AAVE">Aave (AAVE)</option>
+                      <option value="ATOM">Cosmos (ATOM)</option>
+                      <option value="LTC">Litecoin (LTC)</option>
+                      <option value="DOT">Polkadot (DOT)</option>
+                      <option value="SHIB">Shiba Inu (SHIB)</option>
+                      <option value="FIL">Filecoin (FIL)</option>
+                      <option value="FET">Fetch.ai (FET)</option>
+                      <option value="PENDLE">Pendle (PENDLE)</option>
+                      <option value="FLOKI">Floki (FLOKI)</option>
+                      <option value="1INCH">1inch (1INCH)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>MODE</label>
+                    <select
+                      value={executionMode || ""}
+                      disabled={autonomousMode || loading}
+                      onChange={(e) => {
+                        const mode = e.target.value;
+                        handleManualSetupChange({
+                          execution_mode: mode,
+                          live_execution: mode === "live_trading",
+                        }, false);
+                      }}
+                      onWheel={(e) => e.currentTarget.blur()}
+                    >
+                      <option value="" disabled>Execution Mode</option>
+                      <option value="decision_simulation">Simulation Mode</option>
+                      <option value="paper_trading">Paper Mode</option>
+                      <option value="live_trading">Live Mode</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>INTERVAL</label>
+                    <select
+                      value={autonomousInterval}
+                      disabled={autonomousMode}
+                      onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                    >
+                      <option value={1}>1 MINUTE</option>
+                      <option value={5}>5 MINUTES</option>
+                      <option value={15}>15 MINUTES</option>
+                      <option value={30}>30 MINUTES</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>SIZE ({coin})</label>
+                    <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
+                  </div>
                 </div>
-                <div>
-                  <label>MODE</label>
-                  <select
-                    value={executionMode || ""}
-                    disabled={autonomousMode || loading}
-                    onChange={(e) => {
-                      const mode = e.target.value;
-                      handleManualSetupChange({
-                        execution_mode: mode,
-                        live_execution: mode === "live_trading",
-                      }, false);
-                    }}
-                    onWheel={(e) => e.currentTarget.blur()}
-                  >
-                    <option value="" disabled>Execution Mode</option>
-                    <option value="decision_simulation">Simulation Mode</option>
-                    <option value="paper_trading">Paper Mode</option>
-                    <option value="live_trading">Live Mode</option>
-                  </select>
-                </div>
-                <div>
-                  <label>INTERVAL</label>
-                  <select
-                    value={autonomousInterval}
-                    disabled={autonomousMode}
-                    onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                  >
-                    <option value={1}>1 MINUTE</option>
-                    <option value={5}>5 MINUTES</option>
-                    <option value={15}>15 MINUTES</option>
-                    <option value={30}>30 MINUTES</option>
-                  </select>
-                </div>
-                <div>
-                  <label>TRADE SIZE ({coin})</label>
-                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
-                </div>
-              </div>
+              </details>
 
               <div className="simple-message-box simple-rule-box">
                 <strong>TIMING RULE</strong>
-                <p>
-                  I can check frequently, but I do not force trades between confirmations. Signal tested. Ego rejected.
-                </p>
+                <p>I can check often. I still wait for confirmation. Signal tested. Ego rejected.</p>
               </div>
 
               <div className="simple-metric-row"><span>RISK STATUS</span><strong>{riskStatus}</strong></div>
-              <div className="simple-metric-row"><span>PORTFOLIO DRAWDOWN</span><strong>{getSimplePortfolioDrawdownLabel()}</strong></div>
-              <div className="simple-metric-row"><span>MAX DRAWDOWN LIMIT</span><strong>{agentResult?.risk_control?.max_drawdown_limit_pct !== undefined ? `${agentResult.risk_control.max_drawdown_limit_pct}%` : "N/A"}</strong></div>
-              <div className="simple-metric-row"><span>PORTFOLIO VALUE</span><strong>{portfolioValue}</strong></div>
+              <div className="simple-metric-row"><span>DRAWDOWN</span><strong>{getSimplePortfolioDrawdownLabel()}</strong></div>
+              <div className="simple-metric-row"><span>PORTFOLIO</span><strong>{portfolioValue}</strong></div>
             </div>
           </section>
 
@@ -2499,7 +2497,7 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <p className="simple-speech-text">
-                I show the proof before the punchline. Strategy first, risk second, execution last. If I wait, I explain why. If I trade live, the proof belongs on-chain.
+                I show the proof before the punchline. Strategy first. Risk second. Execution last.
               </p>
 
               <div className="simple-message-box simple-proof-snapshot">
@@ -2516,24 +2514,24 @@ async function loadTradeHistory() {
                     <div><span>EDGE</span><strong>{parsePercent(result.backtest?.expectancy) > 0 ? "POSITIVE" : "NEGATIVE"}</strong></div>
                   </div>
                 ) : (
-                  <p className="simple-proof-empty">Run auto-optimize to see strategy rating, return, drawdown, win rate, and profit factor here.</p>
+                  <p className="simple-proof-empty">Run auto-optimize to see rating, return, drawdown, win rate, and profit factor.</p>
                 )}
               </div>
 
               <div className="simple-micro-copy">No proof. No roundhouse.</div>
 
-              <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "CURRENTLY RUNNING" : "CURRENTLY STOPPED"}</strong></div>
+              <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "RUNNING" : "STOPPED"}</strong></div>
+              <div className="simple-metric-row"><span>DECISION</span><strong>{executionStatus.status}</strong></div>
               <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
-              <div className="simple-metric-row"><span>DECISION STATUS</span><strong>{executionStatus.status}</strong></div>
               <div className="simple-metric-row"><span>TX STATUS</span><strong>{simpleTxStatus}</strong></div>
-              <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
-              <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
-              <div className="simple-metric-row"><span>EXECUTION LAYER</span><strong>{executionSource}</strong></div>
-              <div className="simple-metric-row"><span>AGENT WALLET</span><strong>{getSimpleAgentWalletLabel()}</strong></div>
-              <div className="simple-metric-row"><span>AGENT ADDRESS</span><strong>{shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</strong></div>
+              <div className="simple-metric-row"><span>SIGNAL</span><strong>{getSignalAssetLabel()}</strong></div>
+              <div className="simple-metric-row"><span>ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
+              <div className="simple-metric-row"><span>LAYER</span><strong>{executionSource}</strong></div>
+              <div className="simple-metric-row"><span>WALLET</span><strong>{getSimpleAgentWalletLabel()}</strong></div>
+              <div className="simple-metric-row"><span>ADDRESS</span><strong>{shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</strong></div>
               <div className="simple-metric-row"><span>TX HASH</span><strong>{simpleTxHash}</strong></div>
               {tradePlan && (
-                <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
+                <div className="simple-metric-row"><span>SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
               )}
 
               <div className="simple-message-box simple-rule-box">
@@ -2543,7 +2541,7 @@ async function loadTradeHistory() {
 
               <div className="simple-message-box">
                 <strong>LAST LIVE TRADE</strong>
-                <p>{latestRealTrade ? `${formatDateTime(latestRealTrade.timestamp)} // ${latestRealTrade.decision || latestRealTrade.event || "TRADE LOGGED"}` : "I have not loaded a real trade yet."}</p>
+                <p>{latestRealTrade ? `${formatDateTime(latestRealTrade.timestamp)} // ${latestRealTrade.decision || latestRealTrade.event || "TRADE LOGGED"}` : "No real trade loaded yet."}</p>
               </div>
 
               {txHash && (

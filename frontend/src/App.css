@@ -3110,3 +3110,73 @@ select option:checked {
 .retro-square .retro-subtitle {
   color: #fff2bf !important;
 }
+
+/* Full Size Version: tighter section spacing and manual strategy selector layout */
+.full-terminal .operator-controls-panel .strategy-library-title,
+.full-terminal .decision-section-panel .strategy-library-title {
+  margin-top: 8px !important;
+  margin-bottom: 18px !important;
+}
+
+.full-terminal .operator-controls-panel,
+.full-terminal .decision-section-panel {
+  padding-top: 34px !important;
+}
+
+.full-terminal .full-custom-strategy-row {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 18px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(260px, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.full-terminal .full-custom-strategy-row button,
+.full-terminal .full-custom-strategy-row select {
+  height: 58px;
+  margin: 0 !important;
+}
+
+.full-terminal .full-custom-or {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  color: #ffffff;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 6px #9cff8f;
+}
+
+.full-terminal .full-execution-mode-row {
+  width: min(420px, 100%);
+  margin: 0 auto 28px;
+}
+
+.full-terminal .full-execution-mode-row select {
+  width: 100% !important;
+  max-width: 420px !important;
+  height: 58px;
+  margin: 0 auto !important;
+  text-align: left;
+  text-align-last: left;
+}
+
+.full-terminal .full-interval-panel {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .full-terminal .full-custom-strategy-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .full-terminal .full-custom-or {
+    min-height: 22px;
+  }
+}

@@ -11,6 +11,15 @@ import "./App.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://strategy-forge-production-a3f6.up.railway.app";
 
+const MANUAL_STRATEGY_OPTIONS = [
+  "VWAP Extreme Reversion",
+  "SMC Sequence Continuation",
+  "Stochastic Quad Rotation",
+  "TDI Sharkfin Reversal",
+  "FVG Channel",
+  "Ichimoku MACD EMA Confluence",
+];
+
 function App() {
   function getSavedSetting(key, fallback) {
     if (typeof window === "undefined") return fallback;
@@ -72,6 +81,7 @@ function App() {
   });
   const [autoOptimized, setAutoOptimized] = useState(false);
   const [setupSource, setSetupSource] = useState("");
+  const [manualStrategy, setManualStrategy] = useState(() => getSavedSetting("ikqf_manual_strategy", ""));
   const [agentStopConfirmed, setAgentStopConfirmed] = useState(false);
   const [walletAddress, setWalletAddress] = useState(null);
   const [walletChainId, setWalletChainId] = useState(null);
@@ -144,6 +154,217 @@ function App() {
 
     return `$${number.toFixed(2)}`;
   }
+
+
+
+  function formatSignedMoney(value) {
+    if (value === null || value === undefined || isNaN(value)) return "N/A";
+
+    const number = Number(value);
+    const sign = number > 0 ? "+" : number < 0 ? "-" : "";
+
+    return `${sign}$${Math.abs(number).toFixed(2)}`;
+  }
+
+  function parseAmountToken(value) {
+    const text = String(value || "").trim();
+    const match = text.match(/(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9]+)/);
+
+    if (!match) {
+      return {
+        amount: null,
+        token: null,
+      };
+    }
+
+    return {
+      amount: Number(match[1]),
+      token: match[2].toUpperCase(),
+    };
+  }
+
+  function getTradeLogExecution(trade) {
+    return trade?.execution_result || trade?.event?.execution_result || trade?.result || {};
+  }
+
+  function isQuoteOnlyTradeLogEntry(trade) {
+    const execution = getTradeLogExecution(trade);
+    const tradePlan = trade?.trade_plan || {};
+
+    return trade?.quote_only === true || tradePlan?.quote_only === true || execution?.quote_only === true;
+  }
+
+  function isBlockedTradeLogEntry(trade) {
+    const execution = getTradeLogExecution(trade);
+    const status = String(trade?.status || trade?.event || "").toLowerCase();
+
+    return status === "blocked" || execution?.blocked === true;
+  }
+
+  function getTradeLogSwapSummary(trade) {
+    const execution = getTradeLogExecution(trade);
+    const tradePlan = trade?.trade_plan || {};
+    let parsedStdout = null;
+
+    if (execution?.stdout) {
+      try {
+        parsedStdout = JSON.parse(execution.stdout);
+      } catch (error) {
+        parsedStdout = null;
+      }
+    }
+
+    const input = parseAmountToken(parsedStdout?.input);
+    const output = parseAmountToken(parsedStdout?.output);
+    const fromToken = (input.token || tradePlan?.from_token || trade?.from_token || "").toUpperCase() || null;
+    const toToken = (output.token || tradePlan?.to_token || trade?.to_token || "").toUpperCase() || null;
+    const inputAmount = input.amount ?? parseMetricNumber(trade?.amount || tradePlan?.amount, null);
+    const outputAmount = output.amount;
+
+    return {
+      fromToken,
+      toToken,
+      inputAmount,
+      outputAmount,
+      minReceived: parsedStdout?.minReceived || null,
+      provider: parsedStdout?.provider || null,
+    };
+  }
+
+  function isExecutedLiveTradeLogEntry(trade) {
+    const execution = getTradeLogExecution(trade);
+    const status = String(trade?.status || trade?.event || "").toLowerCase();
+    const decision = String(trade?.decision || execution?.decision || "").toUpperCase();
+    const mode = String(
+      trade?.execution_mode ||
+      trade?.mode ||
+      execution?.execution_mode ||
+      execution?.mode ||
+      ""
+    ).toLowerCase();
+
+    if (decision === "HOLD") return false;
+    if (status.includes("decision")) return false;
+    if (isQuoteOnlyTradeLogEntry(trade)) return false;
+    if (isBlockedTradeLogEntry(trade)) return false;
+    if (execution?.executed === false) return false;
+
+    const success = execution?.success === true || execution?.executed === true || status === "success";
+    const liveMode = mode === "live_trading" || trade?.live_execution === true || status === "success";
+
+    return success && liveMode;
+  }
+
+  function getTradeLogTypeLabel(trade) {
+    const execution = getTradeLogExecution(trade);
+    const tradePlan = trade?.trade_plan || {};
+    const hasRoute = Boolean(
+      tradePlan?.from_token ||
+      tradePlan?.to_token ||
+      trade?.from_token ||
+      trade?.to_token
+    );
+
+    if (isBlockedTradeLogEntry(trade)) return "BLOCKED / NOT EXECUTED";
+    if (isQuoteOnlyTradeLogEntry(trade)) return "QUOTE ONLY / NOT EXECUTED";
+    if (isExecutedLiveTradeLogEntry(trade)) return "REAL TRADE / EXECUTION";
+    if (execution?.success === false) return "FAILED / NOT EXECUTED";
+    if (hasRoute) return "TRADE PLAN / NOT EXECUTED";
+
+    return "DECISION ONLY";
+  }
+
+  function calculateRealizedPnlForTrade(targetTrade) {
+    const positions = {};
+
+    for (const entry of tradeHistory) {
+      const isTarget = entry === targetTrade;
+
+      if (!isExecutedLiveTradeLogEntry(entry)) {
+        if (isTarget) return null;
+        continue;
+      }
+
+      const summary = getTradeLogSwapSummary(entry);
+      const fromToken = summary.fromToken;
+      const toToken = summary.toToken;
+      const inputAmount = Number(summary.inputAmount || 0);
+      const outputAmount = Number(summary.outputAmount || 0);
+
+      if (isTarget) {
+        if (fromToken === "USDT" && toToken && toToken !== "USDT") {
+          return {
+            type: "open",
+            pnl: 0,
+          };
+        }
+
+        if (toToken === "USDT" && fromToken && fromToken !== "USDT") {
+          const position = positions[fromToken];
+
+          if (!position || position.quantity <= 0 || inputAmount <= 0 || outputAmount <= 0) {
+            return {
+              type: "unknown_cost_basis",
+              pnl: null,
+            };
+          }
+
+          const sellQuantity = Math.min(inputAmount, position.quantity);
+          const averageCost = position.costUsd / position.quantity;
+          const costBasis = averageCost * sellQuantity;
+
+          return {
+            type: "realized",
+            pnl: outputAmount - costBasis,
+          };
+        }
+
+        return {
+          type: "recorded",
+          pnl: 0,
+        };
+      }
+
+      if (fromToken === "USDT" && toToken && toToken !== "USDT" && inputAmount > 0 && outputAmount > 0) {
+        positions[toToken] = positions[toToken] || { quantity: 0, costUsd: 0 };
+        positions[toToken].quantity += outputAmount;
+        positions[toToken].costUsd += inputAmount;
+      } else if (toToken === "USDT" && fromToken && fromToken !== "USDT" && inputAmount > 0 && outputAmount > 0) {
+        const position = positions[fromToken];
+
+        if (position && position.quantity > 0) {
+          const sellQuantity = Math.min(inputAmount, position.quantity);
+          const averageCost = position.costUsd / position.quantity;
+          const costBasis = averageCost * sellQuantity;
+
+          position.quantity -= sellQuantity;
+          position.costUsd = Math.max(0, position.costUsd - costBasis);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function getTradeLogPnlLabel(trade) {
+    const typeLabel = getTradeLogTypeLabel(trade);
+
+    if (typeLabel === "BLOCKED / NOT EXECUTED") return "$0.00 — BLOCKED";
+    if (typeLabel === "QUOTE ONLY / NOT EXECUTED") return "$0.00 — QUOTE ONLY";
+    if (typeLabel === "FAILED / NOT EXECUTED") return "$0.00 — FAILED";
+    if (typeLabel === "TRADE PLAN / NOT EXECUTED") return "$0.00 — NOT EXECUTED";
+    if (typeLabel === "DECISION ONLY") return "$0.00 — DECISION ONLY";
+
+    const pnl = calculateRealizedPnlForTrade(trade);
+
+    if (!pnl) return "ENTRY COST NOT FOUND";
+    if (pnl.type === "open") return "$0.00 — OPEN POSITION";
+    if (pnl.type === "unknown_cost_basis") return "ENTRY COST NOT FOUND";
+    if (pnl.type === "realized") return `${formatSignedMoney(pnl.pnl)} REALIZED`;
+
+    return "$0.00 — RECORDED";
+  }
+
 
   function formatPrice(value) {
     if (value === null || value === undefined || isNaN(value)) return "N/A";
@@ -447,6 +668,10 @@ function App() {
       setLiveExecution(setup.execution_mode === "live_trading");
     }
 
+    if (setup.selected_strategy) {
+      setManualStrategy(setup.selected_strategy);
+    }
+
     if (setup.source) {
       setSetupSource(setup.source);
     }
@@ -470,7 +695,7 @@ function App() {
       execution_mode: patch.execution_mode !== undefined ? (patch.execution_mode || "decision_simulation") : getExecutionModeForPayload(),
       trade_size: patch.trade_size !== undefined ? patch.trade_size : tradeSize,
       interval_minutes: patch.interval_minutes !== undefined ? patch.interval_minutes : autonomousInterval,
-      selected_strategy: patch.selected_strategy !== undefined ? patch.selected_strategy : snapshot?.selected_strategy || null,
+      selected_strategy: patch.selected_strategy !== undefined ? patch.selected_strategy : manualStrategy || snapshot?.selected_strategy || null,
       result_snapshot: snapshot,
       optimization: optimizationSnapshot,
       source: patch.source || "manual_selection",
@@ -508,6 +733,7 @@ function App() {
     if (patch.initial_capital !== undefined) setInitialCapital(Number(patch.initial_capital));
     if (patch.trade_size !== undefined) setTradeSize(Number(patch.trade_size));
     if (patch.interval_minutes !== undefined) setAutonomousInterval(Number(patch.interval_minutes));
+    if (patch.selected_strategy !== undefined) setManualStrategy(patch.selected_strategy || "");
 
     if (patch.execution_mode !== undefined) {
       const nextExecutionMode = patch.execution_mode || "decision_simulation";
@@ -528,6 +754,7 @@ function App() {
       setAutoOptimized(false);
       setResult(null);
       setAgentResult(null);
+      setManualStrategy("");
       savePatch.selected_strategy = null;
       savePatch.result_snapshot = null;
       savePatch.optimization = null;
@@ -566,7 +793,7 @@ async function startAutonomousMode() {
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,
         trade_size: tradeSize,
-        selected_strategy: result?.selected_strategy || null,
+        selected_strategy: manualStrategy || result?.selected_strategy || null,
         interval_minutes: autonomousInterval,
         result_snapshot: result || null,
         optimization: result?.optimization || null,
@@ -696,7 +923,8 @@ useEffect(() => {
     window.localStorage.setItem("ikqf_execution_mode", executionMode);
   }
   window.localStorage.setItem("ikqf_autonomous_interval", String(autonomousInterval));
-}, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval]);
+  window.localStorage.setItem("ikqf_manual_strategy", manualStrategy || "");
+}, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval, manualStrategy]);
 
 useEffect(() => {
   if (executionMode) {
@@ -1055,6 +1283,7 @@ useEffect(() => {
 
   function getSimpleSelectedStrategyLabel() {
     const chosenStrategy =
+      manualStrategy ||
       result?.selected_strategy ||
       agentResult?.selected_strategy ||
       autonomousStatus?.last_result?.selected_strategy ||
@@ -1072,6 +1301,26 @@ useEffect(() => {
     return "NO STRATEGY SELECTED YET";
   }
 
+  function getActiveStrategyLabel() {
+    const chosenStrategy =
+      manualStrategy ||
+      result?.selected_strategy ||
+      agentResult?.selected_strategy ||
+      autonomousStatus?.last_result?.selected_strategy ||
+      autonomousStatus?.active_config?.selected_strategy ||
+      autonomousStatus?.saved_agent_setup?.selected_strategy ||
+      null;
+
+    if (chosenStrategy) return chosenStrategy;
+    if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
+    if (loading && loadingMode === "agent") return "AGENT SELECTING BEST STRATEGY";
+    if (setupSource === "manual_selection" || setupSource === "manual_start" || setupSource === "generated_strategy") {
+      return "MANUAL SETUP ACTIVE — STRATEGY AUTO-SELECTS ON RUN";
+    }
+
+    return "NO STRATEGY SELECTED YET";
+  }
+
   function getSimpleSetupStatusLabel() {
     if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
     if (autoOptimized || result?.optimization || setupSource === "auto_optimization" || setupSource === "auto_optimized_start") {
@@ -1079,6 +1328,7 @@ useEffect(() => {
     }
 
     const chosenStrategy =
+      manualStrategy ||
       result?.selected_strategy ||
       agentResult?.selected_strategy ||
       autonomousStatus?.last_result?.selected_strategy ||
@@ -1565,7 +1815,7 @@ async function runAgentCycle() {
         trade_size: tradeSize,
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,
-        selected_strategy: result?.selected_strategy || null,
+        selected_strategy: manualStrategy || result?.selected_strategy || null,
       }),
     });
 
@@ -2240,6 +2490,7 @@ async function loadTradeHistory() {
               <summary><span className={autonomousMode ? "detailed-agent-text-glow" : ""}>AGENT STATUS</span></summary>
               <div className="metrics strategy-library-box">
                 <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
+                <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
                 <p>BROWSER WALLET...... {walletAddress ? `CONNECTED: ${walletAddress}` : "NOT CONNECTED"}</p>
                 <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
                 <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
@@ -2253,7 +2504,7 @@ async function loadTradeHistory() {
                 <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
                 <p>SELECTED TIMEFRAME.. {timeframe}</p>
                 <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-                <p>TRADE SIZE.......... {tradeSize} BNB TARGET</p>
+                <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
                 <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
                 <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
                 <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
@@ -2549,6 +2800,7 @@ async function loadTradeHistory() {
                   <div className="metrics strategy-library-box execution-status-panel">
                     <p><strong>EXECUTION STATUS</strong></p>
                     <p>MODE................ {getExecutionModeLabel()}</p>
+                    <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
                     <p>TRADE EXECUTED...... {executionStatus.executed}</p>
                     <p>STATUS.............. {executionStatus.status}</p>
                     <p>REASON.............. {executionStatus.reason}</p>
@@ -2590,18 +2842,8 @@ async function loadTradeHistory() {
                 {tradeHistory.length > 0 && tradeHistory
                     .filter((trade) => {
                       const status = String(trade.status || "").toLowerCase();
-                      const executionResult = trade.execution_result || trade.result || {};
-                      const tradePlan = trade.trade_plan || {};
-                      const isRealTrade =
-                        status === "success" ||
-                        status === "failed" ||
-                        status === "blocked" ||
-                        executionResult.success === true ||
-                        executionResult.executed === true ||
-                        tradePlan.from_token ||
-                        tradePlan.to_token ||
-                        trade.from_token ||
-                        trade.to_token;
+                      const tradeTypeLabel = getTradeLogTypeLabel(trade);
+                      const isRealTrade = tradeTypeLabel === "REAL TRADE / EXECUTION";
 
                       if (status === "portfolio_check") return false;
                       if (showOnlyRealTrades && !isRealTrade) return false;
@@ -2612,16 +2854,8 @@ async function loadTradeHistory() {
                     .map((trade, index) => {
                       const executionResult = trade.execution_result || trade.result || {};
                       const tradePlan = trade.trade_plan || {};
-                      const isRealTrade =
-                        trade.status === "success" ||
-                        trade.status === "failed" ||
-                        trade.status === "blocked" ||
-                        executionResult.success === true ||
-                        executionResult.executed === true ||
-                        tradePlan.from_token ||
-                        tradePlan.to_token ||
-                        trade.from_token ||
-                        trade.to_token;
+                      const tradeTypeLabel = getTradeLogTypeLabel(trade);
+                      const isRealTrade = tradeTypeLabel === "REAL TRADE / EXECUTION";
                       const timestamp = formatDateTime(trade.timestamp);
                       const txText = [
                         executionResult.tx_hash,
@@ -2642,7 +2876,7 @@ async function loadTradeHistory() {
 
                       return (
                         <div key={index} className="retro-log-entry">
-                          <p style={{ color: "#9cff8f" }}>TYPE: {isRealTrade ? "REAL TRADE / EXECUTION" : "DECISION ONLY"}</p>
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TYPE: {tradeTypeLabel}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>{timestamp}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>EVENT: {(trade.status || "UNKNOWN").replaceAll("_", " ").toUpperCase()}</p>
                           {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
@@ -2669,6 +2903,7 @@ async function loadTradeHistory() {
                             </>
                           )}
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE SIZE: {tradeSizeValue}</p>
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>PNL: {getTradeLogPnlLabel(trade)}</p>
                         </div>
                       );
                     })}
@@ -3301,7 +3536,7 @@ async function loadTradeHistory() {
 
         <h2 className="strategy-library-title">CUSTOM SETUP</h2>
 
-        <div className="agent-control-panel">
+        <div className="full-custom-strategy-row">
           <button
             onClick={generateStrategy}
             disabled={loading}
@@ -3311,12 +3546,35 @@ async function loadTradeHistory() {
             {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
           </button>
 
-        <div>
+          <span className="full-custom-or">OR</span>
+
           <select
-  value={executionMode || ""}
-  disabled={autonomousMode || loading}
-  onWheel={(e) => e.currentTarget.blur()}
-  onChange={(e) => {
+            value={manualStrategy || result?.selected_strategy || ""}
+            disabled={loading}
+            onWheel={(e) => e.currentTarget.blur()}
+            onChange={(e) => {
+              const selectedStrategy = e.target.value;
+              handleManualSetupChange({
+                selected_strategy: selectedStrategy,
+                source: "manual_strategy_selection",
+              }, false);
+            }}
+          >
+            <option value="" disabled>Choose Strategy</option>
+            {MANUAL_STRATEGY_OPTIONS.map((strategyName) => (
+              <option key={strategyName} value={strategyName}>
+                {strategyName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="full-execution-mode-row">
+          <select
+            value={executionMode || ""}
+            disabled={autonomousMode || loading}
+            onWheel={(e) => e.currentTarget.blur()}
+            onChange={(e) => {
               const mode = e.target.value;
               handleManualSetupChange({
                 execution_mode: mode,
@@ -3331,6 +3589,7 @@ async function loadTradeHistory() {
           </select>
         </div>
 
+        <div className="agent-control-panel full-interval-panel">
           <label style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: "10px" }}>
             AUTO CHECK FOR NEW TRADE OPPORTUNITY EVERY
           </label>
@@ -3339,15 +3598,13 @@ async function loadTradeHistory() {
             value={autonomousInterval}
             disabled={autonomousMode}
             onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
-          onWheel={(e) => e.currentTarget.blur()}
+            onWheel={(e) => e.currentTarget.blur()}
           >
             <option value={1}>1 MINUTE</option>
             <option value={5}>5 MINUTES</option>
             <option value={15}>15 MINUTES</option>
             <option value={30}>30 MINUTES</option>
           </select>
-
-         
         </div>
 </div>
 
@@ -3359,6 +3616,7 @@ async function loadTradeHistory() {
     <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
       <p><strong>EXECUTION STATUS</strong></p>
       <p>MODE................ {getExecutionModeLabel()}</p>
+      <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
       <p>TRADE EXECUTED...... {executionStatus.executed}</p>
       <p>STATUS.............. {executionStatus.status}</p>
       <p>REASON.............. {executionStatus.reason}</p>
@@ -3398,6 +3656,7 @@ async function loadTradeHistory() {
 
 <div className="metrics strategy-library-box">
   <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
+  <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
   <p>BROWSER WALLET...... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
   <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
   <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
@@ -3418,7 +3677,7 @@ async function loadTradeHistory() {
   <p>AGENT ADDRESS...... {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
   <p>SELECTED TIMEFRAME.. {timeframe}</p>
   <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
-  <p>TRADE SIZE.......... {tradeSize} BNB TARGET</p>
+  <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
   <p>TRADE CONFIDENCE.... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "N/A"}</p>
   <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "N/A"}</p>
   <p>RISK STATUS......... {agentResult?.risk_control?.status || "N/A"}</p>
@@ -3433,26 +3692,6 @@ async function loadTradeHistory() {
     <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
     <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
     <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
-  </div>
-</div>
-<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
-  <p><strong>AGENT ARCHITECTURE</strong></p>
-  <div className="agent-flow-visual">
-    <div>COINMARKETCAP</div>
-    <span>↓</span>
-    <div>MARKET ANALYSIS</div>
-    <span>↓</span>
-    <div>STRATEGY ENGINE</div>
-    <span>↓</span>
-    <div>CONFIDENCE MODEL</div>
-    <span>↓</span>
-    <div>RISK GOVERNOR</div>
-    <span>↓</span>
-    <div>TWAK</div>
-    <span>↓</span>
-    <div>PANCAKESWAP</div>
-    <span>↓</span>
-    <div>BNB SMART CHAIN</div>
   </div>
 </div>
 </div>
@@ -3502,6 +3741,28 @@ async function loadTradeHistory() {
     <p>STATUS.............. {agentResult.risk_control.status || "N/A"}</p>
   </div>
 )}
+
+<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+  <p><strong>AGENT ARCHITECTURE</strong></p>
+  <div className="agent-flow-visual">
+    <div>COINMARKETCAP</div>
+    <span>↓</span>
+    <div>MARKET ANALYSIS</div>
+    <span>↓</span>
+    <div>STRATEGY ENGINE</div>
+    <span>↓</span>
+    <div>CONFIDENCE MODEL</div>
+    <span>↓</span>
+    <div>RISK GOVERNOR</div>
+    <span>↓</span>
+    <div>TWAK</div>
+    <span>↓</span>
+    <div>PANCAKESWAP</div>
+    <span>↓</span>
+    <div>BNB SMART CHAIN</div>
+  </div>
+</div>
+
 {tradeHistory.length > 0 && (
   <div className="panel">
     <div className="panel-title">LIVE AGENT ACTIVITY</div>
@@ -3520,18 +3781,8 @@ async function loadTradeHistory() {
     const status = String(trade.status || "").toLowerCase();
     const decision = String(trade.decision || "").toUpperCase();
 
-const executionResult = trade.execution_result || trade.result || {};
-const tradePlan = trade.trade_plan || {};
-const isRealTrade =
-  status === "success" ||
-  status === "failed" ||
-  status === "blocked" ||
-  executionResult.success === true ||
-  executionResult.executed === true ||
-  tradePlan.from_token ||
-  tradePlan.to_token ||
-  trade.from_token ||
-  trade.to_token;
+const tradeTypeLabel = getTradeLogTypeLabel(trade);
+const isRealTrade = tradeTypeLabel === "REAL TRADE / EXECUTION";
 
     if (status === "portfolio_check") return false;
     if (showOnlyRealTrades && !isRealTrade) return false;
@@ -3543,16 +3794,8 @@ const isRealTrade =
   .map((trade, index) => {
 const executionResult = trade.execution_result || trade.result || {};
 const tradePlan = trade.trade_plan || {};
-const isRealTrade =
-  trade.status === "success" ||
-  trade.status === "failed" ||
-  trade.status === "blocked" ||
-  executionResult.success === true ||
-  executionResult.executed === true ||
-  tradePlan.from_token ||
-  tradePlan.to_token ||
-  trade.from_token ||
-  trade.to_token;
+const tradeTypeLabel = getTradeLogTypeLabel(trade);
+const isRealTrade = tradeTypeLabel === "REAL TRADE / EXECUTION";
     const timestamp = formatDateTime(trade.timestamp);
     const txText = [
       executionResult.tx_hash,
@@ -3585,10 +3828,7 @@ const isRealTrade =
         }}
       >
         <p style={{ color: "#9cff8f" }}>
-  TYPE:{" "}
-  {isRealTrade
-    ? "REAL TRADE / EXECUTION"
-    : "DECISION ONLY"}
+  TYPE: {tradeTypeLabel}
 </p>
 
 <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
@@ -3655,6 +3895,10 @@ const isRealTrade =
 
 <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
   TRADE SIZE: {tradeSize}
+</p>
+
+<p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
+  PNL: {getTradeLogPnlLabel(trade)}
 </p>
       </div>
     );

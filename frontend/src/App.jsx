@@ -2371,17 +2371,22 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <p className="simple-speech-text">
-                This is where the operator starts the machine. Choose the asset, timeframe, risk profile, execution mode, and check interval — or let me auto-optimize first. I compare strategy candidates, backtest the signal history, rank the results, and pick the strongest setup for the chosen crypto.
+                You set the mission. I can auto-optimize the setup first, then I keep checking the chosen crypto on schedule. I only act when the strategy, market regime, and risk governor agree.
               </p>
 
-              <div className="simple-message-box">
-                <strong>CHECK SPEED VS TRADE SPEED</strong>
+              <div className="simple-message-box simple-operator-brief">
+                <strong>OPERATOR FLOW</strong>
                 <p>
-                  I may check every {autonomousInterval} minutes, but I only act when the strategy candle confirms. If the chosen setup needs a closed {timeframe} candle, I wait. Patience is also a strategy.
+                  Pick the asset, execution mode, interval, and trade size — or hit auto-optimize and let me rank the strategy candidates before the agent starts.
                 </p>
               </div>
 
-              <div className="simple-action-grid">
+              <div className="simple-metric-row"><span>OPTIMIZER</span><strong>{autoOptimized ? "SETUP AUTO-OPTIMIZED" : "READY TO RANK STRATEGIES"}</strong></div>
+              <div className="simple-metric-row"><span>CHECK INTERVAL</span><strong>EVERY {autonomousInterval} MINUTES</strong></div>
+              <div className="simple-metric-row"><span>TRADE TRIGGER</span><strong>CLOSED {timeframe} CANDLE + VALID STRATEGY SIGNAL</strong></div>
+              <div className="simple-metric-row"><span>RISK PROFILE</span><strong>{getRiskProfileLabel(risk)}</strong></div>
+
+              <div className="simple-action-grid simple-terminal-actions">
                 <button onClick={optimizeStrategy} disabled={loading} style={getButtonStyle("optimize")}>
                   {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
                 </button>
@@ -2404,7 +2409,7 @@ async function loadTradeHistory() {
                 </button>
               </div>
 
-              <div className="simple-control-grid">
+              <div className="simple-control-grid simple-terminal-controls">
                 <div>
                   <label>ASSET</label>
                   <select value={coin} disabled={loading} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
@@ -2442,7 +2447,7 @@ async function loadTradeHistory() {
                         live_execution: mode === "live_trading",
                       }, false);
                     }}
-                  onWheel={(e) => e.currentTarget.blur()}
+                    onWheel={(e) => e.currentTarget.blur()}
                   >
                     <option value="" disabled>Execution Mode</option>
                     <option value="decision_simulation">Simulation Mode</option>
@@ -2453,21 +2458,28 @@ async function loadTradeHistory() {
                 <div>
                   <label>INTERVAL</label>
                   <select
-  value={autonomousInterval}
-  disabled={autonomousMode}
-  onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
-  onWheel={(e) => e.currentTarget.blur()}
->
-  <option value={1}>1 MINUTE</option>
-  <option value={5}>5 MINUTES</option>
-  <option value={15}>15 MINUTES</option>
-  <option value={30}>30 MINUTES</option>
-</select>
+                    value={autonomousInterval}
+                    disabled={autonomousMode}
+                    onChange={(e) => handleManualSetupChange({ interval_minutes: Number(e.target.value) }, false)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                  >
+                    <option value={1}>1 MINUTE</option>
+                    <option value={5}>5 MINUTES</option>
+                    <option value={15}>15 MINUTES</option>
+                    <option value={30}>30 MINUTES</option>
+                  </select>
                 </div>
                 <div>
                   <label>TRADE SIZE ({coin})</label>
                   <input type="number" min="0" step="0.001" value={tradeSize} disabled={loading} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                 </div>
+              </div>
+
+              <div className="simple-message-box simple-rule-box">
+                <strong>TIMING RULE</strong>
+                <p>
+                  I can check frequently, but I do not force trades between confirmations. Signal tested. Ego rejected.
+                </p>
               </div>
 
               <div className="simple-metric-row"><span>RISK STATUS</span><strong>{riskStatus}</strong></div>
@@ -2487,11 +2499,11 @@ async function loadTradeHistory() {
             </div>
             <div className="simple-quadrant-body">
               <p className="simple-speech-text">
-                Every decision is logged. If I wait, I explain why. If I act, I show the route. If I trade live, the proof belongs on-chain.
+                I show the proof before the punchline. Strategy first, risk second, execution last. If I wait, I explain why. If I trade live, the proof belongs on-chain.
               </p>
 
-              <div className="simple-proof-snapshot">
-                <div className="simple-proof-title">STRATEGY PROOF FIRST</div>
+              <div className="simple-message-box simple-proof-snapshot">
+                <strong>STRATEGY PROOF</strong>
                 {result ? (
                   <div className="simple-proof-grid">
                     <div><span>STRATEGY</span><strong>{result.selected_strategy || selectedStrategy}</strong></div>
@@ -2512,7 +2524,7 @@ async function loadTradeHistory() {
 
               <div className="simple-metric-row simple-agent-current-state"><span>I AM</span><strong>{autonomousMode ? "CURRENTLY RUNNING" : "CURRENTLY STOPPED"}</strong></div>
               <div className="simple-metric-row"><span>DID I TRADE?</span><strong>{executionStatus.executed}</strong></div>
-              <div className="simple-metric-row"><span>STATUS</span><strong>{executionStatus.status}</strong></div>
+              <div className="simple-metric-row"><span>DECISION STATUS</span><strong>{executionStatus.status}</strong></div>
               <div className="simple-metric-row"><span>TX STATUS</span><strong>{simpleTxStatus}</strong></div>
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
               <div className="simple-metric-row"><span>EXECUTION ROUTE</span><strong>{simpleExecutionRoute}</strong></div>
@@ -2524,7 +2536,7 @@ async function loadTradeHistory() {
                 <div className="simple-metric-row"><span>REQUESTED SIZE</span><strong>{tradePlan.requested_trade_size ?? tradeSize} {tradePlan.requested_trade_size_token || coin}</strong></div>
               )}
 
-              <div className="simple-message-box">
+              <div className="simple-message-box simple-rule-box">
                 <strong>LAST EXPLANATION</strong>
                 <p>{agentResult?.reason || autonomousStatus?.last_reason || executionStatus.reason}</p>
               </div>
@@ -2541,6 +2553,7 @@ async function loadTradeHistory() {
               )}
             </div>
           </section>
+
         </div>
       </div>
     );

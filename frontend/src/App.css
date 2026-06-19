@@ -3104,3 +3104,9 @@ select option:checked {
   color: #ffffff !important;
   text-shadow: none !important;
 }
+
+/* Detailed Version: match ROUNDHOUSE KICK DUMB TRADES color to Simple Version.
+   Colour only — size, spacing, and layout untouched. */
+.retro-square .retro-subtitle {
+  color: #fff2bf !important;
+}

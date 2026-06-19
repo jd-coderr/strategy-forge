@@ -2573,7 +2573,7 @@ async function loadTradeHistory() {
                 <span>IKQF v0.1.0 — AI ONLINE</span>
               </div>
 
-              <h1 className="title retro-title">
+              <h1 className="title retro-title ikqf-terminal-title">
                 I KNOW QUANT FU<span className="blink">_</span>
               </h1>
 
@@ -3554,13 +3554,13 @@ async function loadTradeHistory() {
 
   const renderFullSizeVersion = () => (
     <div className="full-size-page">
-      <main className="full-terminal">
+      <main className="full-terminal ikqf-command-terminal">
       <div className="topbar">
         <span>IKQF v0.1.0</span>
         <span>AI ONLINE</span>
       </div>
 
-      <h1 className="title">
+      <h1 className="title full-terminal-title ikqf-terminal-title">
         I KNOW QUANT FU<span className="blink">_</span>
       </h1>
 

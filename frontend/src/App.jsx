@@ -2162,7 +2162,8 @@ async function loadTradeHistory() {
               <div className="simple-brand-block">
                 <p className="simple-kicker">AI TRADING AGENT</p>
                 <h1 className="simple-square-title">
-                  I KNOW QUANT FU<span className="blink">_</span>
+                  <span>I KNOW</span>
+                  <span>QUANT FU<span className="blink">_</span></span>
                 </h1>
                 <p className="simple-brand-slogan">Roundhouse kick dumb trades.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>

@@ -3253,3 +3253,12 @@ select option:checked {
   font-weight: bold !important;
   text-shadow: none !important;
 }
+
+/* Simple Version: force title to match the intended two-line brand split */
+.simple-brand-block .simple-square-title > span {
+  display: block;
+}
+
+.simple-brand-block .simple-square-title .blink {
+  display: inline;
+}

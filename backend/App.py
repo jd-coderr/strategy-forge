@@ -79,6 +79,9 @@ def operator_status():
         "operator_key_configured": bool(get_admin_key()),
         "public_mode": "read_only",
         "protected_actions": [
+            "generate-strategy",
+            "optimize-strategy",
+            "agent-config-save",
             "agent-cycle",
             "autonomous-start",
             "autonomous-stop",
@@ -548,7 +551,11 @@ def get_token_price_usd(portfolio_items, symbol):
     return 0.0
 
 
-def update_risk_state(portfolio_items):
+def update_risk_state(portfolio_items, portfolio_available=True):
+    if not portfolio_available or not portfolio_items:
+        RISK_STATE["status"] = "PORTFOLIO UNAVAILABLE"
+        return dict(RISK_STATE)
+
     portfolio_value = get_portfolio_value_usd_from_items(portfolio_items)
 
     if portfolio_value > 0:
@@ -582,7 +589,7 @@ def update_risk_state(portfolio_items):
     return dict(RISK_STATE)
 
 
-def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
+def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision, risk_control=None):
     market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
     fear_greed = cmc_signal.get("fear_greed") or {}
     altcoin_season = cmc_signal.get("altcoin_season") or {}
@@ -652,7 +659,8 @@ def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
         signal_breakdown["backtest_score"] = 0
         why.append("Backtest risk-adjusted score is poor.")
 
-    risk_control = update_risk_state(portfolio_items)
+    if risk_control is None:
+        risk_control = update_risk_state(portfolio_items)
 
     if risk_control["status"] == "SAFE":
         signal_breakdown["drawdown_safety"] = 15
@@ -660,6 +668,9 @@ def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
     elif risk_control["status"] == "WARNING":
         signal_breakdown["drawdown_safety"] = 5
         why.append("Drawdown monitor is warning; agent should reduce risk.")
+    elif risk_control["status"] == "PORTFOLIO UNAVAILABLE":
+        signal_breakdown["drawdown_safety"] = 0
+        why.append("Portfolio risk could not be verified because the portfolio lookup was unavailable.")
     else:
         signal_breakdown["drawdown_safety"] = 0
         why.append("Drawdown limit breached; live trading should be blocked.")
@@ -684,27 +695,68 @@ def build_agent_analysis(cmc_signal, backtest, portfolio_items, decision):
     }
 
 
-def get_user_trade_amount(requested_trade_size, from_token, to_token, portfolio_items):
+def normalize_trade_token(value):
+    token = str(value or "").upper().replace("/", "").replace("-", "").strip()
+
+    if token == "USDT":
+        return "USDT"
+
+    if token.endswith("USDT"):
+        token = token[:-4]
+
+    return token or "ETH"
+
+
+def get_trade_price_usd(portfolio_items, symbol, fallback_price_usd=0.0):
+    symbol = normalize_trade_token(symbol)
+    fallback_price_usd = safe_float(fallback_price_usd, 0.0)
+
+    if symbol == "USDT":
+        return 1.0
+
+    portfolio_price = get_token_price_usd(portfolio_items, symbol)
+    if portfolio_price > 0:
+        return portfolio_price
+
+    return fallback_price_usd
+
+
+def get_user_trade_amount(requested_trade_size, from_token, to_token, portfolio_items, fallback_price_usd=0.0):
+    """Return the amount value TWAK expects for the from_token.
+
+    The UI trade size is treated as the selected asset amount.
+    - USDT -> selected token needs a USDT amount, so size * token price.
+    - selected token -> USDT uses the selected token amount directly.
+    """
     requested_trade_size = max(0.0, safe_float(requested_trade_size, 0.0))
-    from_token = from_token.upper()
-    to_token = to_token.upper()
+    from_token = normalize_trade_token(from_token)
+    to_token = normalize_trade_token(to_token)
 
     if requested_trade_size <= 0:
         return "0"
 
-    if from_token == "USDT" and to_token == "BNB":
-        bnb_price = get_token_price_usd(portfolio_items, "BNB")
+    if from_token == "USDT":
+        token_price = get_trade_price_usd(portfolio_items, to_token, fallback_price_usd)
 
-        if bnb_price <= 0:
+        if token_price <= 0:
             return "0"
 
-        usdt_amount = requested_trade_size * bnb_price
+        usdt_amount = requested_trade_size * token_price
         return str(round(usdt_amount, 6))
 
-    if from_token == "BNB" and to_token == "USDT":
-        return str(round(requested_trade_size, 6))
+    return str(round(requested_trade_size, 8))
 
-    return str(round(requested_trade_size, 6))
+
+def get_strategy_signal_direction(backtest):
+    status = str((backtest or {}).get("current_signal", {}).get("status", "HOLD")).lower()
+
+    if status == "long":
+        return "long"
+
+    if status == "short":
+        return "short"
+
+    return None
 
 
 def utc_day_bounds(now=None):
@@ -833,39 +885,44 @@ def should_force_daily_qualification_trade(live_execution_enabled=False):
 
 def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_execution_enabled=False):
     requested_trade_size = max(0.0, safe_float(request.trade_size, 0.0))
-    market_bias = str(cmc_signal.get("market_bias", "unknown")).lower()
+    target_token = normalize_trade_token(request.coin)
+    target_price_usd = safe_float(cmc_signal.get("price_usd"), 0.0)
 
-    # Prefer the lowest-risk direction based on available assets.
+    # Spot-wallet rule: this agent cannot open synthetic shorts.
+    # The daily UTC guard should normally make a tiny USDT -> selected asset buy.
+    # It may only sell/reduce the selected asset if that asset is already in the wallet.
+    # It must not spend BNB that is being kept for gas.
     balances = {
         str(item.get("symbol", "")).upper(): safe_float(item.get("balance", 0))
         for item in portfolio_items
     }
 
-    bnb_balance = balances.get("BNB", 0.0)
+    target_balance = balances.get(target_token, 0.0)
     usdt_balance = balances.get("USDT", 0.0)
 
-    if "bear" in market_bias and bnb_balance > 0:
-        from_token = "BNB"
-        to_token = "USDT"
-        amount = str(round(min(requested_trade_size, bnb_balance), 6))
-    else:
+    if usdt_balance > 0 and target_token != "USDT":
         from_token = "USDT"
-        to_token = "BNB"
+        to_token = target_token
         amount = get_user_trade_amount(
             requested_trade_size=requested_trade_size,
             from_token="USDT",
-            to_token="BNB",
+            to_token=target_token,
             portfolio_items=portfolio_items,
+            fallback_price_usd=target_price_usd,
         )
-
-        if safe_float(amount) <= 0 and bnb_balance > 0:
-            from_token = "BNB"
-            to_token = "USDT"
-            amount = str(round(min(requested_trade_size, bnb_balance), 6))
+    elif target_balance > 0:
+        from_token = target_token
+        to_token = "USDT"
+        amount = str(round(min(requested_trade_size, target_balance), 8))
+    else:
+        from_token = "USDT"
+        to_token = target_token
+        amount = "0"
 
     if safe_float(amount) <= 0:
         DAILY_QUALIFICATION_STATE["last_block_reason"] = (
-            "DAILY GUARD BLOCKED: no usable BNB or USDT balance was available for the forced trade."
+            f"DAILY GUARD BLOCKED: no usable USDT or {target_token} balance was available. "
+            "BNB is preserved for gas and is not used as a fallback trading asset."
         )
 
     now = datetime.now(timezone.utc)
@@ -875,7 +932,7 @@ def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_exe
     return {
         "amount": amount,
         "requested_trade_size": requested_trade_size,
-        "requested_trade_size_token": "BNB",
+        "requested_trade_size_token": target_token,
         "from_token": from_token,
         "to_token": to_token,
         "quote_only": not live_execution_enabled,
@@ -885,7 +942,7 @@ def build_forced_daily_trade_plan(request, portfolio_items, cmc_signal, live_exe
         "time_exit_at": time_exit_at.isoformat(),
         "reason": (
             "Daily qualification guard activated. No live trade has been recorded today. "
-            "The agent is attempting the smallest safe qualifying trade during the final UTC hour. "
+            f"The agent is attempting a qualifying UTC-day trade using {from_token} → {to_token}. "
             f"Target: +{DAILY_QUALIFICATION_STATE['take_profit_pct']}%. "
             f"Max downside guard: -{DAILY_QUALIFICATION_STATE['stop_loss_pct']}%. "
             "Time exit before UTC day end."
@@ -908,13 +965,13 @@ def maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enab
     opened_direction = open_trade.get("direction")
     pnl_pct = 0.0
 
-    if opened_direction == "long_bnb":
+    if opened_direction == "long_asset":
         pnl_pct = ((current_price - entry_price) / entry_price) * 100
-        from_token = "BNB"
+        from_token = normalize_trade_token(open_trade.get("to_token") or request.coin)
         to_token = "USDT"
-        amount = str(open_trade.get("bnb_amount", request.trade_size))
+        amount = str(open_trade.get("asset_amount", open_trade.get("amount", request.trade_size)))
     else:
-        # Defensive reduce-risk trade was already BNB -> USDT. No reverse close needed for qualification.
+        # Defensive reduce-risk trade was already token -> USDT. No reverse close needed for qualification.
         return None
 
     now = datetime.now(timezone.utc)
@@ -938,30 +995,14 @@ def maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enab
 
     return {
         "amount": amount,
+        "requested_trade_size": request.trade_size,
+        "requested_trade_size_token": from_token,
         "from_token": from_token,
         "to_token": to_token,
         "quote_only": not live_execution_enabled,
         "type": "daily_qualification_close",
-        "pnl_pct": round(pnl_pct, 4),
-        "reason": exit_reason,
+        "reason": f"Daily qualification close triggered. {exit_reason} Current forced-trade PnL: {pnl_pct:.2f}%.",
     }
-
-
-
-
-def reset_paper_portfolio(starting_balance_usdt=1000.0):
-    starting_balance_usdt = max(0.0, safe_float(starting_balance_usdt, 1000.0))
-
-    PAPER_PORTFOLIO["starting_balance_usdt"] = starting_balance_usdt
-    PAPER_PORTFOLIO["cash_usdt"] = starting_balance_usdt
-    PAPER_PORTFOLIO["bnb_balance"] = 0.0
-    PAPER_PORTFOLIO["realized_pnl_usdt"] = 0.0
-    PAPER_PORTFOLIO["unrealized_pnl_usdt"] = 0.0
-    PAPER_PORTFOLIO["peak_value_usdt"] = starting_balance_usdt
-    PAPER_PORTFOLIO["open_positions"] = []
-    PAPER_PORTFOLIO["closed_trades"] = []
-
-    return get_paper_portfolio_status()
 
 
 def get_paper_portfolio_status(price_usd=None):
@@ -1162,7 +1203,7 @@ def execute_paper_trade(trade_plan, price_usd):
 
 
 @app.post("/generate-strategy")
-def generate_strategy(request: StrategyRequest):
+def generate_strategy(request: StrategyRequest, _operator_ok: bool = Depends(require_operator_key)):
     cmc_signal = get_cmc_signal(request.coin)
 
     strategy, backtest, compared_results = pick_best_strategy(
@@ -1204,7 +1245,7 @@ def generate_strategy(request: StrategyRequest):
 
 
 @app.post("/optimize-strategy")
-def optimize_strategy(request: OptimizeRequest):
+def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(require_operator_key)):
     timeframes = ["5M", "15M", "1H", "4H", "1D"]
     risk_levels = ["low", "medium", "high"]
     strategies = load_available_strategies()
@@ -1439,16 +1480,23 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
     position_size = None
 
     balances = {
-        item.get("symbol"): float(item.get("balance", 0) or 0)
+        str(item.get("symbol", "")).upper(): safe_float(item.get("balance", 0), 0.0)
         for item in portfolio_items
-}
+    }
 
-    bnb_balance = balances.get("BNB", 0)
-    usdt_balance = balances.get("USDT", 0)
+    target_token = normalize_trade_token(request.coin)
+    target_balance = balances.get(target_token, 0.0)
+    bnb_balance = balances.get("BNB", 0.0)
+    usdt_balance = balances.get("USDT", 0.0)
+    selected_token_price_usd = safe_float(cmc_signal.get("price_usd"), 0.0)
     requested_trade_size = max(0.0, safe_float(request.trade_size, 0.0))
-    risk_control = update_risk_state(portfolio_items)
+    risk_control = update_risk_state(
+        portfolio_items,
+        portfolio_available=bool(portfolio_result.get("success") and portfolio_items),
+    )
 
     decision = "HOLD"
+    hold_reason = None
     trade_plan = None
     execution_result = None
     daily_qualification = get_daily_qualification_status()
@@ -1473,65 +1521,84 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             live_execution_enabled=live_execution_enabled,
         )
 
-    elif "bull" in market_bias and risk_score > 0:
-        decision = "BUY_BNB"
-        trade_amount = get_user_trade_amount(
-            requested_trade_size=requested_trade_size,
-            from_token="USDT",
-            to_token="BNB",
-            portfolio_items=portfolio_items,
-        )
-
-        trade_plan = {
-            "amount": trade_amount,
-            "requested_trade_size": requested_trade_size,
-            "requested_trade_size_token": "BNB",
-            "from_token": "USDT",
-            "to_token": "BNB",
-            "quote_only": not live_execution_enabled,
-            "reason": (
-                "Bullish CMC bias and positive strategy score. "
-                f"User trade size target: {requested_trade_size} BNB. "
-                f"USDT → BNB live execution allowed: {live_execution_enabled}."
-            ),
-        }
-
-    elif "bear" in market_bias or "risk-off" in market_bias:
-        decision = "REDUCE_RISK"
-
-        allow_live_reduce_risk = (
-            live_execution_enabled
-            and risk_score > -5
-        )
-
-        calculated_position_size = calculate_trade_size(portfolio_items, "BNB", request.risk)
-        user_amount = get_user_trade_amount(
-            requested_trade_size=requested_trade_size,
-            from_token="BNB",
-            to_token="USDT",
-            portfolio_items=portfolio_items,
-        )
-
-        trade_plan = {
-            "amount": user_amount if safe_float(user_amount) > 0 else calculated_position_size["amount"],
-            "requested_trade_size": requested_trade_size,
-            "requested_trade_size_token": "BNB",
-            "position_size": calculated_position_size,
-            "from_token": "BNB",
-            "to_token": "USDT",
-            "quote_only": not allow_live_reduce_risk,
-            "reason": (
-                "Bearish/risk-off CMC bias. Convert selected BNB amount to USDT. "
-                f"User trade size target: {requested_trade_size} BNB. "
-                f"Live execution allowed: {allow_live_reduce_risk}."
-            ),
-        }
-
     else:
-        decision = "HOLD"
+        strategy_signal = get_strategy_signal_direction(backtest)
+
+        if strategy_signal == "long":
+            decision = f"BUY_{target_token}"
+            trade_amount = get_user_trade_amount(
+                requested_trade_size=requested_trade_size,
+                from_token="USDT",
+                to_token=target_token,
+                portfolio_items=portfolio_items,
+                fallback_price_usd=selected_token_price_usd,
+            )
+
+            trade_plan = {
+                "amount": trade_amount,
+                "requested_trade_size": requested_trade_size,
+                "requested_trade_size_token": target_token,
+                "from_token": "USDT",
+                "to_token": target_token,
+                "quote_only": not live_execution_enabled,
+                "reason": (
+                    f"{strategy['name']} produced a LONG signal on {request.coin} / {request.timeframe}. "
+                    "CMC market bias is used as confidence context, not as a hard blocker. "
+                    f"Strategy risk-adjusted score: {risk_score}. "
+                    f"USDT → {target_token} live execution allowed: {live_execution_enabled}."
+                ),
+            }
+
+        elif strategy_signal == "short":
+            if target_balance > 0:
+                decision = f"REDUCE_{target_token}_RISK"
+                trade_amount = str(round(min(requested_trade_size, target_balance), 8))
+
+                trade_plan = {
+                    "amount": trade_amount,
+                    "requested_trade_size": requested_trade_size,
+                    "requested_trade_size_token": target_token,
+                    "from_token": target_token,
+                    "to_token": "USDT",
+                    "quote_only": not live_execution_enabled,
+                    "reason": (
+                        f"{strategy['name']} produced a SELL / reduce-risk signal on {request.coin} / {request.timeframe}. "
+                        "This is spot-wallet logic, not a synthetic short. "
+                        f"The agent already holds {target_token}, so it can reduce exposure via {target_token} → USDT. "
+                        f"Live execution allowed: {live_execution_enabled}."
+                    ),
+                }
+            else:
+                decision = "HOLD"
+                hold_reason = (
+                    f"{strategy['name']} produced a SELL / reduce-risk signal, but this spot wallet does not hold {target_token}. "
+                    "The agent cannot profit from a short without margin/perpetuals or an existing asset position, so it holds instead."
+                )
+
+        elif ("bear" in market_bias or "risk-off" in market_bias) and target_balance > 0:
+            decision = f"REDUCE_{target_token}_RISK"
+            trade_amount = str(round(min(requested_trade_size, target_balance), 8))
+
+            trade_plan = {
+                "amount": trade_amount,
+                "requested_trade_size": requested_trade_size,
+                "requested_trade_size_token": target_token,
+                "from_token": target_token,
+                "to_token": "USDT",
+                "quote_only": not live_execution_enabled,
+                "reason": (
+                    f"CMC market bias is bearish/risk-off and the agent already holds {target_token}. "
+                    f"Reducing selected asset risk via {target_token} → USDT. "
+                    f"Live execution allowed: {live_execution_enabled}."
+                ),
+            }
+
+        else:
+            decision = "HOLD"
+            hold_reason = hold_reason or get_hold_reason(cmc_signal)
 
     if trade_plan is not None:
-        if request.live_execution and risk_control["status"] == "DRAWDOWN LIMIT BREACHED":
+        if live_execution_enabled and risk_control["status"] == "DRAWDOWN LIMIT BREACHED":
             execution_result = {
                 "success": False,
                 "blocked": True,
@@ -1540,21 +1607,15 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             }
             DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
 
-        elif execution_mode != "decision_simulation" and trade_plan["from_token"] == "BNB" and bnb_balance < float(trade_plan["amount"]):
+        elif execution_mode != "decision_simulation" and balances.get(str(trade_plan["from_token"]).upper(), 0.0) < float(trade_plan["amount"]):
+            from_token = str(trade_plan["from_token"]).upper()
             execution_result = {
                 "success": False,
                 "blocked": True,
-                "safety_message": "Blocked: not enough BNB balance for planned trade.",
-                "bnb_balance": bnb_balance,
-            }
-            DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
-
-        elif execution_mode != "decision_simulation" and trade_plan["from_token"] == "USDT" and usdt_balance < float(trade_plan["amount"]):
-            execution_result = {
-                "success": False,
-                "blocked": True,
-                "safety_message": "Blocked: not enough USDT balance for planned trade.",
-                "usdt_balance": usdt_balance,
+                "safety_message": f"Blocked: not enough {from_token} balance for planned trade.",
+                "available_balance": balances.get(from_token, 0.0),
+                "required_amount": float(trade_plan["amount"]),
+                "from_token": from_token,
             }
             DAILY_QUALIFICATION_STATE["last_block_reason"] = execution_result["safety_message"]
 
@@ -1571,8 +1632,8 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                         DAILY_QUALIFICATION_STATE["open_forced_trade"] = {
                             "opened_at": datetime.now(timezone.utc).isoformat(),
                             "entry_price_usd": current_price,
-                            "direction": "long_bnb" if trade_plan["to_token"] == "BNB" else "reduce_risk",
-                            "bnb_amount": request.trade_size,
+                            "direction": "long_asset" if trade_plan["to_token"] != "USDT" else "reduce_risk",
+                            "asset_amount": (safe_float(trade_plan.get("amount"), 0.0) / current_price if str(trade_plan.get("from_token", "")).upper() == "USDT" and current_price > 0 else safe_float(trade_plan.get("amount"), request.trade_size)),
                             "from_token": trade_plan["from_token"],
                             "to_token": trade_plan["to_token"],
                             "amount": trade_plan["amount"],
@@ -1610,6 +1671,8 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                         quote_only=trade_plan["quote_only"],
                     )
                     execution_result = attach_tx_hash(execution_result)
+                    execution_result["mode"] = "quote_only" if trade_plan["quote_only"] else "live_execution"
+                    execution_result["executed"] = bool(execution_result.get("success") and not trade_plan["quote_only"])
 
                     if execution_result["success"] and not trade_plan["quote_only"]:
                         mark_live_trade_executed()
@@ -1620,8 +1683,8 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                             DAILY_QUALIFICATION_STATE["open_forced_trade"] = {
                                 "opened_at": datetime.now(timezone.utc).isoformat(),
                                 "entry_price_usd": current_price,
-                                "direction": "long_bnb" if trade_plan["to_token"] == "BNB" else "reduce_risk",
-                                "bnb_amount": request.trade_size,
+                                "direction": "long_asset" if trade_plan["to_token"] != "USDT" else "reduce_risk",
+                                "asset_amount": (safe_float(trade_plan.get("amount"), 0.0) / current_price if str(trade_plan.get("from_token", "")).upper() == "USDT" and current_price > 0 else safe_float(trade_plan.get("amount"), request.trade_size)),
                                 "from_token": trade_plan["from_token"],
                                 "to_token": trade_plan["to_token"],
                                 "amount": trade_plan["amount"],
@@ -1644,6 +1707,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         backtest=backtest,
         portfolio_items=portfolio_items,
         decision=decision,
+        risk_control=risk_control,
     )
 
     event = log_trade(
@@ -1664,6 +1728,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             "signal_breakdown": agent_analysis["signal_breakdown"],
             "why": agent_analysis["why"],
             "risk_control": agent_analysis["risk_control"],
+            "reason": hold_reason or (trade_plan or {}).get("reason") or get_hold_reason(cmc_signal),
             "daily_qualification": get_daily_qualification_status(),
             "daily_guard_reason": daily_guard_reason,
             "trade_size": request.trade_size,
@@ -1691,6 +1756,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         "signal_breakdown": agent_analysis["signal_breakdown"],
         "why": agent_analysis["why"],
         "risk_control": agent_analysis["risk_control"],
+        "reason": hold_reason or (trade_plan or {}).get("reason") or get_hold_reason(cmc_signal),
         "daily_qualification": get_daily_qualification_status(),
         "trade_size": request.trade_size,
         "trade_plan": trade_plan,
@@ -1736,6 +1802,9 @@ def execute_trade(request: ExecuteTradeRequest, _operator_ok: bool = Depends(req
         slippage=request.slippage,
         quote_only=request.quote_only,
     )
+    result = attach_tx_hash(result)
+    result["mode"] = "quote_only" if request.quote_only else "live_execution"
+    result["executed"] = bool(result.get("success") and not request.quote_only)
 
     if result["success"] and not request.quote_only:
         mark_live_trade_executed()
@@ -1751,6 +1820,7 @@ def execute_trade(request: ExecuteTradeRequest, _operator_ok: bool = Depends(req
             "chain": request.chain,
             "quote_only": request.quote_only,
             "result": result,
+            "execution_result": result,
         }
     )
 
@@ -1796,6 +1866,10 @@ def autonomous_loop():
             update_autonomous_state_from_result(result)
         except Exception as error:
             AUTONOMOUS_STATE["last_reason"] = f"Autonomous cycle error: {str(error)}"
+            log_trade({
+                "status": "autonomous_error",
+                "error": str(error),
+            })
 
         time.sleep(AUTONOMOUS_STATE["interval_minutes"] * 60)
 

@@ -3815,7 +3815,15 @@ select option:checked {
 }
 
 
-
+/* ========================================================================== */
+/* IKQF DESIGNER SYSTEM PASS — DETAILED + FULL SIZE
+   Goal: make Detailed Version and Full Size Version obey the same visual
+   language as the Simple WHO?/WHAT? cards.
+   - one terminal system across all modes
+   - fewer random greens
+   - consistent panels, summaries, metrics, controls
+   - no raw backend feeling
+   - full-size version becomes a readable command center, not a separate skin
 /* ========================================================================== */
 
 :root {
@@ -4135,394 +4143,253 @@ select option:checked {
   color: var(--ikqf-green) !important;
 }
 
+/* -------------------------------------------------------------------------- */
+/* FULL SIZE VERSION: same design system, but allowed to scroll naturally */
+/* -------------------------------------------------------------------------- */
 
-/* ========================================================================== */
-/* IKQF DETAIL MODE WHO-FIX
-   The Detailed WHO AM I? quadrant should match the Simple WHO? treatment:
-   no extra big inner frame directly under the quadrant header.
-/* ========================================================================== */
-
-.retro-square .retro-who .retro-brand-card {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: clamp(7px, 1vmin, 11px) !important;
-  margin: 0 0 clamp(7px, 0.95vmin, 10px) !important;
-}
-
-.retro-square .retro-who .retro-topbar {
-  justify-content: center !important;
-  border-bottom: none !important;
-  padding-bottom: 0 !important;
-  margin-bottom: clamp(5px, 0.75vmin, 8px) !important;
-  color: #9cff8f !important;
-  text-shadow: 0 0 3px rgba(102, 255, 102, 0.65) !important;
-}
-
-.retro-square .retro-who .retro-title {
-  margin-top: clamp(6px, 0.8vmin, 10px) !important;
-  margin-bottom: clamp(6px, 0.8vmin, 10px) !important;
-}
-
-.retro-square .retro-who .retro-subtitle,
-.retro-square .retro-who .retro-brand-subline {
-  text-align: center !important;
-}
-
-.retro-square .retro-who .retro-hero-description {
-  margin-top: clamp(8px, 1vmin, 12px) !important;
-}
-
-.retro-square .retro-who .panel,
-.retro-square .retro-who .metrics,
-.retro-square .retro-who .reason,
-.retro-square .retro-who .box,
-.retro-square .retro-who .loading-box {
-  border-color: rgba(156, 255, 143, 0.55) !important;
-}
-
-
-/* ========================================================================== */
-/* IKQF VERIFIED FULL SIZE SYSTEM — SINGLE ACTIVE BLOCK
-   This is now the ONLY .full-size-page.ikqf-full-system block in App.css.
-
-   Correct direction:
-   - I KNOW QUANT FU_ remains a large hero title.
-   - Everything else is readable and consistent, not tiny.
-   - Headings/buttons/readouts/labels use one controlled terminal scale.
-/* ========================================================================== */
-
-.full-size-page.ikqf-full-system {
-  --fs-green: #9cff8f;
-  --fs-green-dim: rgba(156, 255, 143, 0.42);
-  --fs-panel: rgba(0, 0, 0, 0.36);
-  --fs-panel-head: rgba(156, 255, 143, 0.1);
-  --fs-white: #ffffff;
-  --fs-warm: #fff2bf;
-
-  --fs-body: clamp(11px, 0.82vw, 13px);
-  --fs-small: clamp(10px, 0.72vw, 12px);
-  --fs-heading: clamp(11px, 0.82vw, 13px);
-  --fs-title: clamp(34px, 4.3vw, 64px);
-
-  width: 100vw !important;
+.full-size-page {
   min-height: 100dvh !important;
-  overflow-x: hidden !important;
+  width: 100vw !important;
   overflow-y: auto !important;
-  padding: clamp(14px, 1.6vw, 24px) !important;
+  overflow-x: hidden !important;
+  padding: clamp(10px, 1.8vmin, 24px) !important;
   background:
-    radial-gradient(circle at 50% 18%, rgba(156, 255, 143, 0.1), transparent 36%),
+    radial-gradient(circle at 50% 20%, rgba(156, 255, 143, 0.12), transparent 38%),
+    linear-gradient(135deg, rgba(156, 255, 143, 0.06), transparent 34%),
     #020402 !important;
-  color: var(--fs-green) !important;
 }
 
-.full-size-page.ikqf-full-system,
-.full-size-page.ikqf-full-system .full-terminal,
-.full-size-page.ikqf-full-system .full-terminal * {
-  font-family: "Courier New", monospace !important;
-}
-
-.full-size-page.ikqf-full-system .full-terminal {
+.full-terminal,
+.ikqf-command-terminal {
   width: min(1180px, 96vw) !important;
+  min-height: auto !important;
   margin: 0 auto !important;
-  padding: clamp(14px, 1.5vw, 22px) !important;
-  border: 3px double var(--fs-green) !important;
-  background: rgba(0, 0, 0, 0.66) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-body) !important;
-  line-height: 1.35 !important;
+  border: 4px double var(--ikqf-green) !important;
+  background: rgba(0, 0, 0, 0.68) !important;
   box-shadow:
-    0 0 0 3px #020502,
-    0 0 30px rgba(156, 255, 143, 0.32),
-    inset 0 0 52px rgba(156, 255, 143, 0.07) !important;
-  text-shadow: 0 0 3px rgba(102, 255, 102, 0.62) !important;
+    0 0 0 4px #020502,
+    0 0 34px rgba(156, 255, 143, 0.34),
+    inset 0 0 60px rgba(156, 255, 143, 0.07) !important;
+  padding: clamp(12px, 1.6vmin, 22px) !important;
+  overflow: visible !important;
 }
 
-/* Main hero title: intentionally large */
-.full-size-page.ikqf-full-system .full-terminal .full-terminal-title,
-.full-size-page.ikqf-full-system .full-terminal h1.title.full-terminal-title.ikqf-terminal-title {
-  display: block !important;
-  width: 100% !important;
-  margin: clamp(18px, 2.1vw, 30px) auto clamp(8px, 0.9vw, 14px) !important;
-  padding: 0 !important;
-  border: 0 !important;
-  color: var(--fs-white) !important;
-  font-family: "Courier New", monospace !important;
-  font-size: var(--fs-title) !important;
-  line-height: 0.95 !important;
-  letter-spacing: clamp(3px, 0.55vw, 9px) !important;
-  word-spacing: clamp(4px, 0.55vw, 10px) !important;
-  text-align: center !important;
-  text-transform: uppercase !important;
-  white-space: nowrap !important;
-  font-weight: bold !important;
-  text-shadow:
-    0 0 4px #ffffff,
-    0 0 12px rgba(156, 255, 143, 0.95),
-    0 0 28px rgba(156, 255, 143, 0.52) !important;
-}
-
-.full-size-page.ikqf-full-system .full-terminal .full-terminal-title .blink {
-  display: inline !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  letter-spacing: inherit !important;
-}
-
-.full-size-page.ikqf-full-system .topbar {
+.full-terminal .topbar {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
   gap: 10px !important;
-  margin: 0 0 clamp(10px, 1vw, 14px) !important;
-  padding: 0 0 8px !important;
-  border-bottom: 1px solid var(--fs-green-dim) !important;
-  color: var(--fs-green) !important;
-}
-
-.full-size-page.ikqf-full-system .topbar span {
-  font-size: var(--fs-small) !important;
-  line-height: 1.15 !important;
+  padding: 0 0 clamp(8px, 1vmin, 12px) !important;
+  margin-bottom: clamp(8px, 1vmin, 12px) !important;
+  border-bottom: 1px solid rgba(156, 255, 143, 0.65) !important;
+  color: var(--ikqf-green) !important;
+  font-size: var(--ikqf-font-small) !important;
   letter-spacing: 1px !important;
-  font-weight: bold !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.65) !important;
 }
 
-.full-size-page.ikqf-full-system .full-slogan {
-  margin: 0 0 5px !important;
-  color: var(--fs-warm) !important;
-  font-size: var(--fs-heading) !important;
-  line-height: 1.2 !important;
-  letter-spacing: 1.4px !important;
+.full-terminal .full-slogan,
+.full-terminal .subtitle {
+  margin: 0 0 4px !important;
+  color: var(--ikqf-warm) !important;
   text-align: center !important;
-  text-transform: uppercase !important;
   font-weight: bold !important;
+  font-size: clamp(8.5px, 1.12vmin, 13px) !important;
+  line-height: 1.22 !important;
+  letter-spacing: clamp(0.8px, 0.22vmin, 1.8px) !important;
+  text-transform: uppercase !important;
   text-shadow: none !important;
 }
 
-.full-size-page.ikqf-full-system .full-subline-no-glow {
-  margin: 0 0 clamp(12px, 1.2vw, 18px) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-heading) !important;
-  line-height: 1.25 !important;
-  letter-spacing: 1px !important;
+.full-terminal .full-subline-no-glow {
+  margin: 0 auto clamp(10px, 1.2vmin, 16px) !important;
+  color: var(--ikqf-green) !important;
   text-align: center !important;
+  font-size: clamp(9px, 1.12vmin, 13px) !important;
+  line-height: 1.3 !important;
+  letter-spacing: clamp(0.4px, 0.18vmin, 1.4px) !important;
   font-weight: bold !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.65) !important;
 }
 
-.full-size-page.ikqf-full-system .hero-description {
-  max-width: 880px !important;
-  margin: 0 auto clamp(14px, 1.4vw, 20px) !important;
-  padding: clamp(9px, 1vw, 14px) clamp(12px, 1.3vw, 18px) !important;
-  border: 1px solid var(--fs-green-dim) !important;
-  background: var(--fs-panel) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-body) !important;
+/* Full-size hero description should match terminal cards, not amber warning block */
+.full-terminal .hero-description {
+  max-width: 920px !important;
+  margin: 0 auto clamp(12px, 1.4vmin, 18px) !important;
+  border: var(--ikqf-border) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: var(--ikqf-green) !important;
+  padding: clamp(9px, 1.1vmin, 14px) !important;
+  text-align: center !important;
+  font-size: clamp(8.5px, 1.05vmin, 12.5px) !important;
   line-height: 1.38 !important;
-  text-align: center !important;
-  box-shadow: none !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
+  box-shadow: inset 0 0 10px rgba(156, 255, 143, 0.035) !important;
 }
 
-.full-size-page.ikqf-full-system .hero-description strong {
-  color: var(--fs-white) !important;
-  font-size: inherit !important;
+/* Full-size sections and data blocks */
+.full-terminal .panel,
+.full-terminal .metrics,
+.full-terminal .reason,
+.full-terminal .box,
+.full-terminal .loading-box,
+.full-terminal .execution-status-panel,
+.full-terminal .last-execution-panel,
+.full-terminal .strategy-library-box,
+.full-terminal .trade-table,
+.full-terminal .optimizer-table,
+.full-terminal .chart-box,
+.full-terminal .detailed-human-translation,
+.full-terminal .detailed-copy-block,
+.full-terminal .detailed-portfolio-panel,
+.full-terminal .detailed-proof-grid {
+  border: var(--ikqf-border) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  box-shadow: inset 0 0 10px rgba(156, 255, 143, 0.035) !important;
+  color: var(--ikqf-green) !important;
+  padding: clamp(9px, 1.1vmin, 14px) !important;
+  margin: clamp(10px, 1.2vmin, 16px) 0 !important;
+  font-size: clamp(8.5px, 1.02vmin, 12.5px) !important;
+  line-height: 1.4 !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
 }
 
-/* Panels and content blocks */
-.full-size-page.ikqf-full-system .panel,
-.full-size-page.ikqf-full-system .metrics,
-.full-size-page.ikqf-full-system .reason,
-.full-size-page.ikqf-full-system .box,
-.full-size-page.ikqf-full-system .loading-box,
-.full-size-page.ikqf-full-system .strategy-library-box,
-.full-size-page.ikqf-full-system .execution-status-panel,
-.full-size-page.ikqf-full-system .last-execution-panel,
-.full-size-page.ikqf-full-system .trade-table,
-.full-size-page.ikqf-full-system .optimizer-table,
-.full-size-page.ikqf-full-system .chart-box {
-  margin: 0 0 clamp(12px, 1.1vw, 16px) !important;
-  padding: clamp(10px, 1vw, 14px) !important;
-  border: 1px solid var(--fs-green-dim) !important;
-  background: var(--fs-panel) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-body) !important;
-  line-height: 1.36 !important;
+.full-terminal .panel-title,
+.full-terminal h1,
+.full-terminal h2,
+.full-terminal .metrics strong,
+.full-terminal .reason strong,
+.full-terminal .box strong,
+.full-terminal .panel strong {
+  color: var(--ikqf-white) !important;
+  text-shadow: var(--ikqf-glow) !important;
+}
+
+.full-terminal h1:not(.full-terminal-title),
+.full-terminal h2,
+.full-terminal .strategy-library-title {
+  margin: clamp(12px, 1.4vmin, 18px) 0 clamp(7px, 1vmin, 12px) !important;
+  padding: 0 0 6px !important;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.36) !important;
+  color: var(--ikqf-white) !important;
   text-align: left !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-}
-
-.full-size-page.ikqf-full-system .panel {
-  padding: 0 !important;
-}
-
-.full-size-page.ikqf-full-system .panel > :not(.panel-title) {
-  margin-left: clamp(10px, 1vw, 14px) !important;
-  margin-right: clamp(10px, 1vw, 14px) !important;
-}
-
-.full-size-page.ikqf-full-system .panel > .panel-title + * {
-  margin-top: clamp(10px, 1vw, 14px) !important;
-}
-
-.full-size-page.ikqf-full-system .panel > *:last-child {
-  margin-bottom: clamp(10px, 1vw, 14px) !important;
-}
-
-/* Headings: same scale as labels, not huge */
-.full-size-page.ikqf-full-system .panel-title,
-.full-size-page.ikqf-full-system h1:not(.full-terminal-title),
-.full-size-page.ikqf-full-system h2,
-.full-size-page.ikqf-full-system h3,
-.full-size-page.ikqf-full-system .strategy-library-title,
-.full-size-page.ikqf-full-system .metrics > p:first-child strong,
-.full-size-page.ikqf-full-system .reason > p:first-child strong,
-.full-size-page.ikqf-full-system .box > p:first-child strong,
-.full-size-page.ikqf-full-system .strategy-library-box > p:first-child strong,
-.full-size-page.ikqf-full-system .execution-status-panel > p:first-child strong,
-.full-size-page.ikqf-full-system .last-execution-panel > p:first-child strong {
-  display: block !important;
-  margin: 0 0 8px !important;
-  padding: 0 0 5px !important;
-  border: 0 !important;
-  border-bottom: 1px dotted var(--fs-green-dim) !important;
-  background: transparent !important;
-  color: var(--fs-white) !important;
-  font-size: var(--fs-heading) !important;
+  font-size: clamp(11px, 1.35vmin, 16px) !important;
   line-height: 1.2 !important;
-  letter-spacing: 1.2px !important;
-  text-align: left !important;
-  text-transform: uppercase !important;
-  font-weight: bold !important;
+  letter-spacing: clamp(1px, 0.25vmin, 2px) !important;
+  text-shadow: var(--ikqf-glow) !important;
 }
 
-.full-size-page.ikqf-full-system .panel-title {
-  margin: 0 !important;
+/* Full-size details become same drawer language as Detailed */
+.full-terminal details,
+.full-terminal .retro-window,
+.full-terminal .retro-sub-window {
+  border: 1px solid rgba(156, 255, 143, 0.52) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  margin: clamp(10px, 1.2vmin, 16px) 0 !important;
+}
+
+.full-terminal details > summary,
+.full-terminal .retro-window > summary,
+.full-terminal .retro-sub-window > summary {
   padding: 8px 10px !important;
-  border-bottom: 1px solid var(--fs-green-dim) !important;
-  background: var(--fs-panel-head) !important;
-}
-
-/* Readouts */
-.full-size-page.ikqf-full-system p,
-.full-size-page.ikqf-full-system li,
-.full-size-page.ikqf-full-system .metrics p,
-.full-size-page.ikqf-full-system .reason p,
-.full-size-page.ikqf-full-system .box p,
-.full-size-page.ikqf-full-system .panel p,
-.full-size-page.ikqf-full-system .strategy-library-box p,
-.full-size-page.ikqf-full-system .execution-status-panel p,
-.full-size-page.ikqf-full-system .last-execution-panel p {
-  margin: 4px 0 !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-body) !important;
-  line-height: 1.35 !important;
+  color: var(--ikqf-white) !important;
+  background: rgba(156, 255, 143, 0.1) !important;
+  border-bottom: 1px solid rgba(156, 255, 143, 0.38) !important;
+  font-size: clamp(8.5px, 1.02vmin, 12.5px) !important;
+  line-height: 1.18 !important;
   text-align: left !important;
-  text-transform: none !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-}
-
-.full-size-page.ikqf-full-system strong,
-.full-size-page.ikqf-full-system b {
-  color: var(--fs-white) !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* Controls */
-.full-size-page.ikqf-full-system label,
-.full-size-page.ikqf-full-system .full-interval-panel label {
-  display: block !important;
-  margin: 0 0 5px !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-heading) !important;
-  line-height: 1.2 !important;
-  letter-spacing: 1.2px !important;
-  text-align: left !important;
+  letter-spacing: 1px !important;
   text-transform: uppercase !important;
-  font-weight: bold !important;
+  text-shadow: var(--ikqf-glow) !important;
 }
 
-.full-size-page.ikqf-full-system button,
-.full-size-page.ikqf-full-system input,
-.full-size-page.ikqf-full-system select,
-.full-size-page.ikqf-full-system textarea,
-.full-size-page.ikqf-full-system .copy-btn {
-  min-height: clamp(34px, 2.6vw, 44px) !important;
-  padding: 7px 9px !important;
-  border: 1px solid rgba(156, 255, 143, 0.55) !important;
-  background: rgba(0, 0, 0, 0.42) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-heading) !important;
-  line-height: 1.15 !important;
+.full-terminal details:not([open]) > summary {
+  border-bottom: 0 !important;
+}
+
+/* Full controls */
+.full-terminal .input-row,
+.full-terminal .agent-control-panel,
+.full-terminal .button-row {
+  gap: 8px !important;
+  margin: clamp(10px, 1.2vmin, 16px) 0 !important;
+}
+
+.full-terminal button,
+.full-terminal input,
+.full-terminal select,
+.full-terminal textarea,
+.full-terminal .copy-btn {
+  min-height: 38px !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(156, 255, 143, 0.72) !important;
+  background: rgba(0, 0, 0, 0.46) !important;
+  color: var(--ikqf-green) !important;
+  box-shadow: inset 0 0 10px rgba(156, 255, 143, 0.06) !important;
+  font-size: clamp(8.5px, 1.02vmin, 12.5px) !important;
+  line-height: 1.12 !important;
   letter-spacing: 0.8px !important;
-  text-align: center !important;
-  text-transform: uppercase !important;
-  font-weight: bold !important;
-  box-shadow: none !important;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55) !important;
 }
 
-.full-size-page.ikqf-full-system .input-row,
-.full-size-page.ikqf-full-system .button-row,
-.full-size-page.ikqf-full-system .agent-control-panel {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: clamp(8px, 0.8vw, 12px) !important;
-}
-
-/* Details drawers */
-.full-size-page.ikqf-full-system details,
-.full-size-page.ikqf-full-system .retro-window,
-.full-size-page.ikqf-full-system .retro-sub-window {
-  margin: 0 0 clamp(12px, 1.1vw, 16px) !important;
-  border: 1px solid var(--fs-green-dim) !important;
-  background: var(--fs-panel) !important;
-}
-
-.full-size-page.ikqf-full-system details > summary,
-.full-size-page.ikqf-full-system .retro-window > summary,
-.full-size-page.ikqf-full-system .retro-sub-window > summary {
-  padding: 8px 10px !important;
-  border-bottom: 1px solid var(--fs-green-dim) !important;
-  background: var(--fs-panel-head) !important;
-  color: var(--fs-white) !important;
-  font-size: var(--fs-heading) !important;
-  line-height: 1.2 !important;
-  letter-spacing: 1.2px !important;
+.full-terminal label {
+  margin-bottom: 4px !important;
+  color: var(--ikqf-green) !important;
   text-align: left !important;
-  text-transform: uppercase !important;
+  font-size: clamp(7.5px, 0.92vmin, 11px) !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 0 4px rgba(156, 255, 143, 0.75) !important;
 }
 
-/* Tables */
-.full-size-page.ikqf-full-system .trade-row span,
-.full-size-page.ikqf-full-system .optimizer-row span {
+.full-terminal .trade-row,
+.full-terminal .optimizer-row {
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.32) !important;
+}
+
+.full-terminal .trade-row span,
+.full-terminal .optimizer-row span {
   min-height: 28px !important;
-  padding: 4px 6px !important;
-  border-right: 1px dotted var(--fs-green-dim) !important;
-  color: var(--fs-green) !important;
-  font-size: var(--fs-small) !important;
+  padding: 5px 6px !important;
+  border-right: 1px dotted rgba(156, 255, 143, 0.32) !important;
+  font-size: clamp(7.5px, 0.92vmin, 11px) !important;
   line-height: 1.2 !important;
-  text-align: left !important;
 }
 
-/* Mobile */
-@media (max-width: 760px) {
-  .full-size-page.ikqf-full-system {
-    --fs-body: 11px;
-    --fs-small: 10px;
-    --fs-heading: 11px;
-    --fs-title: clamp(26px, 7vw, 38px);
+.full-terminal .trade-header,
+.full-terminal .optimizer-header {
+  background: rgba(156, 255, 143, 0.1) !important;
+  color: var(--ikqf-white) !important;
+  text-shadow: var(--ikqf-glow) !important;
+}
+
+/* Full-size readable two-column rhythm for common paired sections where possible */
+.full-terminal .input-row,
+.full-terminal .button-row,
+.full-terminal .agent-control-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Prevent title collisions on small screens */
+@media (max-width: 760px), (max-height: 680px) {
+  .ikqf-terminal-title,
+  .retro-square .retro-title,
+  .full-terminal .full-terminal-title {
+    font-size: clamp(15px, 2.55vmin, 23px) !important;
+    letter-spacing: clamp(0.8px, 0.24vmin, 2px) !important;
   }
 
-  .full-size-page.ikqf-full-system .full-terminal .full-terminal-title,
-  .full-size-page.ikqf-full-system .full-terminal h1.title.full-terminal-title.ikqf-terminal-title {
-    white-space: normal !important;
-    line-height: 1.02 !important;
-  }
-
-  .full-size-page.ikqf-full-system .input-row,
-  .full-size-page.ikqf-full-system .button-row,
-  .full-size-page.ikqf-full-system .agent-control-panel {
+  .full-terminal .input-row,
+  .full-terminal .button-row,
+  .full-terminal .agent-control-panel,
+  .retro-square .input-row,
+  .retro-square .agent-control-panel,
+  .retro-square .button-row {
     grid-template-columns: 1fr !important;
+  }
+
+  .full-terminal,
+  .ikqf-command-terminal {
+    border-width: 2px !important;
+    padding: 10px !important;
   }
 }

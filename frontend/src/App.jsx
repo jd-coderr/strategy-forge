@@ -3129,7 +3129,7 @@ async function loadTradeHistory() {
               <details className="retro-window" open>
                 <summary>LAST EXECUTION / PROOF OF TRADE</summary>
                 <div className="metrics strategy-library-box last-execution-panel">
-                  <p><strong>TRADE PLAN / LAST EXECUTION</strong></p>
+                  <p><strong>LAST EXECUTION</strong></p>
                   <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
                   <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
                   <p>SIDE................ {getTradeSide()}</p>
@@ -3553,7 +3553,7 @@ async function loadTradeHistory() {
 
 
   const renderFullSizeVersion = () => (
-    <div className="full-size-page ikqf-full-system">
+    <div className="full-size-page">
       <main className="full-terminal ikqf-command-terminal">
       <div className="topbar">
         <span>IKQF v0.1.0</span>
@@ -3569,8 +3569,13 @@ async function loadTradeHistory() {
 
       <div className="hero-description">
         I Know Quant Fu is an AI trading agent that tests crypto strategies, reads market
-        conditions, controls risk, and explains every decision before anything is simulated,
+        conditions, controls risk, and explains every decision before a trade is simulated,
         paper traded, or executed.
+        <br />
+        <br />
+        <strong>POWER STACK</strong>
+        <br />
+        CoinMarketCap → Strategy Engine → Risk Governor → TWAK → PancakeSwap → BNB Smart Chain
       </div>
 
 {(() => {
@@ -3665,6 +3670,7 @@ async function loadTradeHistory() {
 
 <div className="panel operator-controls-panel">
   <div className="panel-title">TRADE SETUP / OPERATOR CONTROLS</div>
+<h2 className="strategy-library-title">TRADE SETUP</h2>
 
         <div className="input-row">
           <div>
@@ -3835,6 +3841,31 @@ async function loadTradeHistory() {
         </div>
 </div>
 
+{(() => {
+  const executionStatus = getExecutionStatus();
+  const tradePlan = getTradePlan();
+
+  return (
+    <div className="metrics strategy-library-box execution-status-panel" style={{ marginTop: "24px" }}>
+      <p><strong>EXECUTION STATUS</strong></p>
+      <p>MODE................ {getExecutionModeLabel()}</p>
+      <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
+      <p>TRADE EXECUTED...... {executionStatus.executed}</p>
+      <p>STATUS.............. {executionStatus.status}</p>
+      <p>REASON.............. {executionStatus.reason}</p>
+      <p>NEXT ACTION......... {executionStatus.nextAction}</p>
+      {tradePlan && (
+        <>
+          <br />
+          <p>TRADE PLAN.......... GENERATED</p>
+          <p>ROUTE............... {tradePlan.from_token || "N/A"} → {tradePlan.to_token || "N/A"}</p>
+          <p>AMOUNT.............. {tradePlan.amount || "N/A"}</p>
+        </>
+      )}
+    </div>
+  );
+})()}
+
 {getTradePlan() && (
   <div className="metrics strategy-library-box last-execution-panel" style={{ marginTop: "24px" }}>
     <p><strong>LAST EXECUTION</strong></p>
@@ -3876,31 +3907,51 @@ async function loadTradeHistory() {
   </div>
 )}
 
-<div className="panel decision-section-panel full-wallet-risk-panel">
-  <div className="panel-title">WALLET + RISK STATE</div>
+<div className="panel decision-section-panel">
+  <div className="panel-title">AGENT DECISION ENGINE</div>
+<h2 className="strategy-library-title">AGENT STATUS</h2>
 
-  <div className="metrics strategy-library-box">
-    <p><strong>CONNECTED INFRASTRUCTURE</strong></p>
-    <p>BROWSER WALLET...... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
-    <p>BROWSER NETWORK..... {getUserNetworkLabel()}</p>
-    <p>AGENT NETWORK....... {getAgentNetworkLabel()}</p>
-    <p>AGENT ADDRESS....... {shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</p>
-    <p>TWAK................ {twakStatus || "CONFIGURED"}</p>
-  </div>
+<div className="metrics strategy-library-box">
+  <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
+  <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
+  <p>BROWSER WALLET...... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
+  <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
+  <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
 
-  <div className="metrics strategy-library-box">
-    <p><strong>PORTFOLIO + RISK</strong></p>
-    <p>AGENT BNB BALANCE... {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
+  <p>
+    AGENT BNB BALANCE....{" "}
+    {portfolio?.assets?.find((asset) => asset.symbol === "BNB")?.balance
       ? `${formatTokenBalance(portfolio.assets.find((asset) => asset.symbol === "BNB").balance, 5)} BNB`
-      : "N/A"}</p>
-    <p>AGENT TOTAL VALUE... {formatMoney(portfolio?.totalUsdValue || 0)}</p>
-    <p>AGENT START VALUE... {getPortfolioStartValueLabel()}</p>
-    <p>PAPER VALUE......... {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
-    <p>CONFIDENCE.......... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</p>
-    <p>DRAWDOWN............ {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "WAITING"}</p>
-    <p>RISK STATUS......... {agentResult?.risk_control?.status || "WAITING"}</p>
+      : "N/A"}
+  </p>
+
+  <p>
+    AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}
+  </p>
+
+  <p>AGENT START VALUE... {getPortfolioStartValueLabel()}</p>
+
+  <p>AGENT ADDRESS........ {shortenAddress(twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C")}</p>
+  <p>SELECTED TIMEFRAME.. {timeframe}</p>
+  <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
+  <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
+  <p>TRADE CONFIDENCE..... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</p>
+  <p>DRAWDOWN............. {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "WAITING"}</p>
+  <p>RISK STATUS.......... {agentResult?.risk_control?.status || "WAITING"}</p>
+  <p>PAPER VALUE.......... {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
+  <p>TWAK................. {twakStatus || "CONFIGURED"}</p>
+</div>
+
+<div className="autonomous-container">
+  <div className="autonomous-status-box">
+    <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
+    <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
+    <p>CHECK LOGIC......... CHECKS EVERY {autonomousInterval} MINUTES / ACTS ONLY ON CLOSED {timeframe} CANDLES</p>
+    <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
+    <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
     <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
   </div>
+</div>
 </div>
 
 {agentResult?.confidence_score !== undefined && (
@@ -4254,6 +4305,30 @@ async function loadTradeHistory() {
   </div>
 )}
 
+<div className="panel full-architecture-panel">
+  <div className="panel-title">EXECUTION ARCHITECTURE</div>
+<div className="metrics strategy-library-box" style={{ marginTop: "24px" }}>
+  <p><strong>AGENT ARCHITECTURE</strong></p>
+  <div className="agent-flow-visual">
+    <div>COINMARKETCAP</div>
+    <span>↓</span>
+    <div>MARKET ANALYSIS</div>
+    <span>↓</span>
+    <div>STRATEGY ENGINE</div>
+    <span>↓</span>
+    <div>CONFIDENCE MODEL</div>
+    <span>↓</span>
+    <div>RISK GOVERNOR</div>
+    <span>↓</span>
+    <div>TWAK</div>
+    <span>↓</span>
+    <div>PANCAKESWAP</div>
+    <span>↓</span>
+    <div>BNB SMART CHAIN</div>
+  </div>
+</div>
+</div>
+
 {tradeHistory.length > 0 && (
   <div className="panel">
     <div className="panel-title">LIVE AGENT ACTIVITY</div>
@@ -4449,6 +4524,11 @@ const isRealTrade = tradeTypeLabel === "REAL TRADE / EXECUTION";
             <summary>METRICS / AGENT LOGIC EXPLAINED</summary>
 
             <div className="metrics">
+              <p><strong>WHAT DO I DO?</strong></p>
+              <p>I Know Quant Fu is an AI trading agent that combines CoinMarketCap market intelligence, proprietary strategy testing, portfolio risk management, Trust Wallet Agent Kit (TWAK), PancakeSwap routing, and BNB Smart Chain settlement.</p><p>The system continuously scans market conditions, compares multiple strategies, scores trade quality, evaluates risk, generates explainable AI decisions, and can operate in Simulation, Paper Trading, or Live Trading mode.</p>
+
+              <br />
+
               <p><strong>EXECUTION MODES</strong></p>
               <p>Decision Simulation: the agent generates and logs decisions only. No live trade and no virtual position is opened.</p>
               <p>Paper Trading: the agent opens and closes virtual positions, tracks paper profit/loss, and can be reset without touching the live wallet.</p>

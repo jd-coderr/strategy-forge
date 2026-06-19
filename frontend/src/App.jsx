@@ -2568,31 +2568,33 @@ async function loadTradeHistory() {
           </div>
 
           <div className="retro-quadrant-body">
-            <div className="retro-brand-card">
-              <div className="topbar retro-topbar">
-                <span>IKQF v0.1.0 — AI ONLINE</span>
+            <div className="retro-brand-card detailed-simple-identity">
+              <div className="simple-brand-block">
+                <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
+                <h1 className="simple-square-title">
+                  I KNOW QUANT FU<span className="blink">_</span>
+                </h1>
+                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
+                <p className="simple-speech-text">
+                  I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
+                  test strategy logic, check portfolio risk, explain my decision, and only then decide whether
+                  to wait, simulate, paper trade, or execute.
+                </p>
               </div>
 
-              <h1 className="title retro-title ikqf-terminal-title">
-                I KNOW QUANT FU<span className="blink">_</span>
-              </h1>
-
-              <p className="subtitle retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
-              <p className="retro-brand-subline"><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
-
-              <div className="hero-description retro-hero-description">
-                I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
-                Trust Wallet Agent Kit, PancakeSwap execution routing,
-                and BNB Smart Chain infrastructure.
+              <div className="simple-message-box">
+                <strong>TRANSLATION FOR HUMANS</strong>
+                <p>
+                  I do not chase candles. I do not panic-click green buttons. I check the math before entering the dojo.
+                </p>
               </div>
 
-              <div className="metrics retro-mini-window detailed-human-translation">
-                <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
-                <br />
-                <p><strong>Translation for humans:</strong></p>
-                <p>I do not chase candles.</p>
-                <p>I do not panic-click green buttons.</p>
-                <p>I test the signal before I enter the dojo.</p>
+              <div className="simple-message-box">
+                <strong>POWERED BY</strong>
+                <p>
+                  CoinMarketCap market intelligence → Trust Wallet Agent Kit → PancakeSwap execution routing → BNB Smart Chain infrastructure.
+                </p>
               </div>
             </div>
 

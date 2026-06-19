@@ -132,19 +132,82 @@ The project focuses on:
 
 ## Registered Agent Wallet
 
-The agent wallet has been registered on BSC for the competition.
+The agent wallet used for the competition is:
 
 ```txt
-Registered participant:
 0x695b32DdB023f76dE3FE4de485F7C0131De4754C
 ```
 
-Registration status:
+BSC explorer:
+
+```txt
+https://bscscan.com/address/0x695b32DdB023f76dE3FE4de485F7C0131De4754C
+```
+
+Registration status reported by the application:
 
 ```txt
 registered: true
 alreadyRegistered: true
 chain: bsc
+```
+
+---
+
+## Agent Wallet Funding Proof
+
+The agent wallet has been funded on BNB Smart Chain and holds non-zero in-scope assets.
+
+Funding transaction:
+
+```txt
+0x4f5469a769c9298572fee10da3fbc92b9db57f032d262ffe283e4882537ac9f
+```
+
+Funding transaction link:
+
+```txt
+https://bscscan.com/tx/0x4f5469a769c9298572fee10da3fbc92b9db57f032d262ffe283e4882537ac9f
+```
+
+This transaction proves that the agent wallet received BNB for gas.
+
+It is **wallet funding proof**, not a live trade proof.
+
+---
+
+## Current On-Chain Wallet State
+
+The agent wallet currently shows non-zero balances on BNB Smart Chain, including:
+
+```txt
+BNB
+Binance-Peg ETH
+Binance-Peg USDT
+```
+
+This matters because Track 1 requires the agent wallet to hold non-zero in-scope assets at competition start and maintain capital for the live trading window.
+
+---
+
+## Live Trade Proof Status
+
+The system is designed to detect and display BSC transaction hashes from TWAK execution output.
+
+Live trade proof format:
+
+```txt
+Live TWAK Trade Proof:
+https://bscscan.com/tx/FULL_TRANSACTION_HASH_HERE
+```
+
+Current proof status:
+
+```txt
+Agent wallet funded: yes
+Agent wallet has non-zero assets: yes
+TWAK execution path implemented: yes
+Live trade transaction hash: pending / to be added after successful live execution
 ```
 
 ---
@@ -176,6 +239,9 @@ chain: bsc
 * Trade size controls
 * Execution mode controls
 * Portfolio safety checks
+* Eligible-token allowlist
+* Conservative per-token trade caps
+* Cooldown protection between live trade attempts
 
 ### Execution Modes
 
@@ -191,7 +257,7 @@ Live Trading
 
 **Paper Trading** opens and closes virtual positions, tracks paper PnL, and can be reset without touching the live wallet.
 
-**Live Trading** attempts real wallet-based execution through TWAK when configured and authorized.
+**Live Trading** attempts real wallet-based execution through TWAK when configured, authorized, and allowed by the risk guardrails.
 
 ### Wallet + Execution
 
@@ -202,6 +268,7 @@ Live Trading
 * Transaction status display
 * BSC transaction hash detection
 * Agent registration display
+* BscScan proof display
 
 ---
 
@@ -298,6 +365,7 @@ The backend URL may still contain the old project name because it is the Railway
 8. The agent decides whether to wait, simulate, paper trade, or execute.
 9. If execution is allowed, TWAK handles the self-custody execution path.
 10. The UI displays decision, route, status, and proof.
+11. If a live transaction succeeds, the UI surfaces the BSC transaction hash and BscScan proof link.
 
 ---
 
@@ -315,6 +383,10 @@ I Know Quant Fu evaluates strategies using:
 * Recovery factor
 * Maximum drawdown
 * Risk-adjusted score
+* Signal frequency
+* Active trade days
+* Quiet-gap analysis
+* Strategy-vs-buy-hold comparison
 
 ---
 
@@ -346,7 +418,7 @@ In live mode, successful execution should return a BSC transaction hash.
 
 ## Eligible Assets
 
-The frontend is designed to use competition-eligible assets only.
+The frontend and backend are designed to use competition-eligible assets only.
 
 Examples include:
 
@@ -374,6 +446,58 @@ FLOKI
 ```
 
 The project avoids unsupported assets where possible so competition trades stay inside the eligible-token rules.
+
+---
+
+## Competition Qualification Notes
+
+For Track 1, the registered agent wallet must hold non-zero in-scope assets at the competition start.
+
+The agent wallet currently has non-zero BNB and in-scope token balances visible on BNB Smart Chain.
+
+The project is designed to support the competition requirement of at least one qualifying live trade per day during the trading week.
+
+The backend includes daily live-trade counting logic designed to exclude:
+
+```txt
+Decision simulation
+Paper trading
+Quote-only route checks
+Blocked execution attempts
+```
+
+Only real live execution results should count toward the daily qualification target.
+
+---
+
+## Self-Custody Model
+
+I Know Quant Fu is designed around self-custody execution.
+
+The frontend and backend do not store seed phrases or private keys.
+
+Signing authority should stay with the user or configured agent wallet through the Trust Wallet Agent Kit flow.
+
+The backend generates strategy decisions, risk checks, and execution requests.
+
+TWAK handles the wallet execution path.
+
+---
+
+## Judge Demo Flow
+
+1. Open the live site.
+2. Start in Simple Version to understand the agent.
+3. Switch to Detailed Version or Full Size Version.
+4. Show the registered agent wallet address.
+5. Show the BSC explorer page for the agent wallet.
+6. Show the wallet funding proof transaction.
+7. Select an eligible asset.
+8. Run auto-optimization.
+9. Show selected strategy, backtest result, risk status, and confidence.
+10. Run the agent.
+11. Show the decision: HOLD, paper trade, or live execution.
+12. If live execution succeeds, open the BscScan transaction proof.
 
 ---
 
@@ -413,7 +537,10 @@ Example backend variables may include:
 
 ```env
 CMC_API_KEY=your_coinmarketcap_key
+CMC_MCP_API_KEY=your_coinmarketcap_mcp_key
 TWAK_CONFIG=your_twak_config
+AGENT_WALLET_ADDRESS=your_agent_wallet_address
+IKQF_ADMIN_KEY=your_operator_key
 ```
 
 Use `.env.example` for public documentation and keep real `.env` files private.
@@ -430,10 +557,23 @@ Do not commit:
 * Wallet credentials
 * Railway secrets
 * Production `.env` files
+* Operator admin keys
 
 Self-custody integrity is important to the project.
 
 Signing authority should stay with the user or configured agent wallet through the TWAK flow.
+
+---
+
+## Current Limitations
+
+The project does not claim x402 usage unless that feature is added and proven.
+
+The project does not claim BNB AI Agent SDK usage unless that feature is added and proven.
+
+Funding proof is available.
+
+Live trade proof should be added after a successful live TWAK swap returns a BSC transaction hash.
 
 ---
 

@@ -4393,3 +4393,391 @@ select option:checked {
     padding: 10px !important;
   }
 }
+
+/* ========================================================================== */
+/* IKQF FULL SIZE V2 — ISOLATED REBUILD FROM UPLOADED FILES
+   This block uses unique ikqf-full-v2-* classes. The old .full-size-page,
+   .full-terminal, .panel and .title rules no longer control Full Size.
+
+   Design:
+   - Large old-school hero title.
+   - Everything else uses one readable terminal scale.
+   - Same green/black terminal card system as Simple WHO?/WHAT?.
+   - No repeated POWER STACK / CURRENT DECISION old layout.
+/* ========================================================================== */
+
+.ikqf-full-v2-page,
+.ikqf-full-v2-page * {
+  box-sizing: border-box;
+  font-family: "Courier New", monospace !important;
+}
+
+.ikqf-full-v2-page {
+  --v2-bg: #020502;
+  --v2-panel: rgba(0, 0, 0, 0.38);
+  --v2-panel-head: rgba(156, 255, 143, 0.11);
+  --v2-green: #9cff8f;
+  --v2-green-dim: rgba(156, 255, 143, 0.42);
+  --v2-white: #ffffff;
+  --v2-warm: #fff2bf;
+
+  --v2-body: clamp(12px, 0.9vw, 14px);
+  --v2-small: clamp(10px, 0.75vw, 12px);
+  --v2-heading: clamp(12px, 0.9vw, 14px);
+  --v2-title: clamp(38px, 5vw, 76px);
+
+  width: 100vw;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(12px, 1.6vw, 24px);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(156, 255, 143, 0.10), transparent 36%),
+    linear-gradient(135deg, rgba(156, 255, 143, 0.06), transparent 34%),
+    #020402;
+  color: var(--v2-green);
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.58);
+}
+
+.ikqf-full-v2-terminal {
+  width: min(1180px, 96vw);
+  margin: 0 auto;
+  padding: clamp(14px, 1.6vw, 22px);
+  border: 4px double var(--v2-green);
+  background: rgba(0, 0, 0, 0.66);
+  box-shadow:
+    0 0 0 4px #020502,
+    0 0 34px rgba(156, 255, 143, 0.34),
+    inset 0 0 58px rgba(156, 255, 143, 0.07);
+}
+
+.ikqf-full-v2-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: clamp(12px, 1.2vw, 18px);
+  border-bottom: 1px solid var(--v2-green-dim);
+  color: var(--v2-green);
+  font-size: var(--v2-small);
+  line-height: 1.1;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.ikqf-full-v2-title {
+  margin: clamp(16px, 2vw, 28px) 0 clamp(8px, 1vw, 14px);
+  padding: 0;
+  color: var(--v2-white);
+  font-size: var(--v2-title);
+  line-height: 0.95;
+  letter-spacing: clamp(3px, 0.55vw, 9px);
+  word-spacing: clamp(4px, 0.55vw, 10px);
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-weight: bold;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 12px rgba(156, 255, 143, 0.95),
+    0 0 28px rgba(156, 255, 143, 0.52);
+}
+
+.ikqf-full-v2-slogan,
+.ikqf-full-v2-subline {
+  margin: 0;
+  text-align: center;
+  font-size: var(--v2-heading);
+  line-height: 1.25;
+  font-weight: bold;
+}
+
+.ikqf-full-v2-slogan {
+  color: var(--v2-warm);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.ikqf-full-v2-subline {
+  margin-top: 4px;
+  color: var(--v2-green);
+  letter-spacing: 1px;
+}
+
+.ikqf-full-v2-intro {
+  max-width: 900px;
+  margin: clamp(12px, 1.3vw, 18px) auto clamp(14px, 1.5vw, 22px);
+  padding: clamp(10px, 1.1vw, 14px) clamp(12px, 1.3vw, 18px);
+  border: 1px solid var(--v2-green-dim);
+  background: var(--v2-panel);
+  color: var(--v2-green);
+  font-size: var(--v2-body);
+  line-height: 1.38;
+  text-align: center;
+}
+
+.ikqf-full-v2-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 1.2vw, 16px);
+  margin-bottom: clamp(10px, 1.2vw, 16px);
+}
+
+.ikqf-full-v2-panel {
+  border: 1px solid var(--v2-green-dim);
+  background: var(--v2-panel);
+  color: var(--v2-green);
+  overflow: hidden;
+  margin-bottom: clamp(10px, 1.2vw, 16px);
+}
+
+.ikqf-full-v2-panel-title {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--v2-green-dim);
+  background: var(--v2-panel-head);
+  color: var(--v2-white);
+  font-size: var(--v2-heading);
+  line-height: 1.2;
+  letter-spacing: 1.2px;
+  text-align: left;
+  text-transform: uppercase;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(156, 255, 143, 0.9);
+}
+
+.ikqf-full-v2-panel > :not(.ikqf-full-v2-panel-title) {
+  margin-left: clamp(10px, 1vw, 14px);
+  margin-right: clamp(10px, 1vw, 14px);
+}
+
+.ikqf-full-v2-panel > .ikqf-full-v2-panel-title + * {
+  margin-top: clamp(10px, 1vw, 14px);
+}
+
+.ikqf-full-v2-panel > *:last-child {
+  margin-bottom: clamp(10px, 1vw, 14px);
+}
+
+.ikqf-full-v2-rows {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.ikqf-full-v2-rows > div,
+.ikqf-full-v2-log > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.42fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dotted rgba(156, 255, 143, 0.32);
+}
+
+.ikqf-full-v2-rows > div:last-child,
+.ikqf-full-v2-log > div:last-child {
+  border-bottom: 0;
+}
+
+.ikqf-full-v2-rows span,
+.ikqf-full-v2-log span {
+  color: var(--v2-green);
+  opacity: 0.9;
+  font-size: var(--v2-body);
+  line-height: 1.25;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.ikqf-full-v2-rows strong,
+.ikqf-full-v2-log strong,
+.ikqf-full-v2-copy strong {
+  color: var(--v2-white);
+  font-size: var(--v2-body);
+  line-height: 1.25;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.ikqf-full-v2-comment {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(156, 255, 143, 0.44);
+  color: var(--v2-warm);
+  font-size: var(--v2-heading);
+  line-height: 1.25;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+.ikqf-full-v2-reason,
+.ikqf-full-v2-muted,
+.ikqf-full-v2-copy p,
+.ikqf-full-v2-panel p {
+  color: var(--v2-green);
+  font-size: var(--v2-body);
+  line-height: 1.36;
+  margin: 8px 0;
+}
+
+.ikqf-full-v2-control-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 0.9vw, 12px);
+}
+
+.ikqf-full-v2-control-grid label {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--v2-green);
+  font-size: var(--v2-heading);
+  line-height: 1.2;
+  letter-spacing: 1px;
+  text-align: left;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.ikqf-full-v2-button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 0.9vw, 12px);
+}
+
+.ikqf-full-v2-secondary-actions {
+  margin-top: clamp(10px, 1vw, 14px);
+}
+
+.ikqf-full-v2-page button,
+.ikqf-full-v2-page input,
+.ikqf-full-v2-page select,
+.ikqf-full-v2-page textarea {
+  width: 100%;
+  min-height: clamp(34px, 2.6vw, 44px);
+  padding: 7px 9px;
+  border: 1px solid rgba(156, 255, 143, 0.58);
+  background: rgba(0, 0, 0, 0.44);
+  color: var(--v2-green);
+  font-size: var(--v2-heading);
+  line-height: 1.15;
+  letter-spacing: 0.8px;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  box-shadow: none;
+  text-shadow: 0 0 3px rgba(102, 255, 102, 0.55);
+}
+
+.ikqf-full-v2-page button:hover,
+.ikqf-full-v2-page select:hover {
+  background: rgba(156, 255, 143, 0.14);
+  color: var(--v2-white);
+}
+
+.ikqf-full-v2-filter {
+  margin-bottom: 10px;
+}
+
+.ikqf-full-v2-log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ikqf-full-v2-log {
+  padding: 8px 10px;
+  border: 1px solid rgba(156, 255, 143, 0.32);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.ikqf-full-v2-log:not(.is-real) {
+  opacity: 0.72;
+}
+
+.ikqf-full-v2-details {
+  border: 1px solid rgba(156, 255, 143, 0.38);
+  background: rgba(0, 0, 0, 0.25);
+  margin: 0 0 10px;
+}
+
+.ikqf-full-v2-details summary {
+  padding: 8px 10px;
+  color: var(--v2-white);
+  background: var(--v2-panel-head);
+  border-bottom: 1px solid rgba(156, 255, 143, 0.34);
+  font-size: var(--v2-heading);
+  line-height: 1.2;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ikqf-full-v2-details:not([open]) summary {
+  border-bottom: 0;
+}
+
+.ikqf-full-v2-details > :not(summary) {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.ikqf-full-v2-footer {
+  margin-top: clamp(12px, 1.3vw, 18px);
+  padding: 8px 10px;
+  border: 1px solid rgba(156, 255, 143, 0.42);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--v2-green);
+  font-size: var(--v2-small);
+  line-height: 1.25;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  white-space: normal;
+}
+
+@media (max-width: 980px) {
+  .ikqf-full-v2-grid,
+  .ikqf-full-v2-control-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .ikqf-full-v2-page {
+    --v2-body: 11px;
+    --v2-small: 10px;
+    --v2-heading: 11px;
+    --v2-title: clamp(28px, 8vw, 42px);
+    padding: 8px;
+  }
+
+  .ikqf-full-v2-terminal {
+    width: 98vw;
+    padding: 10px;
+    border-width: 2px;
+  }
+
+  .ikqf-full-v2-title {
+    white-space: normal;
+    line-height: 1.02;
+  }
+
+  .ikqf-full-v2-grid,
+  .ikqf-full-v2-control-grid,
+  .ikqf-full-v2-button-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ikqf-full-v2-rows > div,
+  .ikqf-full-v2-log > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

@@ -2233,8 +2233,8 @@ def x402_wallet(_operator_ok: bool = Depends(require_operator_key)):
             "success": True,
             "configured": True,
             "address": account.address,
-            "expected_funded_address": "0x209D07E272b8BF4b9B31C8e06f0454236629cd0",
-            "matches_expected": account.address.lower() == "0x209D07E272b8BF4b9B31C8e06f0454236629cd0".lower(),
+            "expected_funded_address": "0x209D07E2722b8BF4b9B31C8e06f0454236629cd0",
+            "matches_expected": account.address.lower() == "0x209D07E2722b8BF4b9B31C8e06f0454236629cd0".lower(),
             "base_explorer_url": f"https://base.blockscout.com/address/{account.address}",
         }
 

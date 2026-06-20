@@ -2307,8 +2307,7 @@ async function loadTradeHistory() {
               <div className="simple-brand-block">
                 <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
                 <h1 className="simple-square-title">
-                  <span>I KNOW</span>
-                  <span>QUANT FU<span className="blink">_</span></span>
+                  <span>I KNOW QUANT FU<span className="blink">_</span></span>
                 </h1>
                 <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>

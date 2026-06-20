@@ -2307,8 +2307,7 @@ async function loadTradeHistory() {
               <div className="simple-brand-block">
                 <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
                 <h1 className="simple-square-title">
-                  <span>I KNOW</span>
-                  <span>QUANT FU<span className="blink">_</span></span>
+                  <span>I KNOW QUANT FU<span className="blink">_</span></span>
                 </h1>
                 <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
@@ -2575,56 +2574,57 @@ async function loadTradeHistory() {
   const renderDetailedVersion = () => (
     <div className="retro-page">
       <div className={`retro-square ${expandedDetailedQuadrant ? "retro-has-expanded" : ""}`}>
-        <section className={getDetailedQuadrantClass("who", "retro-quadrant retro-who")}>
-          <div className="retro-quadrant-header">
-            <span>WHO AM I?</span>
-            <span>v0.1.0</span>
-            {renderDetailedExpandButton("who")}
-          </div>
+<section className={getDetailedQuadrantClass("who", "retro-quadrant retro-who")}>
+  <div className="retro-quadrant-header">
+    <span>WHO AM I?</span>
+    <span>v0.1.0</span>
+    {renderDetailedExpandButton("who")}
+  </div>
 
-          <div className="retro-quadrant-body">
-            <div className="simple-quadrant-body">
-              <div className="simple-brand-block">
-                <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
-                <h1 className="simple-square-title">
-                  <span>I KNOW</span>
-                  <span>QUANT FU<span className="blink">_</span></span>
-                </h1>
-                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
-                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
-                <p className="simple-speech-text">
-                  I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
-                  test strategy logic, check portfolio risk, explain my decision, and only then decide whether
-                  to wait, simulate, paper trade, or execute.
-                </p>
-              </div>
-            </div>
+  <div className="retro-quadrant-body">
+    <div className="retro-brand-card">
 
-            <div className="metrics retro-mini-window detailed-human-translation">
-              <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
-              <br />
-              <p><strong>Translation for humans:</strong></p>
-              <p>I do not chase candles.</p>
-              <p>I do not panic-click green buttons.</p>
-              <p>I test the signal before I enter the dojo.</p>
-            </div>
+      <div className="simple-brand-block">
+        <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
+        <h1 className="simple-square-title">
+          <span>I KNOW</span>
+          <span>QUANT FU<span className="blink">_</span></span>
+        </h1>
+        <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+        <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
+        <p className="simple-speech-text">
+          I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
+          test strategy logic, check portfolio risk, explain my decision, and only then decide whether
+          to wait, simulate, paper trade, or execute.
+        </p>
+      </div>
 
-            <details className="retro-window" open>
-              <summary>ON-CHAIN VERIFICATION</summary>
-              <div className="metrics strategy-library-box verification-panel">
-                <p><strong>ON-CHAIN VERIFICATION</strong></p>
-                <p>AGENT ADDRESS........ {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-                <p>SELECTED ASSET....... {coin}</p>
-                <p>TOKEN STATUS......... {coin} / CMC-LISTED ASSET</p>
-                <p>NETWORK.............. BNB SMART CHAIN</p>
-                <p>LAST TX HASH......... {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
-                {getLatestLiveTxHash() && (
-                  <p>BSCSCAN.............. https://bscscan.com/tx/{getLatestLiveTxHash()}</p>
-                )}
-              </div>
-            </details>
-          </div>
-        </section>
+      <div className="metrics retro-mini-window detailed-human-translation">
+        <p>I Know Quant Fu turns noisy crypto market data into explainable autonomous trading decisions.</p>
+        <br />
+        <p><strong>Translation for humans:</strong></p>
+        <p>I do not chase candles.</p>
+        <p>I do not panic-click green buttons.</p>
+        <p>I test the signal before I enter the dojo.</p>
+      </div>
+    </div>
+
+    <details className="retro-window" open>
+      <summary>ON-CHAIN VERIFICATION</summary>
+      <div className="metrics strategy-library-box verification-panel">
+        <p><strong>ON-CHAIN VERIFICATION</strong></p>
+        <p>AGENT ADDRESS........ {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
+        <p>SELECTED ASSET....... {coin}</p>
+        <p>TOKEN STATUS......... {coin} / CMC-LISTED ASSET</p>
+        <p>NETWORK.............. BNB SMART CHAIN</p>
+        <p>LAST TX HASH......... {getLatestLiveTxHash() || "NO LIVE TX HASH STORED YET"}</p>
+        {getLatestLiveTxHash() && (
+          <p>BSCSCAN.............. https://bscscan.com/tx/{getLatestLiveTxHash()}</p>
+        )}
+      </div>
+    </details>
+  </div>
+</section>
 
         <section className={getDetailedQuadrantClass("what", "retro-quadrant retro-what")}>
           <div className="retro-quadrant-header">

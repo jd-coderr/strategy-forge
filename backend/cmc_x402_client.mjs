@@ -184,22 +184,54 @@ async function main() {
       process.exit(0);
     }
 
-    paymentPayload = await client.createPaymentPayload(paymentRequired);
-    paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+const preferredAccept = (paymentRequired.accepts || []).find((item) => {
+  return (
+    item?.scheme === "exact" &&
+    item?.network === "eip155:8453" &&
+    String(item?.asset || "").toLowerCase() ===
+      "0x833589fcD6eDb6E08f4c7C32D4f71b54bdA02913".toLowerCase() &&
+    item?.extra?.assetTransferMethod === "eip3009"
+  );
+});
 
-    const compatibleHeaders = { ...paymentHeaders };
+if (!preferredAccept) {
+  console.log(
+    JSON.stringify({
+      success: false,
+      paid: false,
+      used_in_decision: false,
+      status: "base_usdc_payment_option_missing",
+      http_status: firstResponse.status,
+      symbol,
+      provider: "CoinMarketCap",
+      protocol: "x402",
+      endpoint: CMC_X402_QUOTES_URL,
+      payment_network: "Base",
+      payment_chain_id: 8453,
+      payment_asset: "USDC",
+      expected_price_usd: "0.01",
+      wallet_address: signer.address,
+      payment_required_debug: summarizePaymentRequired(paymentRequired),
+      response_body_preview: firstResponse.data,
+      response_headers: safeHeaders(firstResponse.headers),
+      message: "CMC did not return a Base USDC eip3009 payment option.",
+    })
+  );
+  process.exit(0);
+}
 
-    if (paymentHeaders["PAYMENT-SIGNATURE"] && !compatibleHeaders["X-PAYMENT"]) {
-      compatibleHeaders["X-PAYMENT"] = paymentHeaders["PAYMENT-SIGNATURE"];
-    }
+paymentRequired = {
+  ...paymentRequired,
+  accepts: [preferredAccept],
+};
 
-    const paidResponse = await api.get(CMC_X402_QUOTES_URL, {
-      params: { symbol },
-      headers: {
-        ...compatibleHeaders,
-        "Access-Control-Expose-Headers": "PAYMENT-RESPONSE,X-PAYMENT-RESPONSE",
-      },
-    });
+paymentPayload = await client.createPaymentPayload(paymentRequired);
+paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+
+const paidResponse = await api.get(CMC_X402_QUOTES_URL, {
+  params: { symbol },
+  headers: paymentHeaders,
+});
 
     const priceUsd = extractPrice(paidResponse.data, symbol);
     const success = Boolean(paidResponse.status === 200 && priceUsd);

@@ -1,8 +1,7 @@
-import { createX402AxiosClient } from "@x402/axios";
-import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
+import axios from "axios";
 import { privateKeyToAccount } from "viem/accounts";
-import { createPublicClient, http } from "viem";
-import { base } from "viem/chains";
+import * as x402Axios from "@x402/axios";
+import * as x402EvmExact from "@x402/evm/exact/client";
 
 const CMC_X402_QUOTES_URL =
   "https://pro-api.coinmarketcap.com/x402/v3/cryptocurrency/quotes/latest";
@@ -24,21 +23,23 @@ function normalizeSymbol(value) {
   );
 }
 
-function extractPrice(payload, symbol) {
-  try {
-    const data = payload?.data || {};
-    const coinData = data[symbol] || data[symbol.toUpperCase()] || Object.values(data)[0];
-    const price = coinData?.quote?.USD?.price;
-    return typeof price === "number" ? price : Number(price);
-  } catch {
-    return null;
+function headersToObject(headers) {
+  if (!headers) return {};
+
+  if (typeof headers.toJSON === "function") {
+    return headers.toJSON();
   }
+
+  return Object.fromEntries(Object.entries(headers));
 }
 
 function safeHeaders(headers) {
   const output = {};
-  for (const [key, value] of Object.entries(headers || {})) {
+  const headerObject = headersToObject(headers);
+
+  for (const [key, value] of Object.entries(headerObject)) {
     const lower = String(key).toLowerCase();
+
     if (
       lower === "authorization" ||
       lower === "payment" ||
@@ -52,7 +53,21 @@ function safeHeaders(headers) {
       output[key] = value;
     }
   }
+
   return output;
+}
+
+function extractPrice(payload, symbol) {
+  try {
+    const data = payload?.data || {};
+    const coinData =
+      data[symbol] || data[symbol.toUpperCase()] || Object.values(data)[0];
+
+    const price = coinData?.quote?.USD?.price;
+    return typeof price === "number" ? price : Number(price);
+  } catch {
+    return null;
+  }
 }
 
 async function main() {
@@ -60,6 +75,12 @@ async function main() {
   const privateKey = normalizePrivateKey(
     process.env.X402_EVM_PRIVATE_KEY || process.env.EVM_PRIVATE_KEY
   );
+
+  const wrapAxiosWithPayment =
+    x402Axios.wrapAxiosWithPayment || x402Axios.withPaymentInterceptor;
+  const X402Client = x402Axios.x402Client;
+  const X402HTTPClient = x402Axios.x402HTTPClient;
+  const registerExactEvmScheme = x402EvmExact.registerExactEvmScheme;
 
   if (!privateKey) {
     console.log(
@@ -75,27 +96,50 @@ async function main() {
     process.exit(0);
   }
 
-  const account = privateKeyToAccount(privateKey);
+  if (!X402Client || !registerExactEvmScheme || !wrapAxiosWithPayment) {
+    console.log(
+      JSON.stringify({
+        success: false,
+        paid: false,
+        used_in_decision: false,
+        status: "sdk_missing_exports",
+        message: "Installed x402 SDK does not expose the expected v2 client helpers.",
+        symbol,
+        available_axios_exports: Object.keys(x402Axios),
+        available_evm_exact_exports: Object.keys(x402EvmExact),
+      })
+    );
+    process.exit(0);
+  }
 
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(),
-  });
+  const signer = privateKeyToAccount(privateKey);
 
-  const signer = toClientEvmSigner(account, publicClient);
+  const client = new X402Client();
+  registerExactEvmScheme(client, { signer });
 
-  const client = createX402AxiosClient({
-    schemes: [new ExactEvmScheme(signer)],
-  });
+  const api = wrapAxiosWithPayment(axios.create(), client);
 
   try {
-    const response = await client.get(CMC_X402_QUOTES_URL, {
+    const response = await api.get(CMC_X402_QUOTES_URL, {
       params: { symbol },
       timeout: 30000,
     });
 
     const priceUsd = extractPrice(response.data, symbol);
     const success = Boolean(response.status === 200 && priceUsd);
+
+    let paymentResponse = null;
+
+    try {
+      if (X402HTTPClient) {
+        const httpClient = new X402HTTPClient(client);
+        paymentResponse = httpClient.getPaymentSettleResponse(
+          (name) => response.headers[String(name).toLowerCase()]
+        );
+      }
+    } catch {
+      paymentResponse = null;
+    }
 
     console.log(
       JSON.stringify({
@@ -113,7 +157,8 @@ async function main() {
         payment_chain_id: 8453,
         payment_asset: "USDC",
         expected_price_usd: "0.01",
-        wallet_address: account.address,
+        wallet_address: signer.address,
+        payment_response: paymentResponse,
         payment_response_header_present: Boolean(
           response.headers?.["payment-response"] ||
             response.headers?.["x-payment-response"]
@@ -145,7 +190,7 @@ async function main() {
         payment_chain_id: 8453,
         payment_asset: "USDC",
         expected_price_usd: "0.01",
-        wallet_address: account.address,
+        wallet_address: signer.address,
         response_body_preview: data,
         response_headers: safeHeaders(headers),
         message: error?.message || "CMC x402 TypeScript request failed.",

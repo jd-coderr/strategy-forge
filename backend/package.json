@@ -6,6 +6,7 @@
     "@trustwallet/cli": "latest",
     "@x402/axios": "latest",
     "@x402/evm": "latest",
+    "axios": "latest",
     "viem": "latest"
   }
 }

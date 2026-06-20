@@ -709,6 +709,31 @@ function App() {
     return !operatorUnlocked || !operatorKey.trim() || loading || Boolean(extraCondition);
   }
 
+  function isAgentRunning() {
+    return autonomousMode || autonomousStatus?.running === true;
+  }
+
+  function isAgentSetupLocked(extraCondition = false) {
+    return isOperatorControlLocked(Boolean(extraCondition) || isAgentRunning());
+  }
+
+  function requireAgentStopped(actionLabel = "CHANGE AGENT SETUP") {
+    if (isAgentRunning()) {
+      alert(`${actionLabel} IS LOCKED WHILE AGENT IS RUNNING. STOP THE AGENT FIRST.`);
+      return false;
+    }
+
+    return true;
+  }
+
+  function getAgentSetupLockTitle(actionLabel = "SETUP CONTROL") {
+    if (isAgentRunning()) {
+      return `${actionLabel} LOCKED WHILE AGENT IS RUNNING. STOP AGENT FIRST.`;
+    }
+
+    return getOperatorLockTitle(actionLabel);
+  }
+
   function getOperatorLockTitle(actionLabel = "OPERATOR CONTROL") {
     if (!operatorUnlocked || !operatorKey.trim()) {
       return `${actionLabel} LOCKED. OPEN OPTIONS MENU AND UNLOCK OPERATOR MODE.`;
@@ -854,6 +879,7 @@ function App() {
 
   function handleManualSetupChange(patch, resetStrategy = false) {
     if (!requireOperatorMode("CHANGE AGENT SETUP")) return;
+    if (!requireAgentStopped("CHANGE AGENT SETUP")) return;
 
     if (patch.coin !== undefined) setCoin(patch.coin);
     if (patch.timeframe !== undefined) setTimeframe(patch.timeframe);
@@ -1731,6 +1757,8 @@ Best eligible risk-adjusted score among all tested combinations.
   }
 
   async function connectWallet() {
+    if (!requireAgentStopped("CONNECT WALLET")) return;
+
     pulseButton("wallet");
 
     if (!window.ethereum) {
@@ -1804,6 +1832,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
   async function generateStrategy() {
     if (!requireOperatorMode("GENERATE STRATEGY")) return;
+    if (!requireAgentStopped("GENERATE STRATEGY")) return;
 
     pulseButton("generate");
     setAutoOptimized(false);
@@ -1858,6 +1887,7 @@ Best eligible risk-adjusted score among all tested combinations.
 
   async function optimizeStrategy() {
     if (!requireOperatorMode("AUTO-OPTIMIZE SETUP")) return;
+    if (!requireAgentStopped("AUTO-OPTIMIZE SETUP")) return;
 
     pulseButton("optimize");
     setAutoOptimized(false);
@@ -2430,10 +2460,10 @@ async function loadTradeHistory() {
               <div className="simple-metric-row"><span>RISK</span><strong>{getRiskProfileLabel(risk)}</strong></div>
 
               <div className="simple-action-grid">
-                <button onClick={optimizeStrategy} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("AUTO-OPTIMIZE SETUP")} style={getButtonStyle("optimize")}>
+                <button onClick={optimizeStrategy} disabled={isAgentSetupLocked()} title={getAgentSetupLockTitle("AUTO-OPTIMIZE SETUP")} style={getButtonStyle("optimize")}>
                   {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
                 </button>
-                <button onClick={connectWallet} disabled={loading} style={getButtonStyle("wallet")}>
+                <button onClick={connectWallet} disabled={loading || isAgentRunning()} title={isAgentRunning() ? "CONNECT WALLET LOCKED WHILE AGENT IS RUNNING. STOP AGENT FIRST." : ""} style={getButtonStyle("wallet")}>
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
                 <button onClick={runAgentCycle} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("RUN AGENT")} style={getButtonStyle("run")}>
@@ -2455,7 +2485,7 @@ async function loadTradeHistory() {
               <div className="simple-control-grid">
                 <div>
                   <label>ASSET</label>
-                  <select value={coin} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={coin} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -2514,7 +2544,7 @@ async function loadTradeHistory() {
                 </div>
                 <div>
                   <label>TRADE SIZE ({coin})</label>
-                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
+                  <input type="number" min="0" step="0.001" value={tradeSize} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                 </div>
               </div>
 
@@ -2835,7 +2865,7 @@ async function loadTradeHistory() {
                 <div className="operator-locked-banner">PUBLIC READ-ONLY MODE — UNLOCK OPERATOR MODE TO OPTIMIZE OR RUN THE AGENT.</div>
               )}
               <div className="agent-control-panel">
-                <button onClick={optimizeStrategy} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("AUTO-OPTIMIZE SETUP")} className="copy-btn" style={getButtonStyle("optimize")}>
+                <button onClick={optimizeStrategy} disabled={isAgentSetupLocked()} title={getAgentSetupLockTitle("AUTO-OPTIMIZE SETUP")} className="copy-btn" style={getButtonStyle("optimize")}>
                   {loading && loadingMode === "optimize" ? (
                     <>
                       OPTIMIZING<span className="loading-dots"></span>
@@ -2847,7 +2877,7 @@ async function loadTradeHistory() {
                   )}
                 </button>
 
-                <button onClick={connectWallet} disabled={loading} className="copy-btn" style={getButtonStyle("wallet")}>
+                <button onClick={connectWallet} disabled={loading || isAgentRunning()} title={isAgentRunning() ? "CONNECT WALLET LOCKED WHILE AGENT IS RUNNING. STOP AGENT FIRST." : ""} className="copy-btn" style={getButtonStyle("wallet")}>
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
               </div>
@@ -2886,7 +2916,7 @@ async function loadTradeHistory() {
               <div className="input-row">
                 <div>
                   <label>ASSET</label>
-                  <select value={coin} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={coin} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -2912,7 +2942,7 @@ async function loadTradeHistory() {
 
                 <div>
                   <label>TIMEFRAME</label>
-                  <select value={timeframe} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={timeframe} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="5M">5M</option>
                     <option value="15M">15M</option>
                     <option value="1H">1H</option>
@@ -2923,7 +2953,7 @@ async function loadTradeHistory() {
 
                 <div>
                   <label>RISK PROFILE</label>
-                  <select value={risk} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                  <select value={risk} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
                     <option value="low">CONSERVATIVE</option>
                     <option value="medium">BALANCED</option>
                     <option value="high">AGGRESSIVE / GOVERNED</option>
@@ -2934,14 +2964,14 @@ async function loadTradeHistory() {
                   <label>BACKTEST CAPITAL</label>
                   <div className="capital-input">
                     <span>$</span>
-                    <input type="number" min="100" step="100" value={initialCapital} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ initial_capital: Number(e.target.value) }, true)} />
+                    <input type="number" min="100" step="100" value={initialCapital} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ initial_capital: Number(e.target.value) }, true)} />
                   </div>
                 </div>
 
                 <div>
                   <label>TRADE SIZE ({coin})</label>
                   <div className="capital-input trade-size-input">
-                    <input type="number" min="0" step="0.001" value={tradeSize} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
+                    <input type="number" min="0" step="0.001" value={tradeSize} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                   </div>
                 </div>
               </div>
@@ -2956,7 +2986,7 @@ async function loadTradeHistory() {
 
               <h2 className="strategy-library-title">CUSTOM SETUP</h2>
               <div className="agent-control-panel">
-                <button onClick={generateStrategy} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("GENERATE STRATEGY")} className="copy-btn" style={getButtonStyle("generate")}>
+                <button onClick={generateStrategy} disabled={isAgentSetupLocked()} title={getAgentSetupLockTitle("GENERATE STRATEGY")} className="copy-btn" style={getButtonStyle("generate")}>
                   {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
                 </button>
 
@@ -3653,7 +3683,8 @@ async function loadTradeHistory() {
 <div className="agent-control-panel">
   <button
     onClick={optimizeStrategy}
-    disabled={isOperatorControlLocked()}
+    disabled={isAgentSetupLocked()}
+    title={getAgentSetupLockTitle("AUTO-OPTIMIZE SETUP")}
     className="copy-btn"
     style={getButtonStyle("optimize")}
   >
@@ -3670,7 +3701,8 @@ async function loadTradeHistory() {
 
   <button
     onClick={connectWallet}
-    disabled={loading}
+    disabled={loading || isAgentRunning()}
+    title={isAgentRunning() ? "CONNECT WALLET LOCKED WHILE AGENT IS RUNNING. STOP AGENT FIRST." : ""}
     className="copy-btn"
     style={getButtonStyle("wallet")}
   >
@@ -3732,7 +3764,7 @@ async function loadTradeHistory() {
             <label>ASSET</label>
             <select
   value={coin}
-  disabled={isOperatorControlLocked()}
+  disabled={isAgentSetupLocked()}
   onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)}
   onWheel={(e) => e.currentTarget.blur()}
 >
@@ -3761,7 +3793,7 @@ async function loadTradeHistory() {
 
           <div>
             <label>TIMEFRAME</label>
-            <select value={timeframe} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+            <select value={timeframe} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ timeframe: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
               <option value="5M">5M</option>
               <option value="15M">15M</option>
               <option value="1H">1H</option>
@@ -3772,7 +3804,7 @@ async function loadTradeHistory() {
 
           <div>
             <label>RISK PROFILE</label>
-            <select value={risk} disabled={isOperatorControlLocked()} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+            <select value={risk} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ risk: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
               <option value="low">CONSERVATIVE</option>
               <option value="medium">BALANCED</option>
               <option value="high">AGGRESSIVE / GOVERNED</option>
@@ -3790,7 +3822,7 @@ async function loadTradeHistory() {
                 min="100"
                 step="100"
                 value={initialCapital}
-                disabled={isOperatorControlLocked()}
+                disabled={isAgentSetupLocked()}
                 onChange={(e) => handleManualSetupChange({ initial_capital: Number(e.target.value) }, true)}
               />
             </div>
@@ -3805,7 +3837,7 @@ async function loadTradeHistory() {
                 min="0"
                 step="0.001"
                 value={tradeSize}
-                disabled={isOperatorControlLocked()}
+                disabled={isAgentSetupLocked()}
                 onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)}
               />
             </div>
@@ -3827,7 +3859,8 @@ async function loadTradeHistory() {
         <div className="full-custom-strategy-row">
           <button
             onClick={generateStrategy}
-            disabled={isOperatorControlLocked()}
+            disabled={isAgentSetupLocked()}
+            title={getAgentSetupLockTitle("GENERATE STRATEGY")}
             className="copy-btn"
             style={getButtonStyle("generate")}
           >
@@ -3838,7 +3871,7 @@ async function loadTradeHistory() {
 
           <select
             value={manualStrategy || result?.selected_strategy || ""}
-            disabled={isOperatorControlLocked()}
+            disabled={isAgentSetupLocked()}
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => {
               const selectedStrategy = e.target.value;

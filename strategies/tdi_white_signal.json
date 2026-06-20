@@ -2,26 +2,34 @@
   "name": "TDI Sharkfin Reversal",
   "type": "tdi_signal_reversal",
   "entry": {
-    "condition": "Buy signal or sell signal fires from the TDI sharkfin logic.",
-    "default_threshold": "White label up for long, white label down for short"
+    "condition": "Enter when either a fixed 32/68 TDI sharkfin trigger fires or a TDI Bollinger-band sharkfin trigger fires.",
+    "default_threshold": "Long: fixed 32 sharkfin OR lower TDI Bollinger-band sharkfin. Sell/reduce: fixed 68 sharkfin OR upper TDI Bollinger-band sharkfin."
   },
   "confirmation": {
-    "condition": "Fast TDI momentum must be outside the 32/68 band and reversing back from an extreme.",
-    "default_threshold": "Sharkfin reversal confirmation"
+    "condition": "Fast TDI must curl back from an extreme. The extreme can be the fixed 32/68 band or the outer TDI Bollinger volatility band.",
+    "default_threshold": "Sharkfin reversal confirmation from fixed band or TDI Bollinger band"
   },
   "take_profit": {
-    "condition": "Exit when price reaches the configured take-profit percentage from entry.",
-    "default_threshold": "1.0%"
+    "condition": "Primary long exit is when the TDI signal line reaches 68. A short/backtest short exits when the TDI signal line reaches 32.",
+    "default_threshold": "TDI signal line 68 exit for long positions"
   },
   "stop_loss": {
-    "condition": "Exit when price reaches the configured stop-loss percentage from entry.",
-    "default_threshold": "0.5%"
+    "condition": "Backup safety exit if price moves against the entry before the TDI exit appears.",
+    "default_threshold": "Risk-profile stop-loss backup"
   },
   "risk_governor": {
     "max_open_trades": 1,
     "risk_per_trade": "1%",
     "stop_after_consecutive_losses": 2,
     "avoid_low_volume_conditions": true,
-    "requires_extreme_band_condition": true
+    "requires_extreme_band_condition": true,
+    "allowed_entry_triggers": [
+      "fixed_32_sharkfin_long",
+      "fixed_68_sharkfin_short",
+      "lower_tdi_bollinger_sharkfin_long",
+      "upper_tdi_bollinger_sharkfin_short"
+    ],
+    "primary_exit": "tdi_signal_line_68_for_long",
+    "spot_wallet_rule": "Long buys USDT to selected token. Sell/exit reduces selected token to USDT only if the wallet already holds the token."
   }
 }

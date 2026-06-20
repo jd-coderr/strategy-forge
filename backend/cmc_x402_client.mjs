@@ -255,7 +255,7 @@ const paidResponse = await api.get(CMC_X402_QUOTES_URL, {
         wallet_address: signer.address,
         payment_required_debug: summarizePaymentRequired(paymentRequired),
         payment_payload_debug: summarizePaymentPayload(paymentPayload),
-        payment_headers_sent: Object.keys(compatibleHeaders),
+        payment_headers_sent: Object.keys(paymentHeaders),
         payment_response_header_present: Boolean(
           paidResponse.headers?.["payment-response"] ||
             paidResponse.headers?.["x-payment-response"]

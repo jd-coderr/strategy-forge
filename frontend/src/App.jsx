@@ -1410,44 +1410,65 @@ useEffect(() => {
   }
 
   function getSimpleSelectedStrategyLabel() {
-    const chosenStrategy =
-      manualStrategy ||
-      result?.selected_strategy ||
-      agentResult?.selected_strategy ||
-      autonomousStatus?.last_result?.selected_strategy ||
-      autonomousStatus?.active_config?.selected_strategy ||
-      autonomousStatus?.saved_agent_setup?.selected_strategy ||
-      null;
+const chosenStrategy =
+  manualStrategy ||
+  result?.selected_strategy ||
+  agentResult?.selected_strategy ||
+  agentResult?.active_strategy ||
+  agentResult?.strategy ||
+  agentResult?.trade_plan?.selected_strategy ||
+  agentResult?.trade_plan?.strategy ||
+  autonomousStatus?.last_result?.selected_strategy ||
+  autonomousStatus?.last_result?.active_strategy ||
+  autonomousStatus?.last_result?.strategy ||
+  autonomousStatus?.last_result?.trade_plan?.selected_strategy ||
+  autonomousStatus?.last_result?.trade_plan?.strategy ||
+  autonomousStatus?.active_config?.selected_strategy ||
+  autonomousStatus?.active_config?.active_strategy ||
+  autonomousStatus?.active_config?.strategy ||
+  autonomousStatus?.saved_agent_setup?.selected_strategy ||
+  autonomousStatus?.saved_agent_setup?.active_strategy ||
+  autonomousStatus?.saved_agent_setup?.strategy ||
+  null;
 
     if (chosenStrategy) return chosenStrategy;
     if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
     if (loading && loadingMode === "agent") return "AGENT SELECTING BEST STRATEGY";
     if (setupSource === "manual_selection" || setupSource === "manual_start") {
-      return "MANUAL SETUP ACTIVE — BEST STRATEGY AUTO-SELECTS ON RUN";
+      return "WAITING FOR STRATEGY SELECTION";
     }
 
     return "NO STRATEGY SELECTED YET";
   }
 
-  function getActiveStrategyLabel() {
-    const chosenStrategy =
-      manualStrategy ||
-      result?.selected_strategy ||
-      agentResult?.selected_strategy ||
-      autonomousStatus?.last_result?.selected_strategy ||
-      autonomousStatus?.active_config?.selected_strategy ||
-      autonomousStatus?.saved_agent_setup?.selected_strategy ||
-      null;
+function getActiveStrategyLabel() {
+  const chosenStrategy =
+    manualStrategy ||
+    result?.selected_strategy ||
+    agentResult?.selected_strategy ||
+    agentResult?.active_strategy ||
+    agentResult?.strategy ||
+    agentResult?.trade_plan?.selected_strategy ||
+    agentResult?.trade_plan?.strategy ||
+    autonomousStatus?.last_result?.selected_strategy ||
+    autonomousStatus?.last_result?.active_strategy ||
+    autonomousStatus?.last_result?.strategy ||
+    autonomousStatus?.last_result?.trade_plan?.selected_strategy ||
+    autonomousStatus?.last_result?.trade_plan?.strategy ||
+    autonomousStatus?.active_config?.selected_strategy ||
+    autonomousStatus?.active_config?.active_strategy ||
+    autonomousStatus?.active_config?.strategy ||
+    autonomousStatus?.saved_agent_setup?.selected_strategy ||
+    autonomousStatus?.saved_agent_setup?.active_strategy ||
+    autonomousStatus?.saved_agent_setup?.strategy ||
+    null;
 
-    if (chosenStrategy) return chosenStrategy;
-    if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
-    if (loading && loadingMode === "agent") return "AGENT SELECTING BEST STRATEGY";
-    if (setupSource === "manual_selection" || setupSource === "manual_start" || setupSource === "generated_strategy") {
-      return "MANUAL SETUP ACTIVE — STRATEGY AUTO-SELECTS ON RUN";
-    }
+  if (chosenStrategy) return chosenStrategy;
+  if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
+  if (loading && loadingMode === "agent") return "AGENT SELECTING BEST STRATEGY";
 
-    return "NO STRATEGY SELECTED YET";
-  }
+  return "WAITING FOR STRATEGY SELECTION";
+}
 
   function getSimpleSetupStatusLabel() {
     if (loading && loadingMode === "optimize") return "OPTIMIZER RUNNING";
@@ -3113,6 +3134,9 @@ async function loadTradeHistory() {
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TYPE: {tradeTypeLabel}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>{timestamp}</p>
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>EVENT: {getTradeLogEventLabel(trade)}</p>
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
+                            STRATEGY: {trade.selected_strategy || trade.active_strategy || trade.strategy || trade.trade_plan?.selected_strategy || trade.trade_plan?.strategy || "N/A"}
+                          </p>
                           {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
                           {trade.risk_control?.current_drawdown_pct !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%</p>}
                           {trade.why?.length > 0 && (

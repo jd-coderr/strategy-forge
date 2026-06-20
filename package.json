@@ -3,6 +3,9 @@
     "postinstall": "npm install -g @trustwallet/cli"
   },
   "dependencies": {
-    "@trustwallet/cli": "latest"
+    "@trustwallet/cli": "latest",
+    "@x402/axios": "latest",
+    "@x402/evm": "latest",
+    "viem": "latest"
   }
 }

@@ -79,6 +79,9 @@ def operator_status():
         "operator_key_configured": bool(get_admin_key()),
         "public_mode": "read_only",
         "protected_actions": [
+            "generate-strategy",
+            "optimize-strategy",
+            "agent-config-save",
             "agent-cycle",
             "autonomous-start",
             "autonomous-stop",
@@ -1200,7 +1203,7 @@ def execute_paper_trade(trade_plan, price_usd):
 
 
 @app.post("/generate-strategy")
-def generate_strategy(request: StrategyRequest):
+def generate_strategy(request: StrategyRequest, _operator_ok: bool = Depends(require_operator_key)):
     cmc_signal = get_cmc_signal(request.coin)
 
     strategy, backtest, compared_results = pick_best_strategy(
@@ -1242,7 +1245,7 @@ def generate_strategy(request: StrategyRequest):
 
 
 @app.post("/optimize-strategy")
-def optimize_strategy(request: OptimizeRequest):
+def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(require_operator_key)):
     timeframes = ["5M", "15M", "1H", "4H", "1D"]
     risk_levels = ["low", "medium", "high"]
     strategies = load_available_strategies()

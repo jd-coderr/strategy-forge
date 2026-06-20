@@ -922,7 +922,7 @@ async function startAutonomousMode() {
         execution_mode: selectedExecutionMode,
         trade_size: tradeSize,
         selected_strategy: manualStrategy || result?.selected_strategy || null,
-        interval_minutes: autonomousInterval,
+        interval_minutes: Number(autonomousInterval),
         result_snapshot: result || null,
         optimization: result?.optimization || null,
         setup_source: autoOptimized ? "auto_optimized_start" : "manual_start",

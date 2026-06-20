@@ -1710,8 +1710,6 @@ Best eligible risk-adjusted score among all tested combinations.
   }
 
   async function connectWallet() {
-    if (!requireOperatorMode("CONNECT VIEWER WALLET")) return;
-
     pulseButton("wallet");
 
     if (!window.ethereum) {
@@ -2195,7 +2193,7 @@ async function loadTradeHistory() {
                 {operatorUnlocked ? "LOCK CONTROLS" : "UNLOCK CONTROLS"}
               </button>
               <p style={{ marginTop: "8px", fontSize: "10px", lineHeight: "1.35" }}>
-                PUBLIC VISITORS CAN WATCH ONLY. ONLY THE OPERATOR CAN CONNECT A WALLET, OPTIMIZE, CHANGE SETUP, START, STOP, OR EXECUTE.
+                PUBLIC VISITORS CAN WATCH. ONLY THE OPERATOR CAN OPTIMIZE, CHANGE SETUP, START, STOP, OR EXECUTE.
               </p>
             </div>
             <button
@@ -2308,9 +2306,8 @@ async function loadTradeHistory() {
             <div className="simple-quadrant-body">
               <div className="simple-brand-block">
                 <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
-                <h1 className="simple-square-title">
-                  <span>I KNOW</span>
-                  <span>QUANT FU<span className="blink">_</span></span>
+                <h1 className="simple-square-title ikqf-brand-title">
+                  I KNOW QUANT FU<span className="blink">_</span>
                 </h1>
                 <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
@@ -2415,7 +2412,7 @@ async function loadTradeHistory() {
                 <button onClick={optimizeStrategy} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("AUTO-OPTIMIZE SETUP")} style={getButtonStyle("optimize")}>
                   {loading && loadingMode === "optimize" ? "I AM OPTIMIZING..." : autoOptimized ? "AUTO-OPTIMIZED" : "> AUTO-OPTIMIZE <"}
                 </button>
-                <button onClick={connectWallet} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("CONNECT VIEWER WALLET")} style={getButtonStyle("wallet")}>
+                <button onClick={connectWallet} disabled={loading} style={getButtonStyle("wallet")}>
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
                 <button onClick={runAgentCycle} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("RUN AGENT")} style={getButtonStyle("run")}>
@@ -2585,22 +2582,20 @@ async function loadTradeHistory() {
           </div>
 
           <div className="retro-quadrant-body">
-            <div className="retro-brand-card">
-              <div className="topbar retro-topbar">
-                <span>IKQF v0.1.0 — AI ONLINE</span>
-              </div>
+            <div className="retro-brand-card detailed-simple-identity">
+              <p className="simple-kicker retro-brand-kicker">IKQF v0.1.0 — AI ONLINE</p>
 
-              <h1 className="title retro-title">
+              <h1 className="simple-square-title retro-title ikqf-brand-title">
                 I KNOW QUANT FU<span className="blink">_</span>
               </h1>
 
-              <p className="subtitle retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
-              <p className="retro-brand-subline"><strong>Backtest the signal. Lock the risk. Automate the move.</strong></p>
+              <p className="simple-brand-slogan retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
+              <p className="simple-brand-subline retro-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
 
-              <div className="hero-description retro-hero-description">
-                I Know Quant Fu is an AI trading agent powered by CoinMarketCap market intelligence,
-                Trust Wallet Agent Kit, PancakeSwap execution routing,
-                and BNB Smart Chain infrastructure.
+              <div className="hero-description retro-hero-description ikqf-brand-description">
+                I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
+                test strategy logic, check portfolio risk, explain my decision, and only then decide whether
+                to wait, simulate, paper trade, or execute.
               </div>
 
               <div className="metrics retro-mini-window detailed-human-translation">
@@ -2810,7 +2805,7 @@ async function loadTradeHistory() {
             <details className="retro-window" open>
               <summary>QUICK START ACTIONS</summary>
               {!operatorUnlocked && (
-                <div className="operator-locked-banner">PUBLIC READ-ONLY MODE — UNLOCK OPERATOR MODE TO CHANGE SETUP, CONNECT WALLET, OPTIMIZE, OR RUN THE AGENT.</div>
+                <div className="operator-locked-banner">PUBLIC READ-ONLY MODE — UNLOCK OPERATOR MODE TO OPTIMIZE OR RUN THE AGENT.</div>
               )}
               <div className="agent-control-panel">
                 <button onClick={optimizeStrategy} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("AUTO-OPTIMIZE SETUP")} className="copy-btn" style={getButtonStyle("optimize")}>
@@ -2825,7 +2820,7 @@ async function loadTradeHistory() {
                   )}
                 </button>
 
-                <button onClick={connectWallet} disabled={isOperatorControlLocked()} title={getOperatorLockTitle("CONNECT VIEWER WALLET")} className="copy-btn" style={getButtonStyle("wallet")}>
+                <button onClick={connectWallet} disabled={loading} className="copy-btn" style={getButtonStyle("wallet")}>
                   {walletAddress ? "WALLET CONNECTED" : "> CONNECT WALLET <"}
                 </button>
               </div>
@@ -3579,22 +3574,21 @@ async function loadTradeHistory() {
   const renderFullSizeVersion = () => (
     <div className="full-size-page">
       <main className="full-terminal">
-      <div className="topbar">
-        <span>IKQF v0.1.0</span>
-        <span>AI ONLINE</span>
+      <div className="topbar ikqf-full-brand-topbar">
+        <span>IKQF v0.1.0 — AI ONLINE</span>
       </div>
 
-      <h1 className="title">
+      <h1 className="title ikqf-brand-title full-brand-title">
         I KNOW QUANT FU<span className="blink">_</span>
       </h1>
 
-      <p className="full-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
-      <p className="full-subline-no-glow">Backtest the signal. Lock the risk. Automate the move.</p>
+      <p className="full-slogan ikqf-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+      <p className="full-subline-no-glow ikqf-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
 
-      <div className="hero-description">
-        I Know Quant Fu is an AI trading agent that tests crypto strategies, reads market
-        conditions, controls risk, and explains every decision before anything is simulated,
-        paper traded, or executed.
+      <div className="hero-description ikqf-brand-description">
+        I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
+        test strategy logic, check portfolio risk, explain my decision, and only then decide whether
+        to wait, simulate, paper trade, or execute.
       </div>
 
 {(() => {
@@ -3622,7 +3616,7 @@ async function loadTradeHistory() {
         <div className="panel-title">QUICK START</div>
 
 {!operatorUnlocked && (
-  <div className="operator-locked-banner">PUBLIC READ-ONLY MODE — UNLOCK OPERATOR MODE TO CHANGE SETUP, CONNECT WALLET, OPTIMIZE, OR RUN THE AGENT.</div>
+  <div className="operator-locked-banner">PUBLIC READ-ONLY MODE — UNLOCK OPERATOR MODE TO OPTIMIZE OR RUN THE AGENT.</div>
 )}
 
 <div className="agent-control-panel">
@@ -3645,8 +3639,7 @@ async function loadTradeHistory() {
 
   <button
     onClick={connectWallet}
-    disabled={isOperatorControlLocked()}
-    title={getOperatorLockTitle("CONNECT VIEWER WALLET")}
+    disabled={loading}
     className="copy-btn"
     style={getButtonStyle("wallet")}
   >

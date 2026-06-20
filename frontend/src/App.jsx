@@ -2306,8 +2306,9 @@ async function loadTradeHistory() {
             <div className="simple-quadrant-body">
               <div className="simple-brand-block">
                 <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
-                <h1 className="simple-square-title ikqf-brand-title">
-                  I KNOW QUANT FU<span className="blink">_</span>
+                <h1 className="simple-square-title">
+                  <span>I KNOW</span>
+                  <span>QUANT FU<span className="blink">_</span></span>
                 </h1>
                 <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
                 <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
@@ -2582,20 +2583,21 @@ async function loadTradeHistory() {
           </div>
 
           <div className="retro-quadrant-body">
-            <div className="retro-brand-card detailed-simple-identity">
-              <p className="simple-kicker retro-brand-kicker">IKQF v0.1.0 — AI ONLINE</p>
+            <div className="retro-brand-card">
 
-              <h1 className="simple-square-title retro-title ikqf-brand-title">
-                I KNOW QUANT FU<span className="blink">_</span>
-              </h1>
-
-              <p className="simple-brand-slogan retro-subtitle">ROUNDHOUSE KICK DUMB TRADES.</p>
-              <p className="simple-brand-subline retro-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
-
-              <div className="hero-description retro-hero-description ikqf-brand-description">
-                I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
-                test strategy logic, check portfolio risk, explain my decision, and only then decide whether
-                to wait, simulate, paper trade, or execute.
+              <div className="simple-brand-block">
+                <p className="simple-kicker">IKQF v0.1.0 — AI ONLINE</p>
+                <h1 className="simple-square-title">
+                  <span>I KNOW</span>
+                  <span>QUANT FU<span className="blink">_</span></span>
+                </h1>
+                <p className="simple-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+                <p className="simple-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
+                <p className="simple-speech-text">
+                  I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
+                  test strategy logic, check portfolio risk, explain my decision, and only then decide whether
+                  to wait, simulate, paper trade, or execute.
+                </p>
               </div>
 
               <div className="metrics retro-mini-window detailed-human-translation">
@@ -3574,21 +3576,22 @@ async function loadTradeHistory() {
   const renderFullSizeVersion = () => (
     <div className="full-size-page">
       <main className="full-terminal">
-      <div className="topbar ikqf-full-brand-topbar">
-        <span>IKQF v0.1.0 — AI ONLINE</span>
+      <div className="topbar">
+        <span>IKQF v0.1.0</span>
+        <span>AI ONLINE</span>
       </div>
 
-      <h1 className="title ikqf-brand-title full-brand-title">
+      <h1 className="title">
         I KNOW QUANT FU<span className="blink">_</span>
       </h1>
 
-      <p className="full-slogan ikqf-brand-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
-      <p className="full-subline-no-glow ikqf-brand-subline">Backtest the signal. Lock the risk. Automate the move.</p>
+      <p className="full-slogan">ROUNDHOUSE KICK DUMB TRADES.</p>
+      <p className="full-subline-no-glow">Backtest the signal. Lock the risk. Automate the move.</p>
 
-      <div className="hero-description ikqf-brand-description">
-        I Know Quant Fu is an autonomous AI trading agent for crypto. I read live market conditions,
-        test strategy logic, check portfolio risk, explain my decision, and only then decide whether
-        to wait, simulate, paper trade, or execute.
+      <div className="hero-description">
+        I Know Quant Fu is an AI trading agent that tests crypto strategies, reads market
+        conditions, controls risk, and explains every decision before anything is simulated,
+        paper traded, or executed.
       </div>
 
 {(() => {

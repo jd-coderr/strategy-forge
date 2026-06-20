@@ -163,6 +163,7 @@ async function main() {
           response.headers?.["payment-response"] ||
             response.headers?.["x-payment-response"]
         ),
+        response_body_preview: response.data,
         response_headers: safeHeaders(response.headers),
         message:
           response.status === 200

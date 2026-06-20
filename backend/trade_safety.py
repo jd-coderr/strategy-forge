@@ -11,7 +11,9 @@ ALLOWED_TOKENS = {
 # Conservative per-swap caps. Amount is denominated in the FROM token that TWAK will spend.
 # These caps are intentionally small for the competition wallet so a forced/normal trade cannot drain funds.
 MAX_TRADE_AMOUNTS = {
-    "USDT": 2.0,
+    # Raised to 5 USDT so the default 0.001 ETH-style trade size is not accidentally blocked
+    # when ETH is above 2,000 USDT. Still conservative for the competition wallet.
+    "USDT": 5.0,
     "BNB": 0.002,
     "ETH": 0.002,
     "XRP": 5.0,

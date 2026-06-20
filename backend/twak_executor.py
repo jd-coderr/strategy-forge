@@ -90,7 +90,7 @@ def run_twak_swap(
     if password:
         safe_command = safe_command.replace(password, "***")
 
-    print("TWAK COMMAND:", cmd, flush=True)
+    print("TWAK COMMAND:", safe_command, flush=True)
 
     try:
         result = subprocess.run(

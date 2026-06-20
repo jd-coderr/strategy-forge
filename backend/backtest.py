@@ -115,8 +115,18 @@ def build_indicators(df):
     df["smoothed_deviation"] = df["deviation"].rolling(21).mean()
 
     df["rsi"] = calculate_rsi(df["close"], 13)
+
+    # TDI Sharkfin Reversal uses the same core TDI components as the Pine indicator:
+    # - tdi_fast: RSI(13) smoothed by 2 bars, used for the white sharkfin curl.
+    # - tdi_signal: the slower red signal line, used for the 68/32 opposite-side exit.
+    # - TDI Bollinger bands: volatility bands around the fast TDI line for extra sharkfin triggers.
     df["tdi_fast"] = df["rsi"].rolling(2).mean()
     df["tdi_slow"] = df["rsi"].rolling(7).mean()
+    df["tdi_signal"] = df["tdi_fast"].rolling(7).mean()
+    df["tdi_bb_basis"] = df["tdi_fast"].rolling(34).mean()
+    df["tdi_bb_dev"] = 1.618 * df["tdi_fast"].rolling(34).std()
+    df["tdi_bb_upper"] = df["tdi_bb_basis"] + df["tdi_bb_dev"]
+    df["tdi_bb_lower"] = df["tdi_bb_basis"] - df["tdi_bb_dev"]
 
     low_14 = df["low"].rolling(14).min()
     high_14 = df["high"].rolling(14).max()
@@ -279,6 +289,98 @@ def build_indicators(df):
     return df
 
 
+
+def get_tdi_sharkfin_state(df, index):
+    """Return the exact TDI Sharkfin state used by backtest and live agent current signal.
+
+    Entry triggers:
+    - fixed 32/68 sharkfin curl
+    - TDI Bollinger-band sharkfin curl
+
+    Exit trigger:
+    - after a long is open, the TDI signal line reaching 68 is treated as sell/close.
+    - after a short/backtest short is open, the TDI signal line reaching 32 is treated as close.
+    """
+    row = df.iloc[index]
+    prev_1 = df.iloc[index - 1] if index >= 1 else row
+    prev_2 = df.iloc[index - 2] if index >= 2 else row
+
+    fast_0 = float(row.get("tdi_fast", 50))
+    fast_1 = float(prev_1.get("tdi_fast", fast_0))
+    fast_2 = float(prev_2.get("tdi_fast", fast_1))
+
+    signal_0 = float(row.get("tdi_signal", row.get("tdi_slow", 50)))
+
+    lower_0 = float(row.get("tdi_bb_lower", 32))
+    lower_1 = float(prev_1.get("tdi_bb_lower", lower_0))
+    lower_2 = float(prev_2.get("tdi_bb_lower", lower_1))
+
+    upper_0 = float(row.get("tdi_bb_upper", 68))
+    upper_1 = float(prev_1.get("tdi_bb_upper", upper_0))
+    upper_2 = float(prev_2.get("tdi_bb_upper", upper_1))
+
+    curling_up = fast_1 > fast_2 and fast_0 > fast_1
+    curling_down = fast_1 < fast_2 and fast_0 < fast_1
+
+    fixed_long = fast_2 < 32 and curling_up and fast_0 < 32
+    fixed_short = fast_2 > 68 and curling_down and fast_0 > 68
+
+    lower_band_was_pierced = (
+        fast_2 < lower_2 or
+        fast_1 < lower_1 or
+        fast_0 < lower_0
+    )
+    upper_band_was_pierced = (
+        fast_2 > upper_2 or
+        fast_1 > upper_1 or
+        fast_0 > upper_0
+    )
+
+    bb_long = lower_band_was_pierced and curling_up and fast_0 <= max(lower_0, lower_1, lower_2)
+    bb_short = upper_band_was_pierced and curling_down and fast_0 >= min(upper_0, upper_1, upper_2)
+
+    long_entry = fixed_long or bb_long
+    short_entry = fixed_short or bb_short
+
+    signal_exit_long = signal_0 >= 68
+    signal_exit_short = signal_0 <= 32
+
+    if fixed_long:
+        trigger = "fixed_32_sharkfin_long"
+    elif bb_long:
+        trigger = "lower_tdi_bollinger_sharkfin_long"
+    elif fixed_short:
+        trigger = "fixed_68_sharkfin_short"
+    elif bb_short:
+        trigger = "upper_tdi_bollinger_sharkfin_short"
+    elif signal_exit_long:
+        trigger = "tdi_signal_line_exit_68"
+    elif signal_exit_short:
+        trigger = "tdi_signal_line_exit_32"
+    else:
+        trigger = "none"
+
+    return {
+        "long_entry": bool(long_entry),
+        "short_entry": bool(short_entry),
+        "fixed_long": bool(fixed_long),
+        "fixed_short": bool(fixed_short),
+        "bb_long": bool(bb_long),
+        "bb_short": bool(bb_short),
+        "signal_exit_long": bool(signal_exit_long),
+        "signal_exit_short": bool(signal_exit_short),
+        "trigger": trigger,
+        "tdi_fast": round(fast_0, 4),
+        "tdi_fast_prev_1": round(fast_1, 4),
+        "tdi_fast_prev_2": round(fast_2, 4),
+        "tdi_signal": round(signal_0, 4),
+        "tdi_bb_lower": round(lower_0, 4),
+        "tdi_bb_upper": round(upper_0, 4),
+        "curling_up": bool(curling_up),
+        "curling_down": bool(curling_down),
+    }
+
+
 def get_signal(strategy_type, df, index, settings):
     row = df.iloc[index]
     prev_1 = df.iloc[index - 1] if index >= 1 else row
@@ -309,24 +411,13 @@ def get_signal(strategy_type, df, index, settings):
         return "long" if fast_turning_up and medium_up and slow_confirm else None
 
     if strategy_type == "tdi_signal_reversal":
-        buy_signal = (
-            prev_2["tdi_fast"] < 32 and
-            prev_1["tdi_fast"] > prev_2["tdi_fast"] and
-            row["tdi_fast"] > prev_1["tdi_fast"] and
-            row["tdi_fast"] < 32
-        )
+        tdi_state = get_tdi_sharkfin_state(df, index)
 
-        sell_signal = (
-            prev_2["tdi_fast"] > 68 and
-            prev_1["tdi_fast"] < prev_2["tdi_fast"] and
-            row["tdi_fast"] < prev_1["tdi_fast"] and
-            row["tdi_fast"] > 68
-        )
-
-        if buy_signal:
+        # Entries only. The signal-line 68/32 exits are handled separately while a trade is open.
+        if tdi_state["long_entry"]:
             return "long"
 
-        if sell_signal:
+        if tdi_state["short_entry"]:
             return "short"
 
         return None
@@ -528,6 +619,48 @@ def get_current_signal_summary(strategy_type, df, settings):
     signal = get_signal(strategy_type, df, last_index, settings)
     row = df.iloc[last_index]
 
+    if strategy_type == "tdi_signal_reversal":
+        tdi_state = get_tdi_sharkfin_state(df, last_index)
+
+        if tdi_state["long_entry"]:
+            status = "LONG"
+            action = "TDI SHARKFIN BUY SIGNAL ACTIVE"
+            message = (
+                "TDI Sharkfin Reversal long trigger detected: "
+                f"{tdi_state['trigger']}. The agent should buy the selected token if not already holding it."
+            )
+        elif tdi_state["short_entry"]:
+            status = "SHORT"
+            action = "TDI SHARKFIN SELL / REDUCE SIGNAL ACTIVE"
+            message = (
+                "TDI Sharkfin Reversal sell/reduce trigger detected: "
+                f"{tdi_state['trigger']}. The spot agent should sell the selected token only if it already holds it."
+            )
+        elif tdi_state["signal_exit_long"]:
+            status = "SHORT"
+            action = "TDI SIGNAL LINE 68 EXIT ACTIVE"
+            message = (
+                "TDI signal line reached 68. If the agent is holding the selected token, "
+                "it should close/reduce back to USDT."
+            )
+        else:
+            status = "HOLD"
+            action = "NO ACTIVE TDI SHARKFIN ENTRY OR 68 EXIT"
+            message = (
+                "No fixed 32/68 sharkfin, no TDI Bollinger-band sharkfin, "
+                "and no 68 signal-line exit on the latest closed candle."
+            )
+
+        return {
+            "status": status,
+            "action": action,
+            "latest_close": round(row["close"], 4),
+            "latest_rsi": round(row["rsi"], 2),
+            "latest_deviation": round(row["deviation"], 2),
+            "tdi": tdi_state,
+            "message": message,
+        }
+
     if signal:
         return {
             "status": signal.upper(),
@@ -639,22 +772,59 @@ def run_backtest(
                 win = row["deviation"] <= settings["take_profit_level"]
                 loss = row["deviation"] >= entry_dev + settings["stop_extension"]
             else:
-                if strategy_type in ("mean_reversion_channel", "trend_confluence"):
-                    win_target_pct = 1.0
-                    loss_target_pct = -1.0
-                else:
-                    win_target_pct = settings["win_pnl"]
-                    loss_target_pct = settings["loss_pnl"]
+                exit_reason = None
+                raw_pnl_pct = None
 
-                if trade_dir == "long":
-                    win = close >= entry_price * (1 + win_target_pct / 100)
-                    loss = close <= entry_price * (1 + loss_target_pct / 100)
+                if strategy_type == "tdi_signal_reversal":
+                    tdi_state = get_tdi_sharkfin_state(df, index)
+
+                    if trade_dir == "long":
+                        signal_exit = tdi_state["signal_exit_long"] or tdi_state["short_entry"]
+                        stop_exit = close <= entry_price * (1 + settings["loss_pnl"] / 100)
+
+                        win = signal_exit and close >= entry_price
+                        loss = stop_exit or (signal_exit and close < entry_price)
+
+                        if signal_exit:
+                            exit_reason = "tdi_signal_line_68_or_upper_sharkfin_exit"
+                        elif stop_exit:
+                            exit_reason = "stop_loss_backup_exit"
+
+                        if signal_exit or stop_exit:
+                            raw_pnl_pct = ((close - entry_price) / entry_price) * 100
+                    else:
+                        signal_exit = tdi_state["signal_exit_short"] or tdi_state["long_entry"]
+                        stop_exit = close >= entry_price * (1 - settings["loss_pnl"] / 100)
+
+                        win = signal_exit and close <= entry_price
+                        loss = stop_exit or (signal_exit and close > entry_price)
+
+                        if signal_exit:
+                            exit_reason = "tdi_signal_line_32_or_lower_sharkfin_exit"
+                        elif stop_exit:
+                            exit_reason = "stop_loss_backup_exit"
+
+                        if signal_exit or stop_exit:
+                            raw_pnl_pct = ((entry_price - close) / entry_price) * 100
                 else:
-                    win = close <= entry_price * (1 - win_target_pct / 100)
-                    loss = close >= entry_price * (1 - loss_target_pct / 100)
+                    if strategy_type in ("mean_reversion_channel", "trend_confluence"):
+                        win_target_pct = 1.0
+                        loss_target_pct = -1.0
+                    else:
+                        win_target_pct = settings["win_pnl"]
+                        loss_target_pct = settings["loss_pnl"]
+
+                    if trade_dir == "long":
+                        win = close >= entry_price * (1 + win_target_pct / 100)
+                        loss = close <= entry_price * (1 + loss_target_pct / 100)
+                    else:
+                        win = close <= entry_price * (1 - win_target_pct / 100)
+                        loss = close >= entry_price * (1 - loss_target_pct / 100)
 
             if win or loss:
-                if strategy_type in ("mean_reversion_channel", "trend_confluence"):
+                if strategy_type == "tdi_signal_reversal" and raw_pnl_pct is not None:
+                    raw_pnl_pct = raw_pnl_pct
+                elif strategy_type in ("mean_reversion_channel", "trend_confluence"):
                     raw_pnl_pct = 1.0 if win else -1.0
                 else:
                     raw_pnl_pct = settings["win_pnl"] if win else settings["loss_pnl"]
@@ -696,7 +866,8 @@ def run_backtest(
                     "slippage_pct": settings["slippage_per_trade"],
                     "total_cost_pct": round(total_cost_pct, 2),
                     "bars_in_trade": bars_in_trade,
-"duration": f"{bars_in_trade} bars"
+                    "exit_reason": exit_reason if strategy_type == "tdi_signal_reversal" else ("take_profit" if win else "stop_loss"),
+                    "duration": f"{bars_in_trade} bars"
                 })
 
                 in_trade = False

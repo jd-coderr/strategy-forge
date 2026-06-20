@@ -603,6 +603,38 @@ function App() {
     return "decision_simulation";
   }
 
+  function getActiveTimeframeLabel() {
+    const activeTimeframe =
+      autonomousStatus?.active_config?.timeframe ||
+      autonomousStatus?.config?.timeframe ||
+      autonomousStatus?.last_result?.active_config?.timeframe ||
+      null;
+
+    const savedTimeframe =
+      autonomousStatus?.saved_agent_setup?.timeframe ||
+      autonomousStatus?.agent_setup?.timeframe ||
+      null;
+
+    const lastResultTimeframe =
+      agentResult?.timeframe ||
+      agentResult?.active_config?.timeframe ||
+      autonomousStatus?.last_result?.timeframe ||
+      autonomousStatus?.last_result?.trade_plan?.timeframe ||
+      result?.timeframe ||
+      null;
+
+    // While the agent is running, show the backend active config as the source of truth.
+    // This prevents an old optimizer snapshot from making the UI look like it is trading
+    // on a different timeframe than the running agent.
+    if (isAgentRunning() && activeTimeframe) return activeTimeframe;
+
+    return timeframe || savedTimeframe || lastResultTimeframe || "N/A";
+  }
+
+  function getOptimizerSnapshotTimeframeLabel() {
+    return result?.timeframe || "N/A";
+  }
+
   function getExecutionModeLabel(modeOverride) {
     const mode = String(modeOverride || getCurrentExecutionMode() || "decision_simulation").toLowerCase();
 
@@ -2416,7 +2448,7 @@ async function loadTradeHistory() {
               </p>
 
               <div className="simple-metric-row"><span>SIGNAL ASSET</span><strong>{getSignalAssetLabel()}</strong></div>
-              <div className="simple-metric-row"><span>TIMEFRAME</span><strong>{result?.timeframe || timeframe}</strong></div>
+              <div className="simple-metric-row"><span>ACTIVE TIMEFRAME</span><strong>{getActiveTimeframeLabel()}</strong></div>
               <div className="simple-metric-row"><span>MARKET REGIME</span><strong>{marketRegime}</strong></div>
               <div className="simple-metric-row"><span>SELECTED STRATEGY</span><strong>{selectedStrategy}</strong></div>
               <div className="simple-metric-row"><span>SETUP STATUS</span><strong>{getSimpleSetupStatusLabel()}</strong></div>
@@ -2453,10 +2485,10 @@ async function loadTradeHistory() {
                 <p>Choose the asset, mode, interval, and size. Then optimize, connect, and run the agent.</p>
               </div>
 
-              <div className="simple-metric-row"><span>SETUP</span><strong>{coin} / {timeframe} / {getExecutionModeLabel()}</strong></div>
+              <div className="simple-metric-row"><span>SETUP</span><strong>{coin} / {getActiveTimeframeLabel()} / {getExecutionModeLabel()}</strong></div>
               <div className="simple-metric-row"><span>OPTIMIZER</span><strong>{autoOptimized || result?.optimization ? "SETUP AUTO-OPTIMIZED" : "READY TO RANK STRATEGIES"}</strong></div>
               <div className="simple-metric-row"><span>CHECKS</span><strong>EVERY {autonomousInterval} MINUTES</strong></div>
-              <div className="simple-metric-row"><span>TRIGGER</span><strong>CLOSED {timeframe} CANDLE + VALID SIGNAL</strong></div>
+              <div className="simple-metric-row"><span>TRIGGER</span><strong>CLOSED {getActiveTimeframeLabel()} CANDLE + VALID SIGNAL</strong></div>
               <div className="simple-metric-row"><span>RISK</span><strong>{getRiskProfileLabel(risk)}</strong></div>
 
               <div className="simple-action-grid">
@@ -2719,6 +2751,7 @@ async function loadTradeHistory() {
                 <p><strong>WHAT AM I DOING NOW?</strong></p>
                 <p>AGENT STATUS........ {getAgentRuntimeStatusLabel()}</p>
                 <p>MODE................ {getExecutionModeLabel()}</p>
+                <p>ACTIVE TIMEFRAME.... {getActiveTimeframeLabel()}</p>
                 <p>LAST DECISION....... {getExecutionAction()}</p>
                 <p>ACTIVE STRATEGY..... {getActiveStrategyLabel()}</p>
                 <p>STRATEGY RATING..... {result ? `${getOverallRating()} — ${getRatingExplanation()}` : "WAITING"}</p>
@@ -2770,7 +2803,7 @@ async function loadTradeHistory() {
                 <p>AGENT BNB BALANCE.... {getBnbBalanceLabel()}</p>
                 <p>AGENT TOTAL VALUE.... {formatMoney(portfolio?.totalUsdValue || 0)}</p>
                 <p>AGENT ADDRESS: {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-                <p>SELECTED TIMEFRAME.. {timeframe}</p>
+                <p>ACTIVE TIMEFRAME... {getActiveTimeframeLabel()}</p>
                 <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
                 <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
                 <p>TRADE CONFIDENCE..... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</p>
@@ -2978,7 +3011,8 @@ async function loadTradeHistory() {
 
               {result && (
                 <div className="metrics strategy-library-box" style={{ marginTop: "26px" }}>
-                  <p>AUTO-OPTIMIZER SELECTED TIMEFRAME..... {result.timeframe || timeframe}</p>
+                  <p>ACTIVE TRADING TIMEFRAME........... {getActiveTimeframeLabel()}</p>
+                  <p>OPTIMIZER BACKTEST TIMEFRAME........ {getOptimizerSnapshotTimeframeLabel()}</p>
                   <p>AUTO-OPTIMIZER SELECTED STRATEGY...... {result.selected_strategy || "N/A"}</p>
                   <p>AUTO-OPTIMIZER SELECTED RISK.......... {getRiskProfileLabel(result.risk || risk)}</p>
                 </div>
@@ -3031,7 +3065,7 @@ async function loadTradeHistory() {
             <details className="retro-window">
               <summary>TIMING LOGIC</summary>
               <div className="metrics strategy-library-box">
-                <p>I can check every {autonomousInterval} minutes, but I only act when the selected strategy has confirmed. If the setup is based on a closed {timeframe} candle, I wait for that close before approving a trade.</p>
+                <p>I can check every {autonomousInterval} minutes, but I only act when the selected strategy has confirmed. If the setup is based on a closed {getActiveTimeframeLabel()} candle, I wait for that close before approving a trade.</p>
                 <br />
                 <p>Terminal note: the candle is not worthy until the rules say so.</p>
               </div>
@@ -3046,7 +3080,7 @@ async function loadTradeHistory() {
                   <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
                   <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
                   <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
-                  <p>TRADE TIMING........ CHECKS EVERY {autonomousInterval} MINUTES / ACTS ON CONFIRMED {timeframe} STRATEGY CANDLES</p>
+                  <p>TRADE TIMING........ CHECKS EVERY {autonomousInterval} MINUTES / ACTS ON CONFIRMED {getActiveTimeframeLabel()} STRATEGY CANDLES</p>
                 </div>
               </div>
             </details>
@@ -3086,6 +3120,7 @@ async function loadTradeHistory() {
                     <p><strong>EXECUTION STATUS</strong></p>
                     <p>MODE................ {getExecutionModeLabel()}</p>
                     <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
+                    <p>ACTIVE TIMEFRAME... {getActiveTimeframeLabel()}</p>
                     <p>TRADE EXECUTED...... {executionStatus.executed}</p>
                     <p>STATUS.............. {executionStatus.status}</p>
                     <p>REASON.............. {executionStatus.reason}</p>
@@ -3167,6 +3202,7 @@ async function loadTradeHistory() {
                           <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>
                             STRATEGY: {trade.selected_strategy || trade.active_strategy || trade.strategy || trade.trade_plan?.selected_strategy || trade.trade_plan?.strategy || "N/A"}
                           </p>
+                          <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TIMEFRAME: {trade.timeframe || trade.trade_plan?.timeframe || trade.active_config?.timeframe || getActiveTimeframeLabel()}</p>
                           {trade.confidence_score !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>TRADE CONFIDENCE: {trade.confidence_score} / 100</p>}
                           {trade.risk_control?.current_drawdown_pct !== undefined && <p style={{ color: isRealTrade ? "#9cff8f" : "#808080" }}>DRAWDOWN: {trade.risk_control.current_drawdown_pct}% / LIMIT {trade.risk_control.max_drawdown_limit_pct}%</p>}
                           {trade.why?.length > 0 && (
@@ -3210,6 +3246,7 @@ async function loadTradeHistory() {
                 <div className="metrics strategy-library-box last-execution-panel">
                   <p><strong>LAST EXECUTION</strong></p>
                   <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
+                  <p>TIMEFRAME........... {getActiveTimeframeLabel()}</p>
                   <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
                   <p>SIDE................ {getTradeSide()}</p>
                   <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
@@ -3229,6 +3266,7 @@ async function loadTradeHistory() {
                 <summary>TRADE CONFIDENCE / WHY</summary>
                 <div className="metrics strategy-library-box">
                   <p><strong>{getTradePlan()?.to_token === "BNB" || getTradePlan()?.from_token === "BNB" ? "BNB EXECUTION CONFIDENCE" : `${coin} TRADE CONFIDENCE`}</strong></p>
+                  <p>ACTIVE TIMEFRAME...... {getActiveTimeframeLabel()}</p>
                   <p>OVERALL CONFIDENCE.... {agentResult.confidence_score} / 100</p>
                   <br />
                   <p><strong>CONFIDENCE BREAKDOWN</strong></p>
@@ -3411,7 +3449,7 @@ async function loadTradeHistory() {
                     <p>MODE................ {result.optimization?.mode || "SINGLE RUN"}</p>
                     <p>COMBINATIONS TESTED. {result.optimization?.tested_combinations || "N/A"}</p>
                     <p>ELIGIBLE COMBOS..... {result.optimization?.eligible_combinations || "N/A"}</p>
-                    <p>BEST TIMEFRAME...... {result.timeframe}</p>
+                    <p>BEST BACKTEST TIMEFRAME...... {result.timeframe}</p>
                     <p>BEST RISK MODEL..... {getRiskProfileLabel(result.risk)}</p>
                     <p>BEST STRATEGY....... {result.selected_strategy}</p>
                     <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>
@@ -3848,7 +3886,8 @@ async function loadTradeHistory() {
 
         {result && (
           <div className="metrics strategy-library-box" style={{ marginTop: "26px" }}>
-            <p>AUTO-OPTIMIZER SELECTED TIMEFRAME..... {result.timeframe || timeframe}</p>
+            <p>ACTIVE TRADING TIMEFRAME........... {getActiveTimeframeLabel()}</p>
+                  <p>OPTIMIZER BACKTEST TIMEFRAME........ {getOptimizerSnapshotTimeframeLabel()}</p>
             <p>AUTO-OPTIMIZER SELECTED STRATEGY...... {result.selected_strategy || "N/A"}</p>
             <p>AUTO-OPTIMIZER SELECTED RISK.......... {getRiskProfileLabel(result.risk || risk)}</p>
           </div>
@@ -3958,6 +3997,7 @@ async function loadTradeHistory() {
   <div className="metrics strategy-library-box last-execution-panel" style={{ marginTop: "24px" }}>
     <p><strong>LAST EXECUTION</strong></p>
     <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
+    <p>TIMEFRAME........... {getActiveTimeframeLabel()}</p>
     <p>EXECUTION ROUTE..... {getExecutionRouteLabel()}</p>
     <p>SIDE................ {getTradeSide()}</p>
     <p>SIZE................ {getTradePlan()?.amount || "N/A"} {getTradePlan()?.from_token || ""}</p>
@@ -3996,6 +4036,7 @@ async function loadTradeHistory() {
 <div className="metrics strategy-library-box">
   <p>AGENT STATUS....... {getAgentRuntimeStatusLabel()}</p>
   <p>ACTIVE STRATEGY.... {getActiveStrategyLabel()}</p>
+  <p>ACTIVE TIMEFRAME... {getActiveTimeframeLabel()}</p>
   <p>BROWSER WALLET...... {walletAddress ? "CONNECTED" : "NOT CONNECTED"}</p>
   <p>BROWSER NETWORK.... {getUserNetworkLabel()}</p>
   <p>AGENT NETWORK...... {getAgentNetworkLabel()}</p>
@@ -4012,7 +4053,7 @@ async function loadTradeHistory() {
   </p>
 
   <p>AGENT ADDRESS........ {twakAgentAddress || "0x695b32DdB023f76dE3FE4de485F7C0131De4754C"}</p>
-  <p>SELECTED TIMEFRAME.. {timeframe}</p>
+  <p>ACTIVE TIMEFRAME... {getActiveTimeframeLabel()}</p>
   <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
   <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
   <p>TRADE CONFIDENCE..... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</p>
@@ -4026,7 +4067,7 @@ async function loadTradeHistory() {
   <div className="autonomous-status-box">
     <p>AUTONOMOUS MODE..... {autonomousMode ? "RUNNING" : "STOPPED"}</p>
     <p>CHECK INTERVAL...... {autonomousInterval} MINUTES</p>
-    <p>CHECK LOGIC......... CHECKS EVERY {autonomousInterval} MINUTES / ACTS ONLY ON CLOSED {timeframe} CANDLES</p>
+    <p>CHECK LOGIC......... CHECKS EVERY {autonomousInterval} MINUTES / ACTS ONLY ON CLOSED {getActiveTimeframeLabel()} CANDLES</p>
     <p>LAST DECISION....... {autonomousStatus?.last_decision || "N/A"}</p>
     <p>LAST REASON......... {autonomousStatus?.last_reason || "N/A"}</p>
     <p>NEXT CHECK.......... {formatDateTime(autonomousStatus?.next_run)}</p>
@@ -4255,7 +4296,7 @@ async function loadTradeHistory() {
               <p>MODE................ {result.optimization?.mode || "SINGLE RUN"}</p>
               <p>COMBINATIONS TESTED. {result.optimization?.tested_combinations || "N/A"}</p>
               <p>ELIGIBLE COMBOS..... {result.optimization?.eligible_combinations || "N/A"}</p>
-              <p>BEST TIMEFRAME...... {result.timeframe}</p>
+              <p>BEST BACKTEST TIMEFRAME...... {result.timeframe}</p>
               <p>BEST RISK MODEL..... {getRiskProfileLabel(result.risk)}</p>
               <p>BEST STRATEGY....... {result.selected_strategy}</p>
               <p>OBJECTIVE........... MAXIMIZE RETURN WHILE CONTROLLING DRAWDOWN</p>

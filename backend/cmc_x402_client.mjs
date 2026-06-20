@@ -49,10 +49,42 @@ function safeHeaders(headers) {
 
 function extractPrice(payload, symbol) {
   try {
-    const data = payload?.data || {};
-    const coinData =
-      data[symbol] || data[symbol.toUpperCase()] || Object.values(data)[0];
-    const price = coinData?.quote?.USD?.price;
+    const targetSymbol = String(symbol || "").toUpperCase();
+    const data = payload?.data;
+
+    let coinData = null;
+
+    if (Array.isArray(data)) {
+      coinData =
+        data.find(
+          (item) =>
+            String(item?.symbol || "").toUpperCase() === targetSymbol &&
+            item?.is_active === 1 &&
+            item?.cmc_rank
+        ) ||
+        data.find(
+          (item) => String(item?.symbol || "").toUpperCase() === targetSymbol
+        ) ||
+        data[0];
+    } else if (data && typeof data === "object") {
+      coinData =
+        data[targetSymbol] ||
+        data[symbol] ||
+        Object.values(data)[0];
+    }
+
+    const quote = coinData?.quote;
+
+    if (Array.isArray(quote)) {
+      const usdQuote =
+        quote.find((item) => String(item?.symbol || "").toUpperCase() === "USD") ||
+        quote[0];
+
+      const price = usdQuote?.price;
+      return typeof price === "number" ? price : Number(price);
+    }
+
+    const price = quote?.USD?.price;
     return typeof price === "number" ? price : Number(price);
   } catch {
     return null;

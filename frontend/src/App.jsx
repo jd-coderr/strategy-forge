@@ -12,6 +12,7 @@ import "./App.css";
 const API_BASE = import.meta.env.VITE_API_URL || "https://strategy-forge-production-a3f6.up.railway.app";
 
 const MANUAL_STRATEGY_OPTIONS = [
+  "AUTO / IKQF v2 Opportunity Engine",
   "VWAP Extreme Reversion",
   "SMC Sequence Continuation",
   "Stochastic Quad Rotation",
@@ -2218,6 +2219,55 @@ async function loadTradeHistory() {
   }
 }
 
+
+  function getV2Opportunity() {
+    return agentResult?.v2_opportunity || result?.v2_opportunity || null;
+  }
+
+  function getV2BestOpportunity() {
+    return getV2Opportunity()?.best_opportunity || null;
+  }
+
+  function renderV2OpportunityPanel(compact = false) {
+    const v2 = getV2Opportunity();
+    const best = getV2BestOpportunity();
+    const top = v2?.top_opportunities || [];
+
+    if (!v2 && !best) {
+      return (
+        <div className="v2-opportunity-panel">
+          <p><strong>IKQF v2 SCANNER</strong></p>
+          <p>STATUS........ WAITING</p>
+          <p>AUTO mode scans coins, ranks opportunities, selects the strongest strategy, and stays in USDT if confidence is too low.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="v2-opportunity-panel">
+        <p><strong>IKQF v2 OPPORTUNITY ENGINE</strong></p>
+        <p>REGIME........ {String(v2?.regime?.regime || "UNKNOWN").toUpperCase()}</p>
+        <p>DECISION...... {String(v2?.decision || "WAITING").toUpperCase()}</p>
+        <p>BEST COIN..... {best?.coin || "N/A"}</p>
+        <p>BEST STRATEGY. {best?.strategy?.name || "N/A"}</p>
+        <p>CONFIDENCE.... {best?.confidence?.confidence !== undefined ? `${best.confidence.confidence} / 100` : "N/A"}</p>
+        <p>USDT KEPT..... {best?.allocation?.keep_usdt_fraction !== undefined ? `${Math.round(best.allocation.keep_usdt_fraction * 100)}%` : "N/A"}</p>
+        {!compact && (
+          <div className="v2-top-list">
+            {(top || []).slice(0, 5).map((item, index) => (
+              <div className="v2-top-row" key={`${item.coin}-${item.strategy?.name}-${index}`}>
+                <span>{index + 1}</span>
+                <span>{item.coin}</span>
+                <span>{item.confidence?.confidence ?? "N/A"}</span>
+                <span>{item.strategy?.name || "N/A"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderVersionMenu() {
     return (
       <div className="version-menu-wrap">
@@ -2518,6 +2568,7 @@ async function loadTradeHistory() {
                 <div>
                   <label>ASSET</label>
                   <select value={coin} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                    <option value="AUTO">AUTO / IKQF v2</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -2807,6 +2858,7 @@ async function loadTradeHistory() {
                 <p>SIGNAL ASSET........ {getSignalAssetLabel()}</p>
                 <p>TRADE SIZE.......... {tradeSize} {getSignalAssetLabel()} TARGET</p>
                 <p>TRADE CONFIDENCE..... {agentResult?.confidence_score !== undefined ? `${agentResult.confidence_score} / 100` : "WAITING"}</p>
+                {renderV2OpportunityPanel(true)}
                 <p>DRAWDOWN............. {agentResult?.risk_control?.current_drawdown_pct !== undefined ? `${agentResult.risk_control.current_drawdown_pct}%` : "WAITING"}</p>
                 <p>RISK STATUS.......... {agentResult?.risk_control?.status || "WAITING"}</p>
                 <p>PAPER VALUE.......... {paperPortfolio ? formatMoney(paperPortfolio.total_value_usdt) : "N/A"}</p>
@@ -2950,6 +3002,7 @@ async function loadTradeHistory() {
                 <div>
                   <label>ASSET</label>
                   <select value={coin} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)} onWheel={(e) => e.currentTarget.blur()}>
+                    <option value="AUTO">AUTO / IKQF v2</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>
@@ -3806,6 +3859,7 @@ async function loadTradeHistory() {
   onChange={(e) => handleManualSetupChange({ coin: e.target.value }, true)}
   onWheel={(e) => e.currentTarget.blur()}
 >
+                    <option value="AUTO">AUTO / IKQF v2</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="XRP">XRP (XRP)</option>
                     <option value="DOGE">Dogecoin (DOGE)</option>

@@ -3268,3 +3268,43 @@ select option:checked {
   letter-spacing: 0.8px;
   text-shadow: none;
 }
+
+
+/* IKQF v2 Opportunity Engine */
+.v2-opportunity-panel {
+  border: 1px solid rgba(255, 242, 191, 0.75);
+  background: rgba(42, 26, 15, 0.55);
+  color: #fff2bf;
+  margin: 8px 0;
+  padding: 8px;
+  text-shadow: none;
+  font-size: clamp(8px, 1.05vmin, 13px);
+  line-height: 1.35;
+}
+
+.v2-opportunity-panel strong {
+  color: #ffffff;
+  text-shadow: 0 0 6px #9cff8f;
+}
+
+.v2-opportunity-panel p {
+  margin: 4px 0;
+}
+
+.v2-top-list {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 242, 191, 0.55);
+}
+
+.v2-top-row {
+  display: grid;
+  grid-template-columns: 0.35fr 0.7fr 0.8fr 2fr;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 242, 191, 0.35);
+  align-items: center;
+}
+
+.v2-top-row span {
+  overflow-wrap: anywhere;
+}

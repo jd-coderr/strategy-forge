@@ -1523,6 +1523,11 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         live_execution_enabled=live_execution_enabled
     )
 
+    is_tdi_white_strategy = str(strategy.get("type", "")).lower() == "tdi_signal_reversal"
+    current_signal_payload = backtest.get("current_signal") or {}
+    current_tdi_state = current_signal_payload.get("tdi") or {}
+    current_tdi_trigger = str(current_tdi_state.get("trigger") or "none").lower()
+
     forced_close_plan = maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enabled=live_execution_enabled)
 
     if forced_close_plan is not None:
@@ -1530,7 +1535,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         trade_plan = forced_close_plan
         daily_guard_reason = "DAILY GUARD CLOSE: forced trade exit rule is active."
 
-    elif daily_guard_should_trade:
+    elif daily_guard_should_trade and not is_tdi_white_strategy:
         decision = "DAILY_QUALIFICATION_TRADE"
         DAILY_QUALIFICATION_STATE["last_attempt_at"] = datetime.now(timezone.utc).isoformat()
         trade_plan = build_forced_daily_trade_plan(
@@ -1541,9 +1546,78 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         )
 
     else:
+        if daily_guard_should_trade and is_tdi_white_strategy:
+            daily_guard_reason = (
+                "DAILY GUARD SKIPPED: strict TDI white-signal mode is selected, "
+                "so this agent will not force a non-white-label trade."
+            )
+
         strategy_signal = get_strategy_signal_direction(backtest)
 
-        if strategy_signal == "long":
+        if is_tdi_white_strategy and strategy_signal == "long":
+            decision = f"BUY_{target_token}"
+            trade_amount = get_user_trade_amount(
+                requested_trade_size=requested_trade_size,
+                from_token="USDT",
+                to_token=target_token,
+                portfolio_items=portfolio_items,
+                fallback_price_usd=selected_token_price_usd,
+            )
+
+            trade_plan = {
+                "amount": trade_amount,
+                "requested_trade_size": requested_trade_size,
+                "requested_trade_size_token": target_token,
+                "from_token": "USDT",
+                "to_token": target_token,
+                "quote_only": not live_execution_enabled,
+                "reason": (
+                    f"{strategy['name']} produced the original TDI WHITE BUY signal on {request.coin} / {request.timeframe}. "
+                    f"Trigger: {current_tdi_trigger}. "
+                    "This strict TDI mode trades only the uploaded Pine script white labels. "
+                    f"USDT → {target_token} live execution allowed: {live_execution_enabled}."
+                ),
+                "tdi_trigger": current_tdi_trigger,
+                "tdi": current_tdi_state,
+            }
+
+        elif is_tdi_white_strategy and strategy_signal == "short":
+            if target_balance > 0:
+                decision = f"REDUCE_{target_token}_RISK"
+                trade_amount = str(round(min(requested_trade_size, target_balance), 8))
+
+                trade_plan = {
+                    "amount": trade_amount,
+                    "requested_trade_size": requested_trade_size,
+                    "requested_trade_size_token": target_token,
+                    "from_token": target_token,
+                    "to_token": "USDT",
+                    "quote_only": not live_execution_enabled,
+                    "reason": (
+                        f"{strategy['name']} produced the original TDI WHITE SELL signal on {request.coin} / {request.timeframe}. "
+                        f"Trigger: {current_tdi_trigger}. "
+                        "This is spot-wallet logic, not a synthetic short. "
+                        f"The agent already holds {target_token}, so it can reduce exposure via {target_token} → USDT. "
+                        f"Live execution allowed: {live_execution_enabled}."
+                    ),
+                    "tdi_trigger": current_tdi_trigger,
+                    "tdi": current_tdi_state,
+                }
+            else:
+                decision = "HOLD"
+                hold_reason = (
+                    f"{strategy['name']} produced the original TDI WHITE SELL signal, but this spot wallet does not hold {target_token}. "
+                    "The agent cannot short in spot mode, so it holds instead."
+                )
+
+        elif is_tdi_white_strategy:
+            decision = "HOLD"
+            hold_reason = (
+                "Strict TDI mode is selected. No original TDI WHITE BUY or WHITE SELL label is active on the latest closed candle. "
+                "CMC bearish/risk-off reduction, turquoise crosses, TDI Bollinger-band triggers, and signal-line exits are ignored."
+            )
+
+        elif strategy_signal == "long":
             decision = f"BUY_{target_token}"
             trade_amount = get_user_trade_amount(
                 requested_trade_size=requested_trade_size,

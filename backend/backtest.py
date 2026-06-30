@@ -89,14 +89,19 @@ def get_risk_settings(risk: str):
 
 
 def calculate_rsi(series, length=13):
+    """TradingView-style RSI for the original TDI script.
+
+    Pine uses ta.rsi(close, 13), which is Wilder/RMA based.
+    This keeps the backend TDI fastMA closer to the TradingView white-label signals.
+    """
     delta = series.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
 
-    avg_gain = gain.rolling(length).mean()
-    avg_loss = loss.rolling(length).mean()
+    avg_gain = gain.ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
+    avg_loss = loss.ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
 
-    rs = avg_gain / avg_loss
+    rs = avg_gain / avg_loss.where(avg_loss != 0)
     rsi = 100 - (100 / (1 + rs))
 
     return rsi.fillna(50)
@@ -116,17 +121,19 @@ def build_indicators(df):
 
     df["rsi"] = calculate_rsi(df["close"], 13)
 
-    # TDI Sharkfin Reversal uses the same core TDI components as the Pine indicator:
-    # - tdi_fast: RSI(13) smoothed by 2 bars, used for the white sharkfin curl.
-    # - tdi_signal: the slower red signal line, used for the 68/32 opposite-side exit.
-    # - TDI Bollinger bands: volatility bands around the fast TDI line for extra sharkfin triggers.
+    # Original TDI white-label sharkfin logic from the TradingView script:
+    # fastMA = ta.sma(ta.rsi(close, 13), 2)
+    # slowMA = ta.sma(ta.rsi(close, 13), 7)
+    #
+    # The real white label trade signals are ONLY:
+    # buySignal  = sharkFinLong and fastMA_tf < 32
+    # sellSignal = sharkFinShort and fastMA_tf > 68
+    #
+    # The turquoise crosses are wait markers, not trades.
+    # No TDI Bollinger-band triggers.
+    # No signal-line 68/32 exits.
     df["tdi_fast"] = df["rsi"].rolling(2).mean()
     df["tdi_slow"] = df["rsi"].rolling(7).mean()
-    df["tdi_signal"] = df["tdi_fast"].rolling(7).mean()
-    df["tdi_bb_basis"] = df["tdi_fast"].rolling(34).mean()
-    df["tdi_bb_dev"] = 1.618 * df["tdi_fast"].rolling(34).std()
-    df["tdi_bb_upper"] = df["tdi_bb_basis"] + df["tdi_bb_dev"]
-    df["tdi_bb_lower"] = df["tdi_bb_basis"] - df["tdi_bb_dev"]
 
     low_14 = df["low"].rolling(14).min()
     high_14 = df["high"].rolling(14).max()
@@ -291,15 +298,28 @@ def build_indicators(df):
 
 
 def get_tdi_sharkfin_state(df, index):
-    """Return the exact TDI Sharkfin state used by backtest and live agent current signal.
+    """Original TDI white-label sharkfin signals from the uploaded Pine script.
 
-    Entry triggers:
-    - fixed 32/68 sharkfin curl
-    - TDI Bollinger-band sharkfin curl
+    Pine logic:
 
-    Exit trigger:
-    - after a long is open, the TDI signal line reaching 68 is treated as sell/close.
-    - after a short/backtest short is open, the TDI signal line reaching 32 is treated as close.
+    sharkFinLong =
+        fastMA_tf[2] < 32
+        and fastMA_tf[1] > fastMA_tf[2]
+        and fastMA_tf > fastMA_tf[1]
+
+    buySignal =
+        sharkFinLong and fastMA_tf < 32
+
+    sharkFinShort =
+        fastMA_tf[2] > 68
+        and fastMA_tf[1] < fastMA_tf[2]
+        and fastMA_tf < fastMA_tf[1]
+
+    sellSignal =
+        sharkFinShort and fastMA_tf > 68
+
+    These are the WHITE label signals.
+    Turquoise crosses are ignored.
     """
     row = df.iloc[index]
     prev_1 = df.iloc[index - 1] if index >= 1 else row
@@ -309,73 +329,38 @@ def get_tdi_sharkfin_state(df, index):
     fast_1 = float(prev_1.get("tdi_fast", fast_0))
     fast_2 = float(prev_2.get("tdi_fast", fast_1))
 
-    signal_0 = float(row.get("tdi_signal", row.get("tdi_slow", 50)))
-
-    lower_0 = float(row.get("tdi_bb_lower", 32))
-    lower_1 = float(prev_1.get("tdi_bb_lower", lower_0))
-    lower_2 = float(prev_2.get("tdi_bb_lower", lower_1))
-
-    upper_0 = float(row.get("tdi_bb_upper", 68))
-    upper_1 = float(prev_1.get("tdi_bb_upper", upper_0))
-    upper_2 = float(prev_2.get("tdi_bb_upper", upper_1))
-
     curling_up = fast_1 > fast_2 and fast_0 > fast_1
     curling_down = fast_1 < fast_2 and fast_0 < fast_1
 
-    fixed_long = fast_2 < 32 and curling_up and fast_0 < 32
-    fixed_short = fast_2 > 68 and curling_down and fast_0 > 68
+    white_buy = fast_2 < 32 and curling_up and fast_0 < 32
+    white_sell = fast_2 > 68 and curling_down and fast_0 > 68
 
-    lower_band_was_pierced = (
-        fast_2 < lower_2 or
-        fast_1 < lower_1 or
-        fast_0 < lower_0
-    )
-    upper_band_was_pierced = (
-        fast_2 > upper_2 or
-        fast_1 > upper_1 or
-        fast_0 > upper_0
-    )
-
-    bb_long = lower_band_was_pierced and curling_up and fast_0 <= max(lower_0, lower_1, lower_2)
-    bb_short = upper_band_was_pierced and curling_down and fast_0 >= min(upper_0, upper_1, upper_2)
-
-    long_entry = fixed_long or bb_long
-    short_entry = fixed_short or bb_short
-
-    signal_exit_long = signal_0 >= 68
-    signal_exit_short = signal_0 <= 32
-
-    if fixed_long:
-        trigger = "fixed_32_sharkfin_long"
-    elif bb_long:
-        trigger = "lower_tdi_bollinger_sharkfin_long"
-    elif fixed_short:
-        trigger = "fixed_68_sharkfin_short"
-    elif bb_short:
-        trigger = "upper_tdi_bollinger_sharkfin_short"
-    elif signal_exit_long:
-        trigger = "tdi_signal_line_exit_68"
-    elif signal_exit_short:
-        trigger = "tdi_signal_line_exit_32"
+    if white_buy:
+        trigger = "tdi_white_buy_signal"
+    elif white_sell:
+        trigger = "tdi_white_sell_signal"
     else:
         trigger = "none"
 
     return {
-        "long_entry": bool(long_entry),
-        "short_entry": bool(short_entry),
-        "fixed_long": bool(fixed_long),
-        "fixed_short": bool(fixed_short),
-        "bb_long": bool(bb_long),
-        "bb_short": bool(bb_short),
-        "signal_exit_long": bool(signal_exit_long),
-        "signal_exit_short": bool(signal_exit_short),
+        "long_entry": bool(white_buy),
+        "short_entry": bool(white_sell),
+        "white_buy": bool(white_buy),
+        "white_sell": bool(white_sell),
+
+        # Backward-compatible keys so older app/frontend reads do not crash.
+        # Only white_buy and white_sell are valid triggers now.
+        "fixed_long": bool(white_buy),
+        "fixed_short": bool(white_sell),
+        "bb_long": False,
+        "bb_short": False,
+        "signal_exit_long": False,
+        "signal_exit_short": False,
+
         "trigger": trigger,
         "tdi_fast": round(fast_0, 4),
         "tdi_fast_prev_1": round(fast_1, 4),
         "tdi_fast_prev_2": round(fast_2, 4),
-        "tdi_signal": round(signal_0, 4),
-        "tdi_bb_lower": round(lower_0, 4),
-        "tdi_bb_upper": round(upper_0, 4),
         "curling_up": bool(curling_up),
         "curling_down": bool(curling_down),
     }
@@ -622,33 +607,26 @@ def get_current_signal_summary(strategy_type, df, settings):
     if strategy_type == "tdi_signal_reversal":
         tdi_state = get_tdi_sharkfin_state(df, last_index)
 
-        if tdi_state["long_entry"]:
+        if tdi_state["white_buy"]:
             status = "LONG"
-            action = "TDI SHARKFIN BUY SIGNAL ACTIVE"
+            action = "TDI WHITE BUY SIGNAL ACTIVE"
             message = (
-                "TDI Sharkfin Reversal long trigger detected: "
-                f"{tdi_state['trigger']}. The agent should buy the selected token if not already holding it."
+                "Original TDI white BUY label detected: "
+                "fastMA curled upward below 32. The spot agent should buy the selected token if not already holding it."
             )
-        elif tdi_state["short_entry"]:
+        elif tdi_state["white_sell"]:
             status = "SHORT"
-            action = "TDI SHARKFIN SELL / REDUCE SIGNAL ACTIVE"
+            action = "TDI WHITE SELL SIGNAL ACTIVE"
             message = (
-                "TDI Sharkfin Reversal sell/reduce trigger detected: "
-                f"{tdi_state['trigger']}. The spot agent should sell the selected token only if it already holds it."
-            )
-        elif tdi_state["signal_exit_long"]:
-            status = "SHORT"
-            action = "TDI SIGNAL LINE 68 EXIT ACTIVE"
-            message = (
-                "TDI signal line reached 68. If the agent is holding the selected token, "
-                "it should close/reduce back to USDT."
+                "Original TDI white SELL label detected: "
+                "fastMA curled downward above 68. The spot agent should sell/reduce the selected token only if it already holds it."
             )
         else:
             status = "HOLD"
-            action = "NO ACTIVE TDI SHARKFIN ENTRY OR 68 EXIT"
+            action = "NO ACTIVE TDI WHITE SIGNAL"
             message = (
-                "No fixed 32/68 sharkfin, no TDI Bollinger-band sharkfin, "
-                "and no 68 signal-line exit on the latest closed candle."
+                "No original TDI white BUY or SELL label on the latest closed candle. "
+                "Turquoise crosses and signal-line exits are ignored."
             )
 
         return {
@@ -776,35 +754,32 @@ def run_backtest(
                 raw_pnl_pct = None
 
                 if strategy_type == "tdi_signal_reversal":
-                    tdi_state = get_tdi_sharkfin_state(df, index)
+                    # Original Pine sharkfin stats use TP 1.0% and SL 0.5%.
+                    # They do not use signal-line exits.
+                    tdi_take_profit_pct = 1.0
+                    tdi_stop_loss_pct = 0.5
+                    win = False
+                    loss = False
 
                     if trade_dir == "long":
-                        signal_exit = tdi_state["signal_exit_long"] or tdi_state["short_entry"]
-                        stop_exit = close <= entry_price * (1 + settings["loss_pnl"] / 100)
+                        win = close >= entry_price * (1 + tdi_take_profit_pct / 100)
+                        loss = close <= entry_price * (1 - tdi_stop_loss_pct / 100)
 
-                        win = signal_exit and close >= entry_price
-                        loss = stop_exit or (signal_exit and close < entry_price)
-
-                        if signal_exit:
-                            exit_reason = "tdi_signal_line_68_or_upper_sharkfin_exit"
-                        elif stop_exit:
-                            exit_reason = "stop_loss_backup_exit"
-
-                        if signal_exit or stop_exit:
+                        if win:
+                            exit_reason = "tdi_white_signal_take_profit"
+                            raw_pnl_pct = ((close - entry_price) / entry_price) * 100
+                        elif loss:
+                            exit_reason = "tdi_white_signal_stop_loss"
                             raw_pnl_pct = ((close - entry_price) / entry_price) * 100
                     else:
-                        signal_exit = tdi_state["signal_exit_short"] or tdi_state["long_entry"]
-                        stop_exit = close >= entry_price * (1 - settings["loss_pnl"] / 100)
+                        win = close <= entry_price * (1 - tdi_take_profit_pct / 100)
+                        loss = close >= entry_price * (1 + tdi_stop_loss_pct / 100)
 
-                        win = signal_exit and close <= entry_price
-                        loss = stop_exit or (signal_exit and close > entry_price)
-
-                        if signal_exit:
-                            exit_reason = "tdi_signal_line_32_or_lower_sharkfin_exit"
-                        elif stop_exit:
-                            exit_reason = "stop_loss_backup_exit"
-
-                        if signal_exit or stop_exit:
+                        if win:
+                            exit_reason = "tdi_white_signal_take_profit"
+                            raw_pnl_pct = ((entry_price - close) / entry_price) * 100
+                        elif loss:
+                            exit_reason = "tdi_white_signal_stop_loss"
                             raw_pnl_pct = ((entry_price - close) / entry_price) * 100
                 else:
                     if strategy_type in ("mean_reversion_channel", "trend_confluence"):

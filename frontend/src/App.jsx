@@ -23,6 +23,14 @@ const MANUAL_STRATEGY_OPTIONS = [
 
 const AUTO_STRATEGY_LABEL = "AUTO / IKQF v2 Opportunity Engine";
 
+const TIMEFRAME_OPTIONS = ["5M", "15M", "1H", "4H", "1D"];
+
+const RISK_OPTIONS = [
+  { value: "low", label: "CONSERVATIVE" },
+  { value: "medium", label: "BALANCED" },
+  { value: "high", label: "AGGRESSIVE / GOVERNED" },
+];
+
 function isAutoStrategyLabel(value) {
   return String(value || "").trim().toUpperCase() === AUTO_STRATEGY_LABEL.toUpperCase() ||
     String(value || "").trim().toUpperCase() === "AUTO" ||
@@ -91,6 +99,10 @@ function App() {
   const [autoOptimized, setAutoOptimized] = useState(false);
   const [setupSource, setSetupSource] = useState("");
   const [optimizerOverrideKey, setOptimizerOverrideKey] = useState("");
+  const [strategyControlMode, setStrategyControlMode] = useState(() => getSavedSetting("ikqf_strategy_control_mode", "auto"));
+  const [manualOverrideStrategy, setManualOverrideStrategy] = useState(() => getSavedSetting("ikqf_manual_override_strategy", "TDI Sharkfin Reversal"));
+  const [manualOverrideTimeframe, setManualOverrideTimeframe] = useState(() => getSavedSetting("ikqf_manual_override_timeframe", "1H"));
+  const [manualOverrideRisk, setManualOverrideRisk] = useState(() => getSavedSetting("ikqf_manual_override_risk", "medium"));
   const [manualStrategy, setManualStrategy] = useState(() => getSavedSetting("ikqf_manual_strategy", ""));
   const [agentStopConfirmed, setAgentStopConfirmed] = useState(false);
   const [walletAddress, setWalletAddress] = useState(null);
@@ -264,6 +276,80 @@ function App() {
     return [...matches].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
   }
 
+  function isManualOverrideActive() {
+    return (
+      strategyControlMode === "manual" &&
+      Boolean(manualStrategy) &&
+      !isAutoStrategyLabel(manualStrategy) &&
+      (setupSource === "manual_strategy_override" || setupSource === "optimizer_table_override")
+    );
+  }
+
+  function getMatchingOptimizerSetup(strategyName, timeframeValue, riskValue) {
+    if (!strategyName || isAutoStrategyLabel(strategyName)) return null;
+
+    const matches = getOptimizerResults().filter((item) => item?.selected_strategy === strategyName);
+    if (matches.length === 0) return null;
+
+    const exact = matches.filter((item) =>
+      String(item?.timeframe || "") === String(timeframeValue || "") &&
+      String(item?.risk || "").toLowerCase() === String(riskValue || "").toLowerCase()
+    );
+
+    if (exact.length > 0) {
+      return [...exact].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
+    }
+
+    const sameTimeframe = matches.filter((item) => String(item?.timeframe || "") === String(timeframeValue || ""));
+
+    if (sameTimeframe.length > 0) {
+      return [...sameTimeframe].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
+    }
+
+    return [...matches].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
+  }
+
+  function buildManualOverrideFallbackResult(strategyName, timeframeValue, riskValue) {
+    return {
+      coin,
+      timeframe: timeframeValue,
+      risk: riskValue,
+      selected_strategy: strategyName,
+      reason: `MANUAL STRATEGY OVERRIDE selected ${strategyName} on ${timeframeValue} with ${String(riskValue || risk).toUpperCase()} risk. Run Agent will backtest/execute this exact setup.`,
+      optimization: result?.optimization || null,
+      backtest: {
+        net_return: "PENDING",
+        max_drawdown: "PENDING",
+        win_rate: "PENDING",
+        profit_factor: "PENDING",
+        expectancy: "PENDING",
+        strategy_vs_buy_hold: "PENDING",
+        risk_adjusted_score: 0,
+        drawdown_gate: "PENDING",
+        min_trade_gate: "PENDING",
+        trade_style: "PENDING BACKTEST",
+        activity_status: "PENDING",
+        signals_per_day: "PENDING",
+        active_days_pct: "PENDING",
+        longest_quiet_gap: "PENDING",
+        avg_hours_between_signals: "PENDING",
+        quiet_gap_status: "PENDING",
+        sample_confidence: "PENDING",
+        activity_profile: {
+          explanation: "Run Agent or Generate Strategy to backtest this manual override setup.",
+        },
+        current_signal: {
+          status: "PENDING",
+          latest_rsi: "N/A",
+          latest_deviation: "N/A",
+          message: "Manual override selected. Backtest will refresh on the next agent/generate cycle.",
+        },
+        equity_curve: [],
+        recent_trades: [],
+      },
+    };
+  }
+
   function buildResultFromOptimizerSetup(setup, sourceLabel = "manual_strategy_selection") {
     if (!setup) return result;
 
@@ -321,6 +407,10 @@ function App() {
     const rowKey = getOptimizerRowKey(item);
 
     setOptimizerOverrideKey(rowKey);
+    setStrategyControlMode("manual");
+    setManualOverrideStrategy(item.selected_strategy || "");
+    setManualOverrideTimeframe(item.timeframe || timeframe);
+    setManualOverrideRisk(item.risk || risk);
     setManualStrategy(item.selected_strategy || "");
     setAutoOptimized(false);
     setSetupSource("optimizer_table_override");
@@ -378,6 +468,10 @@ function App() {
   }
 
   function getResolvedStrategySetup() {
+    if (isManualOverrideActive()) {
+      return null;
+    }
+
     if (manualStrategy && !isAutoStrategyLabel(manualStrategy)) {
       return getBestOptimizerSetupForStrategy(manualStrategy);
     }
@@ -390,6 +484,8 @@ function App() {
   }
 
   function getResolvedTradingTimeframe() {
+    if (isManualOverrideActive()) return timeframe;
+
     const setup = getResolvedStrategySetup();
     if (setup?.timeframe) return setup.timeframe;
     if (autoOptimized && result?.timeframe) return result.timeframe;
@@ -397,6 +493,8 @@ function App() {
   }
 
   function getResolvedRisk() {
+    if (isManualOverrideActive()) return risk;
+
     const setup = getResolvedStrategySetup();
     if (setup?.risk) return setup.risk;
     if (autoOptimized && result?.risk) return result.risk;
@@ -405,6 +503,7 @@ function App() {
 
   function getResolvedCoin() {
     if (isAutoStrategyLabel(manualStrategy)) return "AUTO";
+    if (isManualOverrideActive()) return coin;
 
     const setup = getResolvedStrategySetup();
     if (setup?.coin) return setup.coin;
@@ -513,6 +612,235 @@ function App() {
           </option>
         ))}
       </select>
+    );
+  }
+
+  function handleApplyStrategyControlMode() {
+    if (!requireOperatorMode("APPLY STRATEGY CONTROL")) return;
+    if (!requireAgentStopped("APPLY STRATEGY CONTROL")) return;
+
+    if (strategyControlMode === "auto") {
+      handleClearManualOverride();
+      return;
+    }
+
+    if (strategyControlMode === "v2") {
+      setManualStrategy(AUTO_STRATEGY_LABEL);
+      setOptimizerOverrideKey("");
+      setAutoOptimized(false);
+      setSetupSource("v2_auto_mode");
+      setResult(null);
+      setAgentResult(null);
+
+      saveAgentSetupToBackend({
+        coin: "AUTO",
+        timeframe,
+        risk,
+        selected_strategy: AUTO_STRATEGY_LABEL,
+        result_snapshot: null,
+        optimization: result?.optimization || null,
+        source: "v2_auto_mode",
+      });
+      return;
+    }
+
+    const nextStrategy = manualOverrideStrategy || "TDI Sharkfin Reversal";
+    const nextTimeframe = manualOverrideTimeframe || timeframe || "1H";
+    const nextRisk = manualOverrideRisk || risk || "medium";
+    const optimizerSetup = getMatchingOptimizerSetup(nextStrategy, nextTimeframe, nextRisk);
+    const overrideResult = optimizerSetup
+      ? buildResultFromOptimizerSetup({
+          ...optimizerSetup,
+          coin: optimizerSetup.coin || coin,
+          timeframe: optimizerSetup.timeframe || nextTimeframe,
+          risk: optimizerSetup.risk || nextRisk,
+        }, "manual_strategy_override")
+      : buildManualOverrideFallbackResult(nextStrategy, nextTimeframe, nextRisk);
+
+    setManualStrategy(nextStrategy);
+    setOptimizerOverrideKey(optimizerSetup ? getOptimizerRowKey(optimizerSetup) : "manual_override");
+    setAutoOptimized(false);
+    setSetupSource("manual_strategy_override");
+    setTimeframe(nextTimeframe);
+    setRisk(nextRisk);
+    setResult(overrideResult);
+    setAgentResult(null);
+
+    saveAgentSetupToBackend({
+      coin,
+      timeframe: nextTimeframe,
+      risk: nextRisk,
+      selected_strategy: nextStrategy,
+      result_snapshot: overrideResult,
+      optimization: overrideResult?.optimization || result?.optimization || null,
+      source: "manual_strategy_override",
+    });
+  }
+
+  function handleClearManualOverride() {
+    if (!requireOperatorMode("CLEAR MANUAL OVERRIDE")) return;
+    if (!requireAgentStopped("CLEAR MANUAL OVERRIDE")) return;
+
+    const optimizerPick = getAutoOptimizerPickSetup();
+    const hasOptimizerPick = Boolean(result?.optimization && optimizerPick?.selected_strategy);
+    const optimizerResult = hasOptimizerPick
+      ? buildResultFromOptimizerSetup(optimizerPick, "auto_optimization")
+      : result;
+
+    setStrategyControlMode("auto");
+    setManualStrategy("");
+    setOptimizerOverrideKey("");
+    setSetupSource(hasOptimizerPick ? "auto_optimization" : "manual_selection");
+    setAutoOptimized(hasOptimizerPick);
+
+    if (hasOptimizerPick) {
+      if (optimizerPick.coin) setCoin(optimizerPick.coin);
+      if (optimizerPick.timeframe) setTimeframe(optimizerPick.timeframe);
+      if (optimizerPick.risk) setRisk(optimizerPick.risk);
+      setResult(optimizerResult);
+    } else {
+      setResult(null);
+      setAgentResult(null);
+    }
+
+    saveAgentSetupToBackend({
+      coin: optimizerPick?.coin || coin,
+      timeframe: optimizerPick?.timeframe || timeframe,
+      risk: optimizerPick?.risk || risk,
+      selected_strategy: hasOptimizerPick ? optimizerPick?.selected_strategy : null,
+      result_snapshot: hasOptimizerPick ? optimizerResult : null,
+      optimization: optimizerResult?.optimization || result?.optimization || null,
+      source: hasOptimizerPick ? "auto_optimization" : "manual_selection",
+    });
+  }
+
+  function getStrategyControlStatusLabel() {
+    if (strategyControlMode === "v2" || isAutoStrategyLabel(manualStrategy)) {
+      return "IKQF v2 OPPORTUNITY ENGINE";
+    }
+
+    if (isManualOverrideActive()) {
+      return `${manualStrategy} / ${timeframe} / ${getRiskProfileLabel(risk)}`;
+    }
+
+    const optimizerPick = getAutoOptimizerPickSetup();
+    if (optimizerPick?.selected_strategy) {
+      return `AUTO PICK: ${optimizerPick.selected_strategy} / ${optimizerPick.timeframe} / ${getRiskProfileLabel(optimizerPick.risk)}`;
+    }
+
+    return "AUTO-OPTIMIZER PICK";
+  }
+
+  function renderManualOverridePanel() {
+    const manualActive = isManualOverrideActive();
+    const v2Active = strategyControlMode === "v2" || isAutoStrategyLabel(manualStrategy);
+
+    return (
+      <div className={`manual-override-panel ${(manualActive || v2Active) ? "manual-override-active" : ""}`}>
+        <div className="manual-override-header">
+          <span>MANUAL STRATEGY OVERRIDE</span>
+          {(manualActive || v2Active) && (
+            <button
+              type="button"
+              className="manual-override-x"
+              disabled={isAgentSetupLocked()}
+              onClick={handleClearManualOverride}
+              title="Clear manual override and return to Auto-Optimizer Pick"
+            >
+              X
+            </button>
+          )}
+        </div>
+
+        <p className="manual-override-help">
+          Auto Optimize recommends. Manual Override decides. Run Agent follows the active source below.
+        </p>
+
+        <div className="manual-override-grid">
+          <div>
+            <label>STRATEGY SOURCE</label>
+            <select
+              value={strategyControlMode}
+              disabled={isAgentSetupLocked()}
+              onChange={(e) => setStrategyControlMode(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+            >
+              <option value="auto">Auto-Optimizer Pick</option>
+              <option value="manual">Manual Strategy Override</option>
+              <option value="v2">IKQF v2 Opportunity Engine</option>
+            </select>
+          </div>
+
+          {strategyControlMode === "manual" && (
+            <>
+              <div>
+                <label>MANUAL STRATEGY</label>
+                <select
+                  value={manualOverrideStrategy}
+                  disabled={isAgentSetupLocked()}
+                  onChange={(e) => setManualOverrideStrategy(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
+                >
+                  {MANUAL_STRATEGY_OPTIONS.filter((item) => !isAutoStrategyLabel(item)).map((strategyName) => (
+                    <option key={strategyName} value={strategyName}>{strategyName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label>MANUAL TIMEFRAME</label>
+                <select
+                  value={manualOverrideTimeframe}
+                  disabled={isAgentSetupLocked()}
+                  onChange={(e) => setManualOverrideTimeframe(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
+                >
+                  {TIMEFRAME_OPTIONS.map((value) => (
+                    <option key={value} value={value}>{value}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label>MANUAL RISK PROFILE</label>
+                <select
+                  value={manualOverrideRisk}
+                  disabled={isAgentSetupLocked()}
+                  onChange={(e) => setManualOverrideRisk(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
+                >
+                  {RISK_OPTIONS.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="manual-override-status">
+          ACTIVE SOURCE........ {getStrategyControlStatusLabel()}
+        </div>
+
+        <div className="manual-override-actions">
+          <button
+            type="button"
+            className="manual-override-apply"
+            disabled={isAgentSetupLocked()}
+            onClick={handleApplyStrategyControlMode}
+          >
+            {strategyControlMode === "manual" ? "> APPLY MANUAL OVERRIDE <" : strategyControlMode === "v2" ? "> APPLY IKQF v2 AUTO <" : "> USE AUTO-OPTIMIZER PICK <"}
+          </button>
+          <button
+            type="button"
+            className="manual-override-clear"
+            disabled={isAgentSetupLocked()}
+            onClick={handleClearManualOverride}
+          >
+            CLEAR MANUAL OVERRIDE
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -1275,6 +1603,17 @@ function App() {
 
     if (setup.source) {
       setSetupSource(setup.source);
+
+      if (setup.source === "manual_strategy_override" || setup.source === "optimizer_table_override") {
+        setStrategyControlMode("manual");
+        if (setup.selected_strategy) setManualOverrideStrategy(setup.selected_strategy);
+        if (setup.timeframe) setManualOverrideTimeframe(setup.timeframe);
+        if (setup.risk) setManualOverrideRisk(setup.risk);
+      } else if (setup.source === "v2_auto_mode") {
+        setStrategyControlMode("v2");
+      } else if (String(setup.source).includes("auto")) {
+        setStrategyControlMode("auto");
+      }
     }
 
     if (restoreResult && setup.result_snapshot) {
@@ -1532,7 +1871,11 @@ useEffect(() => {
   }
   window.localStorage.setItem("ikqf_autonomous_interval", String(autonomousInterval));
   window.localStorage.setItem("ikqf_manual_strategy", manualStrategy || "");
-}, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval, manualStrategy]);
+  window.localStorage.setItem("ikqf_strategy_control_mode", strategyControlMode || "auto");
+  window.localStorage.setItem("ikqf_manual_override_strategy", manualOverrideStrategy || "");
+  window.localStorage.setItem("ikqf_manual_override_timeframe", manualOverrideTimeframe || "");
+  window.localStorage.setItem("ikqf_manual_override_risk", manualOverrideRisk || "");
+}, [coin, timeframe, risk, tradeSize, initialCapital, executionMode, autonomousInterval, manualStrategy, strategyControlMode, manualOverrideStrategy, manualOverrideTimeframe, manualOverrideRisk]);
 
 useEffect(() => {
   if (executionMode) {
@@ -3040,10 +3383,6 @@ async function loadTradeHistory() {
                   </select>
                 </div>
                 <div>
-                  <label>STRATEGY</label>
-                  {renderStrategySelect()}
-                </div>
-                <div>
                   <label>MODE</label>
                   <select
                     value={executionMode || ""}
@@ -3082,6 +3421,8 @@ async function loadTradeHistory() {
                   <input type="number" min="0" step="0.001" value={tradeSize} disabled={isAgentSetupLocked()} onChange={(e) => handleManualSetupChange({ trade_size: Number(e.target.value) }, false)} />
                 </div>
               </div>
+
+              {renderManualOverridePanel()}
 
               <div className="simple-message-box">
                 <strong>TIMING RULE</strong>
@@ -3523,16 +3864,14 @@ async function loadTradeHistory() {
                 </div>
               )}
 
+              {renderManualOverridePanel()}
+
               <h2 className="strategy-library-title">CUSTOM SETUP</h2>
               <div className="agent-control-panel">
                 <button onClick={generateStrategy} disabled={isAgentSetupLocked()} title={getAgentSetupLockTitle("GENERATE STRATEGY")} className="copy-btn" style={getButtonStyle("generate")}>
                   {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
                 </button>
 
-                <div>
-                  <label>STRATEGY</label>
-                  {renderStrategySelect()}
-                </div>
 
                 <div>
                   <select
@@ -4429,6 +4768,8 @@ async function loadTradeHistory() {
           </div>
         )}
 
+        {renderManualOverridePanel()}
+
         <h2 className="strategy-library-title">CUSTOM SETUP</h2>
 
         <div className="full-custom-strategy-row">
@@ -4442,9 +4783,6 @@ async function loadTradeHistory() {
             {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
           </button>
 
-          <span className="full-custom-or">OR</span>
-
-          {renderStrategySelect()}
         </div>
 
         <div className="full-execution-mode-row">

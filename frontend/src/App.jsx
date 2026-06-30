@@ -21,6 +21,14 @@ const MANUAL_STRATEGY_OPTIONS = [
   "Ichimoku MACD EMA Confluence",
 ];
 
+const AUTO_STRATEGY_LABEL = "AUTO / IKQF v2 Opportunity Engine";
+
+function isAutoStrategyLabel(value) {
+  return String(value || "").trim().toUpperCase() === AUTO_STRATEGY_LABEL.toUpperCase() ||
+    String(value || "").trim().toUpperCase() === "AUTO" ||
+    String(value || "").trim().toUpperCase() === "AUTO / IKQF V2";
+}
+
 function App() {
   function getSavedSetting(key, fallback) {
     if (typeof window === "undefined") return fallback;
@@ -100,6 +108,17 @@ function App() {
   const liveAgentActivityRef = useRef(null);
   const executionModeRef = useRef(executionMode || "decision_simulation");
   const remoteSetupSyncedRef = useRef(false);
+
+  function getSelectedStrategyForPayload() {
+    if (autoOptimized && result?.selected_strategy) return result.selected_strategy;
+    if (isAutoStrategyLabel(manualStrategy)) return AUTO_STRATEGY_LABEL;
+    return manualStrategy || result?.selected_strategy || null;
+  }
+
+  function getCoinForPayload() {
+    if (isAutoStrategyLabel(manualStrategy) && !autoOptimized) return "AUTO";
+    return coin;
+  }
 
   function focusAgentActivitySections() {
     if (viewMode === "detailed") {
@@ -966,6 +985,8 @@ async function startAutonomousMode() {
 
   try {
     const selectedExecutionMode = getExecutionModeForPayload();
+    const selectedStrategyForPayload = getSelectedStrategyForPayload();
+    const coinForPayload = getCoinForPayload();
 
     const response = await fetch(`${API_BASE}/autonomous/start`, {
       method: "POST",
@@ -973,14 +994,14 @@ async function startAutonomousMode() {
         "Content-Type": "application/json",
       }),
       body: JSON.stringify({
-        coin,
+        coin: coinForPayload,
         timeframe,
         risk,
         initial_capital: initialCapital,
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,
         trade_size: tradeSize,
-        selected_strategy: manualStrategy || result?.selected_strategy || null,
+        selected_strategy: selectedStrategyForPayload,
         interval_minutes: Number(autonomousInterval),
         result_snapshot: result || null,
         optimization: result?.optimization || null,
@@ -1469,6 +1490,14 @@ useEffect(() => {
   }
 
   function getSimpleSelectedStrategyLabel() {
+    const runningStrategy =
+      autonomousStatus?.active_config?.selected_strategy ||
+      autonomousStatus?.last_result?.selected_strategy ||
+      autonomousStatus?.saved_agent_setup?.selected_strategy ||
+      null;
+
+    if (isAgentRunning() && runningStrategy) return runningStrategy;
+
 const chosenStrategy =
   manualStrategy ||
   result?.selected_strategy ||
@@ -1501,6 +1530,14 @@ const chosenStrategy =
   }
 
 function getActiveStrategyLabel() {
+  const runningStrategy =
+    autonomousStatus?.active_config?.selected_strategy ||
+    autonomousStatus?.last_result?.selected_strategy ||
+    autonomousStatus?.saved_agent_setup?.selected_strategy ||
+    null;
+
+  if (isAgentRunning() && runningStrategy) return runningStrategy;
+
   const chosenStrategy =
     manualStrategy ||
     result?.selected_strategy ||
@@ -1937,7 +1974,9 @@ Best eligible risk-adjusted score among all tested combinations.
           "Content-Type": "application/json",
         }),
         body: JSON.stringify({
-          coin,
+          coin: isAutoStrategyLabel(manualStrategy) ? "AUTO" : coin,
+          timeframe,
+          risk,
           initial_capital: initialCapital,
         }),
       });
@@ -1971,8 +2010,10 @@ Best eligible risk-adjusted score among all tested combinations.
         });
       }
 
+      if (best.coin) setCoin(best.coin);
       setTimeframe(best.timeframe);
       setRisk(best.risk);
+      setManualStrategy("");
 
       setAutoOptimized(true);
       setSetupSource("auto_optimization");
@@ -1997,6 +2038,7 @@ Best eligible risk-adjusted score among all tested combinations.
           eligible_combinations: data.eligible_combinations,
           all_results: data.all_results,
           frequency_ranked_results: data.frequency_ranked_results,
+          v2_opportunity: data.v2_opportunity || null,
         },
       };
 
@@ -2029,6 +2071,8 @@ async function runAgentCycle() {
 
   try {
     const selectedExecutionMode = getExecutionModeForPayload();
+    const selectedStrategyForPayload = getSelectedStrategyForPayload();
+    const coinForPayload = getCoinForPayload();
 
     const response = await fetch(`${API_BASE}/agent-cycle`, {
       method: "POST",
@@ -2036,13 +2080,13 @@ async function runAgentCycle() {
         "Content-Type": "application/json",
       }),
       body: JSON.stringify({
-        coin,
+        coin: coinForPayload,
         timeframe,
         risk,
         trade_size: tradeSize,
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,
-        selected_strategy: manualStrategy || result?.selected_strategy || null,
+        selected_strategy: selectedStrategyForPayload,
       }),
     });
 
@@ -3968,9 +4012,10 @@ async function loadTradeHistory() {
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => {
               const selectedStrategy = e.target.value;
+              setAutoOptimized(false);
               handleManualSetupChange({
                 selected_strategy: selectedStrategy,
-                source: "manual_strategy_selection",
+                source: isAutoStrategyLabel(selectedStrategy) ? "v2_auto_mode" : "manual_strategy_selection",
               }, false);
             }}
           >

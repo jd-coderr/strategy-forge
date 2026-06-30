@@ -11,6 +11,7 @@ from cmc_data import get_cmc_signal
 from twak_config import get_twak_status, get_configured_agent_address
 from trade_safety import validate_trade_request, mark_live_trade_executed
 from trade_logger import log_trade, read_trade_log
+from opportunity_engine import build_v2_opportunity
 from datetime import datetime, timezone, timedelta
 import json
 import threading
@@ -1321,6 +1322,25 @@ def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(req
     }
 
 
+@app.get("/v2/market-scan")
+def v2_market_scan(
+    timeframe: str = "5M",
+    risk: str = "medium",
+    initial_capital: float = 10000,
+    _operator_ok: bool = Depends(require_operator_key),
+):
+    """Run the IKQF v2 opportunity engine without executing a trade."""
+    cmc_signal = get_cmc_signal("BTC")
+    return build_v2_opportunity(
+        cmc_signal=cmc_signal,
+        strategies=load_available_strategies(),
+        run_backtest_fn=run_backtest,
+        timeframe=timeframe,
+        risk=risk,
+        initial_capital=initial_capital,
+    )
+
+
 @app.get("/twak-status")
 def twak_status():
     return get_twak_status()
@@ -1421,6 +1441,37 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         cmc_signal["x402_used_in_decision"] = False
         cmc_signal["market_data_payment_layer"] = "CMC API fallback; x402 not paid/available"
 
+    v2_opportunity = None
+    v2_requested = str(request.coin or "").upper() in {"AUTO", "IKQF_AUTO", "BEST"}
+
+    if v2_requested:
+        v2_opportunity = build_v2_opportunity(
+            cmc_signal=cmc_signal,
+            strategies=load_available_strategies(),
+            run_backtest_fn=run_backtest,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+        best = v2_opportunity.get("best_opportunity") or {}
+        if best.get("coin"):
+            request.coin = best["coin"]
+            selected_name = (best.get("strategy") or {}).get("name")
+            if selected_name:
+                request.selected_strategy = selected_name
+            cmc_signal = get_cmc_signal(request.coin)
+            x402_market_data = get_cmc_x402_quote(request.coin)
+            cmc_signal["x402"] = x402_market_data
+            if x402_market_data.get("success") and x402_market_data.get("price_usd") is not None:
+                cmc_signal["price_usd"] = x402_market_data["price_usd"]
+                cmc_signal["x402_used_in_decision"] = True
+                cmc_signal["market_data_payment_layer"] = "CoinMarketCap x402 paid quote"
+            else:
+                cmc_signal["x402_used_in_decision"] = False
+                cmc_signal["market_data_payment_layer"] = "CMC API fallback; x402 not paid/available"
+            cmc_signal["v2_auto_selected_coin"] = request.coin
+            cmc_signal["v2_auto_selected_strategy"] = selected_name
+
     execution_mode = str(getattr(request, "execution_mode", "decision_simulation") or "decision_simulation").lower()
     live_execution_enabled = execution_mode == "live_trading" or request.live_execution is True
     paper_trading_enabled = execution_mode == "paper_trading"
@@ -1461,6 +1512,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                 "risk": request.risk,
                 "cmc_signal": cmc_signal,
                 "x402": x402_market_data,
+                "v2_opportunity": v2_opportunity,
             }
         )
 
@@ -1470,6 +1522,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             "reason": "No valid strategy was generated.",
             "cmc_signal": cmc_signal,
             "x402": x402_market_data,
+            "v2_opportunity": v2_opportunity,
             "event": event,
         }
 
@@ -1523,11 +1576,6 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         live_execution_enabled=live_execution_enabled
     )
 
-    is_tdi_white_strategy = str(strategy.get("type", "")).lower() == "tdi_signal_reversal"
-    current_signal_payload = backtest.get("current_signal") or {}
-    current_tdi_state = current_signal_payload.get("tdi") or {}
-    current_tdi_trigger = str(current_tdi_state.get("trigger") or "none").lower()
-
     forced_close_plan = maybe_build_forced_trade_close_plan(request, cmc_signal, live_execution_enabled=live_execution_enabled)
 
     if forced_close_plan is not None:
@@ -1535,7 +1583,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         trade_plan = forced_close_plan
         daily_guard_reason = "DAILY GUARD CLOSE: forced trade exit rule is active."
 
-    elif daily_guard_should_trade and not is_tdi_white_strategy:
+    elif daily_guard_should_trade:
         decision = "DAILY_QUALIFICATION_TRADE"
         DAILY_QUALIFICATION_STATE["last_attempt_at"] = datetime.now(timezone.utc).isoformat()
         trade_plan = build_forced_daily_trade_plan(
@@ -1546,78 +1594,9 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         )
 
     else:
-        if daily_guard_should_trade and is_tdi_white_strategy:
-            daily_guard_reason = (
-                "DAILY GUARD SKIPPED: strict TDI white-signal mode is selected, "
-                "so this agent will not force a non-white-label trade."
-            )
-
         strategy_signal = get_strategy_signal_direction(backtest)
 
-        if is_tdi_white_strategy and strategy_signal == "long":
-            decision = f"BUY_{target_token}"
-            trade_amount = get_user_trade_amount(
-                requested_trade_size=requested_trade_size,
-                from_token="USDT",
-                to_token=target_token,
-                portfolio_items=portfolio_items,
-                fallback_price_usd=selected_token_price_usd,
-            )
-
-            trade_plan = {
-                "amount": trade_amount,
-                "requested_trade_size": requested_trade_size,
-                "requested_trade_size_token": target_token,
-                "from_token": "USDT",
-                "to_token": target_token,
-                "quote_only": not live_execution_enabled,
-                "reason": (
-                    f"{strategy['name']} produced the original TDI WHITE BUY signal on {request.coin} / {request.timeframe}. "
-                    f"Trigger: {current_tdi_trigger}. "
-                    "This strict TDI mode trades only the uploaded Pine script white labels. "
-                    f"USDT → {target_token} live execution allowed: {live_execution_enabled}."
-                ),
-                "tdi_trigger": current_tdi_trigger,
-                "tdi": current_tdi_state,
-            }
-
-        elif is_tdi_white_strategy and strategy_signal == "short":
-            if target_balance > 0:
-                decision = f"REDUCE_{target_token}_RISK"
-                trade_amount = str(round(min(requested_trade_size, target_balance), 8))
-
-                trade_plan = {
-                    "amount": trade_amount,
-                    "requested_trade_size": requested_trade_size,
-                    "requested_trade_size_token": target_token,
-                    "from_token": target_token,
-                    "to_token": "USDT",
-                    "quote_only": not live_execution_enabled,
-                    "reason": (
-                        f"{strategy['name']} produced the original TDI WHITE SELL signal on {request.coin} / {request.timeframe}. "
-                        f"Trigger: {current_tdi_trigger}. "
-                        "This is spot-wallet logic, not a synthetic short. "
-                        f"The agent already holds {target_token}, so it can reduce exposure via {target_token} → USDT. "
-                        f"Live execution allowed: {live_execution_enabled}."
-                    ),
-                    "tdi_trigger": current_tdi_trigger,
-                    "tdi": current_tdi_state,
-                }
-            else:
-                decision = "HOLD"
-                hold_reason = (
-                    f"{strategy['name']} produced the original TDI WHITE SELL signal, but this spot wallet does not hold {target_token}. "
-                    "The agent cannot short in spot mode, so it holds instead."
-                )
-
-        elif is_tdi_white_strategy:
-            decision = "HOLD"
-            hold_reason = (
-                "Strict TDI mode is selected. No original TDI WHITE BUY or WHITE SELL label is active on the latest closed candle. "
-                "CMC bearish/risk-off reduction, turquoise crosses, TDI Bollinger-band triggers, and signal-line exits are ignored."
-            )
-
-        elif strategy_signal == "long":
+        if strategy_signal == "long":
             decision = f"BUY_{target_token}"
             trade_amount = get_user_trade_amount(
                 requested_trade_size=requested_trade_size,
@@ -1688,7 +1667,11 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
 
         else:
             decision = "HOLD"
-            hold_reason = hold_reason or get_hold_reason(cmc_signal)
+            hold_reason = hold_reason or (
+                (v2_opportunity or {}).get("reason")
+                if v2_requested and (v2_opportunity or {}).get("decision") == "HOLD_USDT"
+                else get_hold_reason(cmc_signal)
+            )
 
     if trade_plan is not None:
         if live_execution_enabled and risk_control["status"] == "DRAWDOWN LIMIT BREACHED":
@@ -1816,6 +1799,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             "selected_strategy_requested": request.selected_strategy,
             "cmc_signal": cmc_signal,
             "x402": x402_market_data,
+            "v2_opportunity": v2_opportunity,
             "selected_strategy": strategy["name"],
             "risk_adjusted_score": risk_score,
             "backtest": backtest,
@@ -1844,6 +1828,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         "coin": request.coin,
         "cmc_signal": cmc_signal,
         "x402": x402_market_data,
+        "v2_opportunity": v2_opportunity,
         "selected_strategy_requested": request.selected_strategy,
         "selected_strategy": strategy["name"],
         "risk_adjusted_score": risk_score,

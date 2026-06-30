@@ -3308,3 +3308,55 @@ select option:checked {
 .v2-top-row span {
   overflow-wrap: anywhere;
 }
+
+/* Optimizer Report row override buttons */
+.optimizer-row {
+  grid-template-columns: 0.6fr 0.8fr 0.8fr 2.4fr 0.8fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr 1fr;
+  min-width: 820px;
+}
+
+.optimizer-override-cell {
+  padding: 4px !important;
+}
+
+.optimizer-override-btn {
+  min-height: 26px !important;
+  padding: 5px 6px !important;
+  border: 1px solid #ff3030 !important;
+  background: rgba(90, 0, 0, 0.78) !important;
+  color: #ffd6d6 !important;
+  font-size: clamp(7px, 0.78vmin, 10px) !important;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 5px #ff3030 !important;
+  box-shadow:
+    inset 0 0 10px rgba(255, 48, 48, 0.18),
+    0 0 8px rgba(255, 48, 48, 0.22) !important;
+}
+
+.optimizer-override-btn:hover:not(:disabled),
+.optimizer-override-btn-active {
+  background: #ff1010 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 9px #ff3030 !important;
+  box-shadow:
+    inset 0 0 12px rgba(255, 255, 255, 0.22),
+    0 0 14px rgba(255, 48, 48, 0.75),
+    0 0 26px rgba(255, 48, 48, 0.45) !important;
+}
+
+.optimizer-row-overridden {
+  background: rgba(255, 48, 48, 0.10) !important;
+  box-shadow: inset 0 0 18px rgba(255, 48, 48, 0.16);
+}
+
+.full-terminal .optimizer-row {
+  grid-template-columns: 0.6fr 0.8fr 0.8fr 2.4fr 0.8fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr 1fr;
+}
+
+.full-terminal .optimizer-override-btn {
+  min-height: 38px !important;
+  font-size: clamp(9px, 1vw, 12px) !important;
+}

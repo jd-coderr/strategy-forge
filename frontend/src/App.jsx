@@ -120,6 +120,68 @@ function App() {
     return coin;
   }
 
+  function handleStrategySelectionChange(selectedStrategy) {
+    if (!requireOperatorMode("CHANGE STRATEGY")) return;
+    if (!requireAgentStopped("CHANGE STRATEGY")) return;
+
+    const useOptimizerPick = selectedStrategy === "";
+
+    if (useOptimizerPick) {
+      const hasOptimizerPick = Boolean(result?.optimization && result?.selected_strategy);
+
+      setManualStrategy("");
+      setAutoOptimized(hasOptimizerPick);
+      setSetupSource(hasOptimizerPick ? "auto_optimization" : "manual_selection");
+
+      saveAgentSetupToBackend({
+        selected_strategy: result?.selected_strategy || null,
+        result_snapshot: result || null,
+        optimization: result?.optimization || null,
+        source: hasOptimizerPick ? "auto_optimization" : "manual_selection",
+      });
+
+      return;
+    }
+
+    const source = isAutoStrategyLabel(selectedStrategy)
+      ? "v2_auto_mode"
+      : "manual_strategy_selection";
+
+    setManualStrategy(selectedStrategy);
+    setAutoOptimized(false);
+    setSetupSource(source);
+
+    saveAgentSetupToBackend({
+      coin: isAutoStrategyLabel(selectedStrategy) ? "AUTO" : coin,
+      selected_strategy: selectedStrategy,
+      result_snapshot: result || null,
+      optimization: result?.optimization || null,
+      source,
+    });
+  }
+
+  function renderStrategySelect() {
+    const optimizerPickLabel = result?.selected_strategy
+      ? `Use Auto-Optimizer Pick (${result.selected_strategy})`
+      : "Choose Strategy";
+
+    return (
+      <select
+        value={manualStrategy || ""}
+        disabled={isAgentSetupLocked()}
+        onWheel={(e) => e.currentTarget.blur()}
+        onChange={(e) => handleStrategySelectionChange(e.target.value)}
+      >
+        <option value="">{optimizerPickLabel}</option>
+        {MANUAL_STRATEGY_OPTIONS.map((strategyName) => (
+          <option key={strategyName} value={strategyName}>
+            {strategyName}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
   function focusAgentActivitySections() {
     if (viewMode === "detailed") {
       setExpandedDetailedQuadrant(null);
@@ -2636,6 +2698,10 @@ async function loadTradeHistory() {
                   </select>
                 </div>
                 <div>
+                  <label>STRATEGY</label>
+                  {renderStrategySelect()}
+                </div>
+                <div>
                   <label>MODE</label>
                   <select
                     value={executionMode || ""}
@@ -3120,6 +3186,11 @@ async function loadTradeHistory() {
                 <button onClick={generateStrategy} disabled={isAgentSetupLocked()} title={getAgentSetupLockTitle("GENERATE STRATEGY")} className="copy-btn" style={getButtonStyle("generate")}>
                   {loading && loadingMode === "generate" ? "GENERATING..." : "> GENERATE STRATEGY <"}
                 </button>
+
+                <div>
+                  <label>STRATEGY</label>
+                  {renderStrategySelect()}
+                </div>
 
                 <div>
                   <select
@@ -4006,26 +4077,7 @@ async function loadTradeHistory() {
 
           <span className="full-custom-or">OR</span>
 
-          <select
-            value={manualStrategy || result?.selected_strategy || ""}
-            disabled={isAgentSetupLocked()}
-            onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) => {
-              const selectedStrategy = e.target.value;
-              setAutoOptimized(false);
-              handleManualSetupChange({
-                selected_strategy: selectedStrategy,
-                source: isAutoStrategyLabel(selectedStrategy) ? "v2_auto_mode" : "manual_strategy_selection",
-              }, false);
-            }}
-          >
-            <option value="" disabled>Choose Strategy</option>
-            {MANUAL_STRATEGY_OPTIONS.map((strategyName) => (
-              <option key={strategyName} value={strategyName}>
-                {strategyName}
-              </option>
-            ))}
-          </select>
+          {renderStrategySelect()}
         </div>
 
         <div className="full-execution-mode-row">

@@ -109,15 +109,128 @@ function App() {
   const executionModeRef = useRef(executionMode || "decision_simulation");
   const remoteSetupSyncedRef = useRef(false);
 
+  function optimizerScoreValue(item) {
+    const directScore = Number(item?.risk_adjusted_score);
+    if (Number.isFinite(directScore)) return directScore;
+
+    const backtestScore = Number(item?.backtest?.risk_adjusted_score);
+    if (Number.isFinite(backtestScore)) return backtestScore;
+
+    return -999999;
+  }
+
+  function getOptimizerResults() {
+    return Array.isArray(result?.optimization?.all_results) ? result.optimization.all_results : [];
+  }
+
+  function getAutoOptimizerPickSetup() {
+    const storedBest = result?.optimization?.best_setup;
+
+    if (storedBest?.selected_strategy) {
+      return storedBest;
+    }
+
+    const allResults = getOptimizerResults();
+
+    if (allResults.length > 0) {
+      return [...allResults].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
+    }
+
+    if (result?.optimization && result?.selected_strategy) {
+      return {
+        coin: result.coin,
+        timeframe: result.timeframe,
+        risk: result.risk,
+        selected_strategy: result.selected_strategy,
+        type: result.type,
+        entry: result.entry,
+        confirmation: result.confirmation,
+        take_profit: result.take_profit,
+        stop_loss: result.stop_loss,
+        risk_governor: result.risk_governor,
+        backtest: result.backtest,
+        risk_adjusted_score: result.backtest?.risk_adjusted_score ?? result.risk_adjusted_score,
+      };
+    }
+
+    return null;
+  }
+
+  function getBestOptimizerSetupForStrategy(strategyName) {
+    if (!strategyName || isAutoStrategyLabel(strategyName)) return null;
+
+    const matches = getOptimizerResults().filter((item) => item?.selected_strategy === strategyName);
+
+    if (matches.length === 0) return null;
+
+    return [...matches].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))[0];
+  }
+
+  function buildResultFromOptimizerSetup(setup, sourceLabel = "manual_strategy_selection") {
+    if (!setup) return result;
+
+    return {
+      coin: setup.coin || coin,
+      timeframe: setup.timeframe || timeframe,
+      risk: setup.risk || risk,
+      cmc_signal: setup.cmc_signal || result?.cmc_signal || null,
+      selected_strategy: setup.selected_strategy,
+      type: setup.type,
+      reason: `${sourceLabel === "auto_optimization" ? "AUTO-OPTIMIZER selected" : "MANUAL STRATEGY OVERRIDE selected"} ${setup.selected_strategy} on ${setup.timeframe || timeframe} with ${String(setup.risk || risk).toUpperCase()} risk.`,
+      entry: setup.entry,
+      confirmation: setup.confirmation,
+      take_profit: setup.take_profit,
+      stop_loss: setup.stop_loss,
+      risk_governor: setup.risk_governor,
+      backtest: setup.backtest,
+      optimization: result?.optimization || null,
+    };
+  }
+
+  function getResolvedStrategySetup() {
+    if (manualStrategy && !isAutoStrategyLabel(manualStrategy)) {
+      return getBestOptimizerSetupForStrategy(manualStrategy);
+    }
+
+    if (autoOptimized && result?.selected_strategy) {
+      return getAutoOptimizerPickSetup();
+    }
+
+    return null;
+  }
+
+  function getResolvedTradingTimeframe() {
+    const setup = getResolvedStrategySetup();
+    if (setup?.timeframe) return setup.timeframe;
+    if (autoOptimized && result?.timeframe) return result.timeframe;
+    return timeframe;
+  }
+
+  function getResolvedRisk() {
+    const setup = getResolvedStrategySetup();
+    if (setup?.risk) return setup.risk;
+    if (autoOptimized && result?.risk) return result.risk;
+    return risk;
+  }
+
+  function getResolvedCoin() {
+    if (isAutoStrategyLabel(manualStrategy)) return "AUTO";
+
+    const setup = getResolvedStrategySetup();
+    if (setup?.coin) return setup.coin;
+    if (autoOptimized && result?.coin) return result.coin;
+    return coin;
+  }
+
   function getSelectedStrategyForPayload() {
-    if (autoOptimized && result?.selected_strategy) return result.selected_strategy;
     if (isAutoStrategyLabel(manualStrategy)) return AUTO_STRATEGY_LABEL;
-    return manualStrategy || result?.selected_strategy || null;
+    if (manualStrategy) return manualStrategy;
+    if (autoOptimized && result?.selected_strategy) return result.selected_strategy;
+    return result?.selected_strategy || null;
   }
 
   function getCoinForPayload() {
-    if (isAutoStrategyLabel(manualStrategy) && !autoOptimized) return "AUTO";
-    return coin;
+    return getResolvedCoin();
   }
 
   function handleStrategySelectionChange(selectedStrategy) {
@@ -127,16 +240,30 @@ function App() {
     const useOptimizerPick = selectedStrategy === "";
 
     if (useOptimizerPick) {
-      const hasOptimizerPick = Boolean(result?.optimization && result?.selected_strategy);
+      const optimizerPick = getAutoOptimizerPickSetup();
+      const hasOptimizerPick = Boolean(result?.optimization && optimizerPick?.selected_strategy);
+      const optimizerResult = hasOptimizerPick
+        ? buildResultFromOptimizerSetup(optimizerPick, "auto_optimization")
+        : result;
 
       setManualStrategy("");
       setAutoOptimized(hasOptimizerPick);
       setSetupSource(hasOptimizerPick ? "auto_optimization" : "manual_selection");
 
+      if (hasOptimizerPick) {
+        if (optimizerPick.coin) setCoin(optimizerPick.coin);
+        if (optimizerPick.timeframe) setTimeframe(optimizerPick.timeframe);
+        if (optimizerPick.risk) setRisk(optimizerPick.risk);
+        setResult(optimizerResult);
+      }
+
       saveAgentSetupToBackend({
-        selected_strategy: result?.selected_strategy || null,
-        result_snapshot: result || null,
-        optimization: result?.optimization || null,
+        coin: optimizerPick?.coin || coin,
+        timeframe: optimizerPick?.timeframe || timeframe,
+        risk: optimizerPick?.risk || risk,
+        selected_strategy: optimizerPick?.selected_strategy || result?.selected_strategy || null,
+        result_snapshot: optimizerResult || null,
+        optimization: optimizerResult?.optimization || result?.optimization || null,
         source: hasOptimizerPick ? "auto_optimization" : "manual_selection",
       });
 
@@ -147,22 +274,37 @@ function App() {
       ? "v2_auto_mode"
       : "manual_strategy_selection";
 
+    const overrideSetup = getBestOptimizerSetupForStrategy(selectedStrategy);
+    const overrideResult = overrideSetup
+      ? buildResultFromOptimizerSetup(overrideSetup, source)
+      : result;
+
     setManualStrategy(selectedStrategy);
     setAutoOptimized(false);
     setSetupSource(source);
 
+    if (overrideSetup) {
+      if (overrideSetup.coin) setCoin(overrideSetup.coin);
+      if (overrideSetup.timeframe) setTimeframe(overrideSetup.timeframe);
+      if (overrideSetup.risk) setRisk(overrideSetup.risk);
+      setResult(overrideResult);
+    }
+
     saveAgentSetupToBackend({
-      coin: isAutoStrategyLabel(selectedStrategy) ? "AUTO" : coin,
+      coin: isAutoStrategyLabel(selectedStrategy) ? "AUTO" : overrideSetup?.coin || coin,
+      timeframe: overrideSetup?.timeframe || timeframe,
+      risk: overrideSetup?.risk || risk,
       selected_strategy: selectedStrategy,
-      result_snapshot: result || null,
-      optimization: result?.optimization || null,
+      result_snapshot: overrideResult || null,
+      optimization: overrideResult?.optimization || result?.optimization || null,
       source,
     });
   }
 
   function renderStrategySelect() {
-    const optimizerPickLabel = result?.selected_strategy
-      ? `Use Auto-Optimizer Pick (${result.selected_strategy})`
+    const optimizerPick = getAutoOptimizerPickSetup();
+    const optimizerPickLabel = optimizerPick?.selected_strategy
+      ? `Use Auto-Optimizer Pick (${optimizerPick.selected_strategy})`
       : "Choose Strategy";
 
     return (
@@ -710,7 +852,9 @@ function App() {
     // on a different timeframe than the running agent.
     if (isAgentRunning() && activeTimeframe) return activeTimeframe;
 
-    return timeframe || savedTimeframe || lastResultTimeframe || "N/A";
+    // When a strategy is manually overridden after auto-optimization, use that strategy's
+    // best optimizer timeframe instead of leaving the old 1D optimizer/default timeframe.
+    return getResolvedTradingTimeframe() || savedTimeframe || lastResultTimeframe || "N/A";
   }
 
   function getOptimizerSnapshotTimeframeLabel() {
@@ -952,9 +1096,9 @@ function App() {
     const optimizationSnapshot = patch.optimization !== undefined ? patch.optimization : snapshot?.optimization || null;
 
     return {
-      coin: patch.coin !== undefined ? patch.coin : coin,
-      timeframe: patch.timeframe !== undefined ? patch.timeframe : timeframe,
-      risk: patch.risk !== undefined ? patch.risk : risk,
+      coin: patch.coin !== undefined ? patch.coin : getResolvedCoin(),
+      timeframe: patch.timeframe !== undefined ? patch.timeframe : getResolvedTradingTimeframe(),
+      risk: patch.risk !== undefined ? patch.risk : getResolvedRisk(),
       initial_capital: patch.initial_capital !== undefined ? patch.initial_capital : initialCapital,
       live_execution: patch.live_execution !== undefined ? patch.live_execution : getExecutionModeForPayload() === "live_trading",
       execution_mode: patch.execution_mode !== undefined ? (patch.execution_mode || "decision_simulation") : getExecutionModeForPayload(),
@@ -1049,6 +1193,8 @@ async function startAutonomousMode() {
     const selectedExecutionMode = getExecutionModeForPayload();
     const selectedStrategyForPayload = getSelectedStrategyForPayload();
     const coinForPayload = getCoinForPayload();
+    const timeframeForPayload = getResolvedTradingTimeframe();
+    const riskForPayload = getResolvedRisk();
 
     const response = await fetch(`${API_BASE}/autonomous/start`, {
       method: "POST",
@@ -1057,8 +1203,8 @@ async function startAutonomousMode() {
       }),
       body: JSON.stringify({
         coin: coinForPayload,
-        timeframe,
-        risk,
+        timeframe: timeframeForPayload,
+        risk: riskForPayload,
         initial_capital: initialCapital,
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,
@@ -2098,6 +2244,7 @@ Best eligible risk-adjusted score among all tested combinations.
           mode: data.mode,
           tested_combinations: data.tested_combinations,
           eligible_combinations: data.eligible_combinations,
+          best_setup: best,
           all_results: data.all_results,
           frequency_ranked_results: data.frequency_ranked_results,
           v2_opportunity: data.v2_opportunity || null,
@@ -2135,6 +2282,8 @@ async function runAgentCycle() {
     const selectedExecutionMode = getExecutionModeForPayload();
     const selectedStrategyForPayload = getSelectedStrategyForPayload();
     const coinForPayload = getCoinForPayload();
+    const timeframeForPayload = getResolvedTradingTimeframe();
+    const riskForPayload = getResolvedRisk();
 
     const response = await fetch(`${API_BASE}/agent-cycle`, {
       method: "POST",
@@ -2143,8 +2292,8 @@ async function runAgentCycle() {
       }),
       body: JSON.stringify({
         coin: coinForPayload,
-        timeframe,
-        risk,
+        timeframe: timeframeForPayload,
+        risk: riskForPayload,
         trade_size: tradeSize,
         live_execution: selectedExecutionMode === "live_trading",
         execution_mode: selectedExecutionMode,

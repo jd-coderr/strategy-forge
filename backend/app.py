@@ -113,6 +113,27 @@ STRATEGY_FILES = [
     "ichimoku_macd_ema_confluence.json",
 ]
 
+AUTO_STRATEGY_LABELS = {
+    "AUTO",
+    "IKQF_AUTO",
+    "BEST",
+    "AUTO / IKQF V2",
+    "AUTO / IKQF V2 OPPORTUNITY ENGINE",
+}
+
+
+def is_v2_auto_request(coin=None, selected_strategy=None):
+    coin_text = str(coin or "").strip().upper()
+    strategy_text = str(selected_strategy or "").strip().upper()
+
+    return coin_text in {"AUTO", "IKQF_AUTO", "BEST"} or strategy_text in AUTO_STRATEGY_LABELS
+
+
+def get_v2_seed_coin(coin=None, selected_strategy=None):
+    # CMC does not have an AUTO coin. Use BTC only as broad-market context
+    # before the v2 scanner chooses the actual trade asset.
+    return "BTC" if is_v2_auto_request(coin, selected_strategy) else (coin or "ETH")
+
 AUTONOMOUS_STATE = {
     "running": False,
     "interval_minutes": 5,
@@ -284,7 +305,9 @@ class StrategyRequest(BaseModel):
 
 
 class OptimizeRequest(BaseModel):
-    coin: str
+    coin: str = "ETH"
+    timeframe: str = "5M"
+    risk: str = "medium"
     initial_capital: float = 10000
 
 
@@ -367,28 +390,6 @@ def load_available_strategies():
             strategies.append(load_strategy(filename))
 
     return strategies
-
-
-
-def strategy_field(strategy: dict, key: str, default: str = "N/A"):
-    """Read optional strategy text safely so one new strategy JSON cannot break optimizer output."""
-    value = (strategy or {}).get(key)
-    if value is None or value == "":
-        return default
-    return value
-
-
-def is_tdi_signal_strategy(strategy: dict | None) -> bool:
-    return str((strategy or {}).get("type", "")).lower() == "tdi_signal_reversal"
-
-
-def is_v2_auto_strategy_label(value: str | None) -> bool:
-    return str(value or "").strip().upper() in {
-        "AUTO",
-        "IKQF_AUTO",
-        "BEST",
-        "AUTO / IKQF V2 OPPORTUNITY ENGINE",
-    }
 
 def find_strategy_by_name(strategy_name: str):
     if not strategy_name:
@@ -1258,12 +1259,38 @@ def generate_strategy(request: StrategyRequest, _operator_ok: bool = Depends(req
             f"{strategy['name']} for {request.coin} on the {request.timeframe} "
             f"timeframe using a {request.risk} risk profile."
         ),
-        "entry": strategy_field(strategy, "entry"),
-        "confirmation": strategy_field(strategy, "confirmation"),
-        "take_profit": strategy_field(strategy, "take_profit"),
-        "stop_loss": strategy_field(strategy, "stop_loss"),
-        "risk_governor": strategy_field(strategy, "risk_governor"),
+        "entry": strategy["entry"],
+        "confirmation": strategy["confirmation"],
+        "take_profit": strategy["take_profit"],
+        "stop_loss": strategy["stop_loss"],
+        "risk_governor": strategy["risk_governor"],
         "backtest": backtest,
+    }
+
+
+def build_optimizer_item_from_v2_opportunity(opportunity, timeframe, risk, cmc_signal):
+    strategy_meta = opportunity.get("strategy") or {}
+    strategy_name = strategy_meta.get("name")
+    strategy = find_strategy_by_name(strategy_name) or {}
+    backtest = opportunity.get("backtest") or {}
+
+    return {
+        "coin": opportunity.get("coin"),
+        "timeframe": timeframe,
+        "risk": risk,
+        "cmc_signal": cmc_signal,
+        "selected_strategy": strategy_name,
+        "type": strategy_meta.get("type") or strategy.get("type"),
+        "risk_adjusted_score": backtest.get("risk_adjusted_score", 0),
+        "backtest": backtest,
+        "entry": strategy.get("entry", "See strategy file."),
+        "confirmation": strategy.get("confirmation", "See strategy file."),
+        "take_profit": strategy.get("take_profit", "See strategy file."),
+        "stop_loss": strategy.get("stop_loss", "See strategy file."),
+        "risk_governor": strategy.get("risk_governor", {}),
+        "v2_confidence": opportunity.get("confidence"),
+        "v2_allocation": opportunity.get("allocation"),
+        "v2_candidate": opportunity.get("candidate"),
     }
 
 
@@ -1272,6 +1299,53 @@ def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(req
     timeframes = ["5M", "15M", "1H", "4H", "1D"]
     risk_levels = ["low", "medium", "high"]
     strategies = load_available_strategies()
+
+    if is_v2_auto_request(request.coin, None):
+        seed_signal = get_cmc_signal(get_v2_seed_coin(request.coin, None))
+        v2_result = build_v2_opportunity(
+            cmc_signal=seed_signal,
+            strategies=strategies,
+            run_backtest_fn=run_backtest,
+            timeframe=request.timeframe,
+            risk=request.risk,
+            initial_capital=request.initial_capital,
+        )
+
+        best = v2_result.get("best_opportunity") or None
+
+        if not best:
+            return {
+                "coin": request.coin,
+                "mode": "v2_opportunity_optimization",
+                "cmc_signal": seed_signal,
+                "tested_combinations": 0,
+                "eligible_combinations": 0,
+                "error": "IKQF v2 found no opportunity.",
+                "all_results": [],
+                "frequency_ranked_results": [],
+                "v2_opportunity": v2_result,
+            }
+
+        selected_coin = best.get("coin") or "ETH"
+        selected_signal = get_cmc_signal(selected_coin)
+        all_results = [
+            build_optimizer_item_from_v2_opportunity(item, request.timeframe, request.risk, selected_signal)
+            for item in (v2_result.get("top_opportunities") or [])
+        ]
+        best_result = build_optimizer_item_from_v2_opportunity(best, request.timeframe, request.risk, selected_signal)
+        frequency_ranked_results = sorted(all_results, key=frequency_ranking_key, reverse=True)
+
+        return {
+            "coin": selected_coin,
+            "mode": "v2_opportunity_optimization",
+            "cmc_signal": selected_signal,
+            "tested_combinations": len(all_results),
+            "eligible_combinations": len([item for item in all_results if is_backtest_eligible(item.get("backtest", {}))]),
+            "best_setup": best_result,
+            "all_results": all_results,
+            "frequency_ranked_results": frequency_ranked_results,
+            "v2_opportunity": v2_result,
+        }
 
     cmc_signal = get_cmc_signal(request.coin)
 
@@ -1298,11 +1372,11 @@ def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(req
                         "type": strategy["type"],
                         "risk_adjusted_score": backtest["risk_adjusted_score"],
                         "backtest": backtest,
-                        "entry": strategy_field(strategy, "entry"),
-                        "confirmation": strategy_field(strategy, "confirmation"),
-                        "take_profit": strategy_field(strategy, "take_profit"),
-                        "stop_loss": strategy_field(strategy, "stop_loss"),
-                        "risk_governor": strategy_field(strategy, "risk_governor"),
+                        "entry": strategy["entry"],
+                        "confirmation": strategy["confirmation"],
+                        "take_profit": strategy["take_profit"],
+                        "stop_loss": strategy["stop_loss"],
+                        "risk_governor": strategy["risk_governor"],
                     }
                 )
 
@@ -1450,9 +1524,14 @@ def debug_strategies():
 
 @app.post("/agent-cycle")
 def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require_operator_key)):
-    cmc_signal = get_cmc_signal(request.coin)
+    v2_requested = is_v2_auto_request(request.coin, request.selected_strategy)
+    original_requested_coin = request.coin
+    original_requested_strategy = request.selected_strategy
+    cmc_seed_coin = get_v2_seed_coin(request.coin, request.selected_strategy)
 
-    x402_market_data = get_cmc_x402_quote(request.coin)
+    cmc_signal = get_cmc_signal(cmc_seed_coin)
+
+    x402_market_data = get_cmc_x402_quote(cmc_seed_coin)
     cmc_signal["x402"] = x402_market_data
 
     if x402_market_data.get("success") and x402_market_data.get("price_usd") is not None:
@@ -1464,10 +1543,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         cmc_signal["market_data_payment_layer"] = "CMC API fallback; x402 not paid/available"
 
     v2_opportunity = None
-    v2_requested = (
-        str(request.coin or "").upper() in {"AUTO", "IKQF_AUTO", "BEST"}
-        or is_v2_auto_strategy_label(request.selected_strategy)
-    )
+    v2_trade_allowed = True
 
     if v2_requested:
         v2_opportunity = build_v2_opportunity(
@@ -1478,6 +1554,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             risk=request.risk,
             initial_capital=request.initial_capital,
         )
+        v2_trade_allowed = v2_opportunity.get("decision") == "TRADE_BEST_OPPORTUNITY"
         best = v2_opportunity.get("best_opportunity") or {}
         if best.get("coin"):
             request.coin = best["coin"]
@@ -1494,8 +1571,11 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
             else:
                 cmc_signal["x402_used_in_decision"] = False
                 cmc_signal["market_data_payment_layer"] = "CMC API fallback; x402 not paid/available"
+            cmc_signal["v2_auto_requested_coin"] = original_requested_coin
+            cmc_signal["v2_auto_requested_strategy"] = original_requested_strategy
             cmc_signal["v2_auto_selected_coin"] = request.coin
             cmc_signal["v2_auto_selected_strategy"] = selected_name
+            cmc_signal["v2_trade_allowed"] = v2_trade_allowed
 
     execution_mode = str(getattr(request, "execution_mode", "decision_simulation") or "decision_simulation").lower()
     live_execution_enabled = execution_mode == "live_trading" or request.live_execution is True
@@ -1619,7 +1699,15 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         )
 
     else:
-        strategy_signal = get_strategy_signal_direction(backtest)
+        if v2_requested and not v2_trade_allowed:
+            decision = "HOLD"
+            hold_reason = (
+                (v2_opportunity or {}).get("reason")
+                or "IKQF v2 ranked opportunities, but confidence did not clear the regime threshold, so the agent stays in USDT."
+            )
+            strategy_signal = None
+        else:
+            strategy_signal = get_strategy_signal_direction(backtest)
 
         if strategy_signal == "long":
             decision = f"BUY_{target_token}"
@@ -1672,11 +1760,7 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                     "The agent cannot profit from a short without margin/perpetuals or an existing asset position, so it holds instead."
                 )
 
-        elif (
-            not is_tdi_signal_strategy(strategy)
-            and ("bear" in market_bias or "risk-off" in market_bias)
-            and target_balance > 0
-        ):
+        elif ("bear" in market_bias or "risk-off" in market_bias) and target_balance > 0:
             decision = f"REDUCE_{target_token}_RISK"
             trade_amount = str(round(min(requested_trade_size, target_balance), 8))
 

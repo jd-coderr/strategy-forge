@@ -1,35 +1,96 @@
 {
   "name": "TDI Sharkfin Reversal",
   "type": "tdi_signal_reversal",
-  "entry": {
-    "condition": "Enter when either a fixed 32/68 TDI sharkfin trigger fires or a TDI Bollinger-band sharkfin trigger fires.",
-    "default_threshold": "Long: fixed 32 sharkfin OR lower TDI Bollinger-band sharkfin. Sell/reduce: fixed 68 sharkfin OR upper TDI Bollinger-band sharkfin."
+  "version": "original_white_signal_restored",
+  "description": "Restored original TradingView TDI Sharkfin strategy. Trades only the white buy/sell label signals from the uploaded Pine script. Turquoise wait crosses, TDI Bollinger-band sharkfins, and signal-line 68/32 exits are ignored.",
+  "source_indicator": {
+    "name": "TDI Divergence w/ Sharkfins & Divergence",
+    "signal_source": "Original white plotshape labels only",
+    "pine_equivalent": {
+      "rsi": "ta.rsi(close, 13)",
+      "fastMA": "ta.sma(ta.rsi(close, 13), 2)",
+      "slowMA": "ta.sma(ta.rsi(close, 13), 7)",
+      "bandLow": 32,
+      "bandHigh": 68
+    }
   },
-  "confirmation": {
-    "condition": "Fast TDI must curl back from an extreme. The extreme can be the fixed 32/68 band or the outer TDI Bollinger volatility band.",
-    "default_threshold": "Sharkfin reversal confirmation from fixed band or TDI Bollinger band"
+  "parameters": {
+    "rsi_length": 13,
+    "fast_ma_length": 2,
+    "slow_ma_length": 7,
+    "band_low": 32,
+    "band_high": 68,
+    "take_profit_percent": 1.0,
+    "stop_loss_percent": 0.5
   },
-  "take_profit": {
-    "condition": "Primary long exit is when the TDI signal line reaches 68. A short/backtest short exits when the TDI signal line reaches 32.",
-    "default_threshold": "TDI signal line 68 exit for long positions"
+  "entry_logic": {
+    "long": {
+      "name": "tdi_white_buy_signal",
+      "side": "BUY",
+      "rule": "fastMA[2] < 32 AND fastMA[1] > fastMA[2] AND fastMA > fastMA[1] AND fastMA < 32",
+      "meaning": "Original white BUY label: sharkfin curls upward while still below the 32 oversold band."
+    },
+    "sell_or_reduce": {
+      "name": "tdi_white_sell_signal",
+      "side": "SELL",
+      "rule": "fastMA[2] > 68 AND fastMA[1] < fastMA[2] AND fastMA < fastMA[1] AND fastMA > 68",
+      "meaning": "Original white SELL label: sharkfin curls downward while still above the 68 overbought band."
+    }
   },
-  "stop_loss": {
-    "condition": "Backup safety exit if price moves against the entry before the TDI exit appears.",
-    "default_threshold": "Risk-profile stop-loss backup"
+  "exit_logic": {
+    "long_take_profit": "Exit long at +1.0% from entry.",
+    "long_stop_loss": "Exit long at -0.5% from entry.",
+    "short_backtest_take_profit": "For backtest short simulation only, exit at +1.0% move in short direction.",
+    "short_backtest_stop_loss": "For backtest short simulation only, exit at -0.5% move against short direction.",
+    "spot_live_sell_rule": "In live spot mode, a white SELL signal converts the selected token back to USDT only if the agent already holds that token. No spot shorting."
   },
-  "risk_governor": {
+  "ignored_signals": [
+    {
+      "name": "bandBuySignal",
+      "plot": "turquoise cross",
+      "reason": "This is a wait/position marker in the Pine script, not the white trade label."
+    },
+    {
+      "name": "bandSellSignal",
+      "plot": "turquoise cross",
+      "reason": "This is a wait/position marker in the Pine script, not the white trade label."
+    },
+    {
+      "name": "tdi_bollinger_band_sharkfin",
+      "reason": "Removed. This was an added backend rule, not the original white-label strategy."
+    },
+    {
+      "name": "tdi_signal_line_exit_68_or_32",
+      "reason": "Removed. The restored strategy exits by the original TP/SL tracking logic, not by signal-line 68/32."
+    }
+  ],
+  "trade_behavior": {
+    "live_spot_buy": "USDT -> selected token on tdi_white_buy_signal.",
+    "live_spot_sell": "selected token -> USDT on tdi_white_sell_signal only if token balance exists.",
+    "live_spot_shorting": false,
+    "quote_only_default": false,
+    "max_open_trades": 1
+  },
+  "risk": {
+    "take_profit_percent": 1.0,
+    "stop_loss_percent": 0.5,
     "max_open_trades": 1,
-    "risk_per_trade": "1%",
-    "stop_after_consecutive_losses": 2,
-    "avoid_low_volume_conditions": true,
-    "requires_extreme_band_condition": true,
-    "allowed_entry_triggers": [
-      "fixed_32_sharkfin_long",
-      "fixed_68_sharkfin_short",
-      "lower_tdi_bollinger_sharkfin_long",
-      "upper_tdi_bollinger_sharkfin_short"
+    "cooldown_after_losses": "optional_backend_guard",
+    "notes": "Risk settings match the uploaded Pine script shark-fin win/loss tracking defaults: tp_perc 1.0 and sl_perc 0.5."
+  },
+  "backend_expectations": {
+    "strategy_type": "tdi_signal_reversal",
+    "valid_triggers": [
+      "tdi_white_buy_signal",
+      "tdi_white_sell_signal"
     ],
-    "primary_exit": "tdi_signal_line_68_for_long",
-    "spot_wallet_rule": "Long buys USDT to selected token. Sell/exit reduces selected token to USDT only if the wallet already holds the token."
+    "invalid_triggers_removed": [
+      "lower_tdi_bollinger_sharkfin_long",
+      "upper_tdi_bollinger_sharkfin_short",
+      "tdi_signal_line_exit_68",
+      "tdi_signal_line_exit_32",
+      "tdi_signal_line_68_or_upper_sharkfin_exit",
+      "tdi_signal_line_32_or_lower_sharkfin_exit"
+    ]
   }
 }

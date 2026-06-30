@@ -3400,3 +3400,34 @@ select option:checked {
   min-height: 34px !important;
   font-size: clamp(8px, 1vmin, 12px) !important;
 }
+
+/* Clear manual override section: visible before the sideways optimizer table. */
+.optimizer-override-picks {
+  border: 2px solid #ff3030 !important;
+  background: rgba(80, 0, 0, 0.22) !important;
+  box-shadow:
+    inset 0 0 18px rgba(255, 48, 48, 0.18),
+    0 0 16px rgba(255, 48, 48, 0.22) !important;
+}
+
+.optimizer-override-pick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.optimizer-quick-override-btn {
+  min-height: 42px !important;
+  text-align: left !important;
+  white-space: normal !important;
+  line-height: 1.25 !important;
+  font-size: clamp(9px, 1.15vmin, 13px) !important;
+  padding: 9px 10px !important;
+}
+
+@media (min-width: 900px) {
+  .optimizer-override-pick-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

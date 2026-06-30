@@ -126,6 +126,97 @@ function App() {
     return -999999;
   }
 
+
+  function normalizeMetricForGrouping(value) {
+    if (value === null || value === undefined) return "";
+
+    const numeric = Number(String(value).replace(/[$,%]/g, "").replace(/,/g, "").trim());
+    if (Number.isFinite(numeric)) return numeric.toFixed(4);
+
+    return String(value).trim().toUpperCase();
+  }
+
+  function getBacktestResultSignature(item) {
+    const backtest = item?.backtest || {};
+
+    return [
+      item?.selected_strategy || "",
+      item?.timeframe || "",
+      backtest.trades,
+      backtest.wins,
+      backtest.losses,
+      backtest.win_rate,
+      backtest.net_return,
+      backtest.max_drawdown,
+      backtest.profit_factor,
+      backtest.sharpe_ratio,
+      backtest.calmar_ratio,
+      backtest.signals_per_day_value ?? backtest.signals_per_day,
+      backtest.active_days_pct,
+      backtest.longest_quiet_gap,
+    ].map(normalizeMetricForGrouping).join("||");
+  }
+
+  function preferredRiskFromGroup(risks) {
+    const uniqueRisks = [...new Set((risks || []).filter(Boolean).map((value) => String(value).toLowerCase()))];
+    const currentRisk = String(risk || "").toLowerCase();
+
+    if (uniqueRisks.includes(currentRisk)) return currentRisk;
+    if (uniqueRisks.includes("medium")) return "medium";
+    if (uniqueRisks.includes("low")) return "low";
+    if (uniqueRisks.includes("high")) return "high";
+
+    return uniqueRisks[0] || risk || "medium";
+  }
+
+  function getOptimizerRiskLabel(item) {
+    if (Array.isArray(item?.risk_group) && item.risk_group.length > 1) {
+      return `${item.risk_group.map(getRiskProfileLabel).join(" / ")} (SAME BACKTEST)`;
+    }
+
+    return getRiskProfileLabel(item?.risk);
+  }
+
+  function dedupeIdenticalOptimizerRows(rows = []) {
+    const sortedRows = rows
+      .filter((item) => item?.backtest?.min_trade_gate === "PASS" && item?.backtest?.drawdown_gate === "PASS")
+      .sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a));
+
+    const grouped = new Map();
+
+    for (const item of sortedRows) {
+      const key = getBacktestResultSignature(item);
+      const existing = grouped.get(key);
+
+      if (!existing) {
+        grouped.set(key, {
+          ...item,
+          duplicate_count: 1,
+          risk_group: [item.risk].filter(Boolean),
+          hidden_duplicate_rows: [],
+        });
+        continue;
+      }
+
+      const riskGroup = [...new Set([...(existing.risk_group || []), item.risk].filter(Boolean))];
+      const bestItem = optimizerScoreValue(item) > optimizerScoreValue(existing) ? item : existing;
+
+      grouped.set(key, {
+        ...bestItem,
+        risk: preferredRiskFromGroup(riskGroup),
+        duplicate_count: (existing.duplicate_count || 1) + 1,
+        risk_group: riskGroup,
+        hidden_duplicate_rows: [...(existing.hidden_duplicate_rows || []), item],
+      });
+    }
+
+    return [...grouped.values()].sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a));
+  }
+
+  function getDedupedOptimizerRows(limit = 8) {
+    return dedupeIdenticalOptimizerRows(getOptimizerResults()).slice(0, limit);
+  }
+
   function getOptimizerResults() {
     return Array.isArray(result?.optimization?.all_results) ? result.optimization.all_results : [];
   }
@@ -248,6 +339,42 @@ function App() {
       optimization: overrideResult?.optimization || result?.optimization || null,
       source: "optimizer_table_override",
     });
+  }
+
+  function getOptimizerOverrideRows(limit = 8) {
+    return getDedupedOptimizerRows(limit);
+  }
+
+  function renderOptimizerQuickOverridePicks(limit = 8) {
+    const rows = getOptimizerOverrideRows(limit);
+
+    if (rows.length === 0) return null;
+
+    return (
+      <div className="metrics optimizer-override-picks">
+        <p><strong>MANUAL OVERRIDE BUTTONS</strong></p>
+        <p>Click a red button to run that optimizer row: strategy + timeframe. Duplicate risk rows with identical backtest results are grouped.</p>
+        <div className="optimizer-override-pick-grid">
+          {rows.map((item, index) => {
+            const overrideActive = isOptimizerRowOverrideActive(item);
+
+            return (
+              <button
+                type="button"
+                className={`optimizer-override-btn optimizer-quick-override-btn ${overrideActive ? "optimizer-override-btn-active" : ""}`}
+                disabled={isAgentSetupLocked()}
+                key={`${item.selected_strategy}-${item.timeframe}-${item.risk}-${index}`}
+                onClick={() => handleOptimizerRowOverride(item)}
+              >
+                {overrideActive
+                  ? `OVERRIDDEN #${index + 1} — ${item.selected_strategy} / ${item.timeframe} / ${getOptimizerRiskLabel(item)}`
+                  : `OVERRIDE #${index + 1} — ${item.selected_strategy} / ${item.timeframe} / ${getOptimizerRiskLabel(item)}`}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   function getResolvedStrategySetup() {
@@ -1448,8 +1575,7 @@ useEffect(() => {
 
     const winRateFloor = 30;
 
-    return rawResults
-      .slice()
+    return dedupeIdenticalOptimizerRows(rawResults)
       .sort((a, b) => {
         const aWinRate = parseMetricNumber(a.backtest?.win_rate, 0);
         const bWinRate = parseMetricNumber(b.backtest?.win_rate, 0);
@@ -3839,6 +3965,8 @@ async function loadTradeHistory() {
                     <p>OBJECTIVE........... {result.optimization?.objective || "REAL WORLD BALANCED: EDGE + RISK + OPPORTUNITY FLOW"}</p>
                   </div>
 
+                  {renderOptimizerQuickOverridePicks(8)}
+
                   {result.optimization?.all_results && (
                     <>
                       <div className="table-scroll-hint" aria-label="This table scrolls left to right">
@@ -3849,12 +3977,9 @@ async function loadTradeHistory() {
 
                       <div className="optimizer-table">
                       <div className="optimizer-row optimizer-header">
-                        <span>ACTION</span><span>RANK</span><span>TIMEFRAME</span><span>RISK</span><span>STRATEGY</span><span>RETURN</span><span>SHARPE</span><span>CALMAR</span><span>PF</span><span>MAX DD</span><span>SCORE</span>
+                        <span>ACTION</span><span>RANK</span><span>TIMEFRAME</span><span>RISK(S)</span><span>STRATEGY</span><span>RETURN</span><span>SHARPE</span><span>CALMAR</span><span>PF</span><span>MAX DD</span><span>SCORE</span>
                       </div>
-                      {result.optimization.all_results
-                        ?.filter((item) => item.backtest.min_trade_gate === "PASS" && item.backtest.drawdown_gate === "PASS")
-                        .sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))
-                        .slice(0, 8)
+                      {getDedupedOptimizerRows(8)
                         .map((item, index) => {
                           const overrideActive = isOptimizerRowOverrideActive(item);
 
@@ -3870,7 +3995,7 @@ async function loadTradeHistory() {
                                   {overrideActive ? "OVERRIDDEN" : "OVERRIDE"}
                                 </button>
                               </span>
-                              <span>#{index + 1}</span><span>{item.timeframe}</span><span>{getRiskProfileLabel(item.risk)}</span><span>{item.selected_strategy}</span><span>{item.backtest.net_return}</span><span>{item.backtest.sharpe_ratio}</span><span>{item.backtest.calmar_ratio}</span><span>{item.backtest.profit_factor}</span><span>{item.backtest.max_drawdown}</span><span>{optimizerScoreValue(item)}</span>
+                              <span>#{index + 1}</span><span>{item.timeframe}</span><span>{getOptimizerRiskLabel(item)}</span><span>{item.selected_strategy}</span><span>{item.backtest.net_return}</span><span>{item.backtest.sharpe_ratio}</span><span>{item.backtest.calmar_ratio}</span><span>{item.backtest.profit_factor}</span><span>{item.backtest.max_drawdown}</span><span>{optimizerScoreValue(item)}</span>
                             </div>
                           );
                         })}
@@ -3904,7 +4029,7 @@ async function loadTradeHistory() {
                               {overrideActive ? "OVERRIDDEN" : `OVERRIDE TO ${item.selected_strategy} / ${item.timeframe}`}
                             </button>
                             <p>TIMEFRAME.......... {item.timeframe}</p>
-                            <p>RISK............... {String(item.risk).toUpperCase()}</p>
+                            <p>RISK............... {getOptimizerRiskLabel(item)}</p>
                             <p>STYLE.............. {item.backtest?.trade_style || "N/A"}</p>
                             <p>SIGNALS / DAY...... {item.backtest?.signals_per_day || "N/A"}</p>
                             <p>ACTIVE DAYS........ {item.backtest?.active_days_pct || "N/A"}</p>
@@ -4695,14 +4820,17 @@ async function loadTradeHistory() {
               <p>OBJECTIVE........... {result.optimization?.objective || "REAL WORLD BALANCED: EDGE + RISK + OPPORTUNITY FLOW"}</p>
             </div>
 
+            {renderOptimizerQuickOverridePicks(8)}
+
             {result.optimization?.all_results && (
               <>
                 <div className="table-scroll-hint"><span>&lt;</span><strong>THIS TABLE SCROLLS LEFT TO RIGHT</strong><span>&gt;</span></div>
                 <div className="optimizer-table">
                 <div className="optimizer-row optimizer-header">
+                  <span>ACTION</span>
                   <span>RANK</span>
                   <span>TIMEFRAME</span>
-                  <span>RISK</span>
+                  <span>RISK(S)</span>
                   <span>STRATEGY</span>
                   <span>RETURN</span>
                   <span>SHARPE</span>
@@ -4710,28 +4838,14 @@ async function loadTradeHistory() {
                   <span>PF</span>
                   <span>MAX DD</span>
                   <span>SCORE</span>
-                  <span>ACTION</span>
                 </div>
 
-                {result.optimization.all_results
-                  ?.filter((item) => item.backtest.min_trade_gate === "PASS" && item.backtest.drawdown_gate === "PASS")
-                  .sort((a, b) => optimizerScoreValue(b) - optimizerScoreValue(a))
-                  .slice(0, 5)
+                {getDedupedOptimizerRows(5)
                   .map((item, index) => {
                     const overrideActive = isOptimizerRowOverrideActive(item);
 
                     return (
                       <div className={`optimizer-row ${overrideActive ? "optimizer-row-overridden" : ""}`} key={index}>
-                        <span>#{index + 1}</span>
-                        <span>{item.timeframe}</span>
-                        <span>{getRiskProfileLabel(item.risk)}</span>
-                        <span>{item.selected_strategy}</span>
-                        <span>{item.backtest.net_return}</span>
-                        <span>{item.backtest.sharpe_ratio}</span>
-                        <span>{item.backtest.calmar_ratio}</span>
-                        <span>{item.backtest.profit_factor}</span>
-                        <span>{item.backtest.max_drawdown}</span>
-                        <span>{optimizerScoreValue(item)}</span>
                         <span className="optimizer-override-cell">
                           <button
                             type="button"
@@ -4742,6 +4856,16 @@ async function loadTradeHistory() {
                             {overrideActive ? "OVERRIDDEN" : "OVERRIDE"}
                           </button>
                         </span>
+                        <span>#{index + 1}</span>
+                        <span>{item.timeframe}</span>
+                        <span>{getOptimizerRiskLabel(item)}</span>
+                        <span>{item.selected_strategy}</span>
+                        <span>{item.backtest.net_return}</span>
+                        <span>{item.backtest.sharpe_ratio}</span>
+                        <span>{item.backtest.calmar_ratio}</span>
+                        <span>{item.backtest.profit_factor}</span>
+                        <span>{item.backtest.max_drawdown}</span>
+                        <span>{optimizerScoreValue(item)}</span>
                       </div>
                     );
                   })}

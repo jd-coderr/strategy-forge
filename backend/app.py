@@ -368,6 +368,28 @@ def load_available_strategies():
 
     return strategies
 
+
+
+def strategy_field(strategy: dict, key: str, default: str = "N/A"):
+    """Read optional strategy text safely so one new strategy JSON cannot break optimizer output."""
+    value = (strategy or {}).get(key)
+    if value is None or value == "":
+        return default
+    return value
+
+
+def is_tdi_signal_strategy(strategy: dict | None) -> bool:
+    return str((strategy or {}).get("type", "")).lower() == "tdi_signal_reversal"
+
+
+def is_v2_auto_strategy_label(value: str | None) -> bool:
+    return str(value or "").strip().upper() in {
+        "AUTO",
+        "IKQF_AUTO",
+        "BEST",
+        "AUTO / IKQF V2 OPPORTUNITY ENGINE",
+    }
+
 def find_strategy_by_name(strategy_name: str):
     if not strategy_name:
         return None
@@ -1236,11 +1258,11 @@ def generate_strategy(request: StrategyRequest, _operator_ok: bool = Depends(req
             f"{strategy['name']} for {request.coin} on the {request.timeframe} "
             f"timeframe using a {request.risk} risk profile."
         ),
-        "entry": strategy["entry"],
-        "confirmation": strategy["confirmation"],
-        "take_profit": strategy["take_profit"],
-        "stop_loss": strategy["stop_loss"],
-        "risk_governor": strategy["risk_governor"],
+        "entry": strategy_field(strategy, "entry"),
+        "confirmation": strategy_field(strategy, "confirmation"),
+        "take_profit": strategy_field(strategy, "take_profit"),
+        "stop_loss": strategy_field(strategy, "stop_loss"),
+        "risk_governor": strategy_field(strategy, "risk_governor"),
         "backtest": backtest,
     }
 
@@ -1276,11 +1298,11 @@ def optimize_strategy(request: OptimizeRequest, _operator_ok: bool = Depends(req
                         "type": strategy["type"],
                         "risk_adjusted_score": backtest["risk_adjusted_score"],
                         "backtest": backtest,
-                        "entry": strategy["entry"],
-                        "confirmation": strategy["confirmation"],
-                        "take_profit": strategy["take_profit"],
-                        "stop_loss": strategy["stop_loss"],
-                        "risk_governor": strategy["risk_governor"],
+                        "entry": strategy_field(strategy, "entry"),
+                        "confirmation": strategy_field(strategy, "confirmation"),
+                        "take_profit": strategy_field(strategy, "take_profit"),
+                        "stop_loss": strategy_field(strategy, "stop_loss"),
+                        "risk_governor": strategy_field(strategy, "risk_governor"),
                     }
                 )
 
@@ -1442,7 +1464,10 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
         cmc_signal["market_data_payment_layer"] = "CMC API fallback; x402 not paid/available"
 
     v2_opportunity = None
-    v2_requested = str(request.coin or "").upper() in {"AUTO", "IKQF_AUTO", "BEST"}
+    v2_requested = (
+        str(request.coin or "").upper() in {"AUTO", "IKQF_AUTO", "BEST"}
+        or is_v2_auto_strategy_label(request.selected_strategy)
+    )
 
     if v2_requested:
         v2_opportunity = build_v2_opportunity(
@@ -1647,7 +1672,11 @@ def agent_cycle(request: AgentCycleRequest, _operator_ok: bool = Depends(require
                     "The agent cannot profit from a short without margin/perpetuals or an existing asset position, so it holds instead."
                 )
 
-        elif ("bear" in market_bias or "risk-off" in market_bias) and target_balance > 0:
+        elif (
+            not is_tdi_signal_strategy(strategy)
+            and ("bear" in market_bias or "risk-off" in market_bias)
+            and target_balance > 0
+        ):
             decision = f"REDUCE_{target_token}_RISK"
             trade_amount = str(round(min(requested_trade_size, target_balance), 8))
 
